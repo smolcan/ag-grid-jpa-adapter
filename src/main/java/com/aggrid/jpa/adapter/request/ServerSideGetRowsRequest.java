@@ -1,7 +1,6 @@
 package com.aggrid.jpa.adapter.request;
 
 
-import com.aggrid.jpa.adapter.request.filter.ColumnFilter;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -29,7 +28,7 @@ public class ServerSideGetRowsRequest {
     // What groups the user is viewing.
     private List<String> groupKeys = Collections.emptyList();
     // if filtering, what the filter model is
-    private Map<String, ColumnFilter> filterModel = Collections.emptyMap();
+    private Map<String, Object> filterModel;
     // if sorting, what the sort model is
-    private List<SortModel> sortModel = Collections.emptyList();
+    private List<SortModelItem> sortModel = Collections.emptyList();
 }

@@ -2,8 +2,6 @@ package com.aggrid.jpa.adapter;
 
 import com.aggrid.jpa.adapter.request.ColumnVO;
 import com.aggrid.jpa.adapter.request.ServerSideGetRowsRequest;
-import com.aggrid.jpa.adapter.request.filter.NumberColumnFilter;
-import com.aggrid.jpa.adapter.request.filter.TextColumnFilter;
 import com.aggrid.jpa.adapter.response.LoadSuccessParams;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Tuple;
@@ -128,79 +126,8 @@ public class QueryBuilder<E> {
             predicates.add(predicate);
         }
         // filter where
-        request.getFilterModel().forEach((key, filter) -> {
-            if (filter instanceof NumberColumnFilter numberColumnFilter) {
-
-                Path<? extends Number> field = root.get(key);
-                Predicate numberFilterPredicate = null;
-                switch (numberColumnFilter.getType()) {
-                    case "inRange" -> {
-                        Integer lower = numberColumnFilter.getFilter();
-                        Integer upper = numberColumnFilter.getFilterTo();
-
-                        Predicate lowerPredicate = cb.ge(field, lower);
-                        Predicate upperPredicate = cb.le(field, upper);
-                        numberFilterPredicate = cb.and(lowerPredicate, upperPredicate);
-                    }
-                    case "equals" -> {
-                        numberFilterPredicate = cb.equal(field, numberColumnFilter.getFilter());
-                    }
-                    case "notEqual" -> {
-                        numberFilterPredicate = cb.notEqual(field, numberColumnFilter.getFilter());
-                    }
-                    case "lessThan" -> {
-                        numberFilterPredicate = cb.lt(field, numberColumnFilter.getFilter());
-                    }
-                    case "lessThanOrEqual" -> {
-                        numberFilterPredicate = cb.le(field, numberColumnFilter.getFilter());
-                    }
-                    case "greaterThan" -> {
-                        numberFilterPredicate = cb.gt(field, numberColumnFilter.getFilter());
-                    }
-                    case "greaterThanOrEqual" -> {
-                        numberFilterPredicate = cb.ge(field, numberColumnFilter.getFilter());
-                    }
-                }
-
-                if (numberFilterPredicate != null) {
-                    predicates.add(numberFilterPredicate);
-                }
-            } else if (filter instanceof TextColumnFilter textColumnFilter) {
-                Path<String> field = root.get(key);
-                Predicate textFilterPredicate = null;
-                switch (textColumnFilter.getType()) {
-                    case "contains" -> {
-                        textFilterPredicate = cb.like(field, "%" + textColumnFilter.getFilter() + "%");
-                    }
-                    case "notContains" -> {
-                        textFilterPredicate = cb.notLike(field, "%" + textColumnFilter.getFilter() + "%");
-                    }
-                    case "equals" -> {
-                        textFilterPredicate = cb.equal(field, textColumnFilter.getFilter());
-                    }
-                    case "notEquals" -> {
-                        textFilterPredicate = cb.notEqual(field, textColumnFilter.getFilter());
-                    }
-                    case "beginsWith" -> {
-                        textFilterPredicate = cb.like(field, textColumnFilter.getFilter() + "%");
-                    }
-                    case "endsWith" -> {
-                        textFilterPredicate = cb.like(field, "%" + textColumnFilter.getFilter());
-                    }
-                    case "blank" -> {
-                        textFilterPredicate = cb.or(cb.isNull(field), cb.equal(field, ""));
-                    }
-                    case "notBlank" -> {
-                        textFilterPredicate = cb.and(cb.isNotNull(field), cb.notEqual(field, ""));
-                    }
-                }
-                
-                if (textFilterPredicate != null) {
-                    predicates.add(textFilterPredicate);
-                }
-            }
-
-            // todo: another types of filter
+        Optional.ofNullable(request.getFilterModel()).orElse(Collections.emptyMap()).forEach((key, filter) -> {
+            // todo: filters
         });
         query.where(predicates.toArray(new Predicate[0]));
     }
