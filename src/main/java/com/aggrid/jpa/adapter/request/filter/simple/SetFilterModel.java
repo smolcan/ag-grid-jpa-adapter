@@ -10,6 +10,5 @@ import java.util.List;
 @Getter @Setter
 public class SetFilterModel implements FilterModel {
     private final String filterType = "set";
-    private SimpleFilterModelType type;
     private List<String> values = new ArrayList<>();
 }

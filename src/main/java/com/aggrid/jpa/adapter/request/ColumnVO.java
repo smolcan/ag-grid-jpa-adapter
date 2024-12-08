@@ -12,5 +12,5 @@ public class ColumnVO {
     private String id;
     private String displayName;
     private String field;
-    private String aggFunc;
+    private AggregationFunction aggFunc;
 }
