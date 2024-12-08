@@ -2,32 +2,36 @@ package com.aggrid.jpa.adapter;
 
 import com.aggrid.jpa.adapter.request.ColumnVO;
 import com.aggrid.jpa.adapter.request.ServerSideGetRowsRequest;
-import com.aggrid.jpa.adapter.request.SortModel;
 import com.aggrid.jpa.adapter.request.filter.NumberColumnFilter;
+import com.aggrid.jpa.adapter.request.filter.TextColumnFilter;
 import com.aggrid.jpa.adapter.response.LoadSuccessParams;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.Tuple;
 import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.*;
+import jakarta.persistence.metamodel.EntityType;
+import jakarta.persistence.metamodel.Metamodel;
+import jakarta.persistence.metamodel.SingularAttribute;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+
+import static java.lang.Integer.MAX_VALUE;
 
 public class QueryBuilder<E> {
     
-    protected final Class<E> entityClass;
-    protected final EntityManager entityManager;
+    private final Class<E> entityClass;
+    private final EntityManager entityManager;
     
     public QueryBuilder(Class<E> entityClass, EntityManager entityManager) {
         this.entityClass = entityClass;
         this.entityManager = entityManager;
+        
     }
     
-    public LoadSuccessParams<E> getRows(ServerSideGetRowsRequest request) {
+    public LoadSuccessParams getRows(ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
 
-        CriteriaQuery<E> query = cb.createQuery(this.entityClass);
+        CriteriaQuery<Tuple> query = cb.createTupleQuery();
         Root<E> root = query.from(this.entityClass);
         
         this.select(cb, query, root, request);
@@ -35,23 +39,23 @@ public class QueryBuilder<E> {
         this.groupBy(cb, query, root, request);
         this.orderBy(cb, query, root, request);
 
-        TypedQuery<E> typedQuery = this.entityManager.createQuery(query);
+        TypedQuery<Tuple> typedQuery = this.entityManager.createQuery(query);
         this.limitOffset(typedQuery, request);
 
-        List<E> data = typedQuery.getResultList();
+        List<Tuple> data = typedQuery.getResultList();
         
-        LoadSuccessParams<E> loadSuccessParams = new LoadSuccessParams<>();
-        loadSuccessParams.setRowData(data);
+        LoadSuccessParams loadSuccessParams = new LoadSuccessParams();
+        loadSuccessParams.setRowData(tupleToMap(data));
         return loadSuccessParams;
     }
     
     
-    private void select(CriteriaBuilder cb, CriteriaQuery<E> query, Root<E> root, ServerSideGetRowsRequest request) {
+    private void select(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request) {
         // select
         boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
         if (!isGrouping) {
-            // SELECT * if not grouping
-            query.select(root);
+            // SELECT * from root if not grouping
+            this.selectAll(cb, query, root);
             return;
         }
 
@@ -69,27 +73,10 @@ public class QueryBuilder<E> {
                 selections.add(root.get(columnVO.getField()).alias(columnVO.getField()));
             } else {
                 // aggregation function on field, must be number type
-                Expression<? extends Number> aggregatedField;
+                Expression<?> aggregatedField;
                 switch (columnVO.getAggFunc()) {
                     case "avg" -> {
-                        Expression<Double> avgResult = cb.avg(root.get(columnVO.getField()));
-
-                        Class<?> fieldNumberType = root.get(columnVO.getField()).getJavaType();
-                        if (fieldNumberType == Double.class) {
-                            aggregatedField = avgResult;
-                        } else if (fieldNumberType == Long.class) {
-                            aggregatedField = cb.toLong(avgResult);
-                        } else if (fieldNumberType == Integer.class) {
-                            aggregatedField = cb.toInteger(avgResult);
-                        } else if (fieldNumberType == Float.class) {
-                            aggregatedField = cb.toFloat(avgResult);
-                        } else if (fieldNumberType == BigDecimal.class) {
-                            aggregatedField = cb.toBigDecimal(avgResult);
-                        } else if (fieldNumberType == BigInteger.class) {
-                            aggregatedField = cb.toBigInteger(avgResult);
-                        } else {
-                            throw new IllegalStateException();
-                        }
+                       aggregatedField = cb.avg(root.get(columnVO.getField()));
                     }
                     case "sum" -> {
                         aggregatedField = cb.sum(root.get(columnVO.getField()));
@@ -101,24 +88,7 @@ public class QueryBuilder<E> {
                         aggregatedField = cb.max(root.get(columnVO.getField()));
                     }
                     case "count" -> {
-                        Expression<Long> countExpr = cb.count(root.get(columnVO.getField()));
-
-                        Class<?> fieldNumberType = root.get(columnVO.getField()).getJavaType();
-                        if (fieldNumberType == Double.class) {
-                            aggregatedField = cb.toDouble(countExpr);
-                        } else if (fieldNumberType == Long.class) {
-                            aggregatedField = countExpr;
-                        } else if (fieldNumberType == Integer.class) {
-                            aggregatedField = cb.toInteger(countExpr);
-                        } else if (fieldNumberType == Float.class) {
-                            aggregatedField = cb.toFloat(countExpr);
-                        } else if (fieldNumberType == BigDecimal.class) {
-                            aggregatedField = cb.toBigDecimal(countExpr);
-                        } else if (fieldNumberType == BigInteger.class) {
-                            aggregatedField = cb.toBigInteger(countExpr);
-                        } else {
-                            throw new IllegalStateException();
-                        }
+                        aggregatedField = cb.count(root.get(columnVO.getField()));
                     }
                     default -> {
                         throw new IllegalArgumentException("unsupported aggregation function: " + columnVO.getAggFunc());
@@ -131,8 +101,22 @@ public class QueryBuilder<E> {
         query.multiselect(selections);
     }
     
+    private void selectAll(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root) {
+        List<Selection<?>> selections = new ArrayList<>();
+        
+        // fetch all fields from given entity
+        Metamodel metamodel = this.entityManager.getMetamodel();
+        EntityType<E> entityType = metamodel.entity(this.entityClass);
+        for (SingularAttribute<? super E, ?> attribute : entityType.getDeclaredSingularAttributes()) {
+            Path<?> field = root.get(attribute.getName());
+            selections.add(field.alias(attribute.getName()));
+        }
+
+        query.multiselect(selections);
+    }
     
-    private void where(CriteriaBuilder cb, CriteriaQuery<E> query, Root<E> root, ServerSideGetRowsRequest request) {
+    
+    private void where(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request) {
         // where
         List<Predicate> predicates = new ArrayList<>();
         // grouping where
@@ -149,7 +133,7 @@ public class QueryBuilder<E> {
 
                 Path<? extends Number> field = root.get(key);
                 Predicate numberFilterPredicate = null;
-                switch (key) {
+                switch (numberColumnFilter.getType()) {
                     case "inRange" -> {
                         Integer lower = numberColumnFilter.getFilter();
                         Integer upper = numberColumnFilter.getFilterTo();
@@ -181,6 +165,39 @@ public class QueryBuilder<E> {
                 if (numberFilterPredicate != null) {
                     predicates.add(numberFilterPredicate);
                 }
+            } else if (filter instanceof TextColumnFilter textColumnFilter) {
+                Path<String> field = root.get(key);
+                Predicate textFilterPredicate = null;
+                switch (textColumnFilter.getType()) {
+                    case "contains" -> {
+                        textFilterPredicate = cb.like(field, "%" + textColumnFilter.getFilter() + "%");
+                    }
+                    case "notContains" -> {
+                        textFilterPredicate = cb.notLike(field, "%" + textColumnFilter.getFilter() + "%");
+                    }
+                    case "equals" -> {
+                        textFilterPredicate = cb.equal(field, textColumnFilter.getFilter());
+                    }
+                    case "notEquals" -> {
+                        textFilterPredicate = cb.notEqual(field, textColumnFilter.getFilter());
+                    }
+                    case "beginsWith" -> {
+                        textFilterPredicate = cb.like(field, textColumnFilter.getFilter() + "%");
+                    }
+                    case "endsWith" -> {
+                        textFilterPredicate = cb.like(field, "%" + textColumnFilter.getFilter());
+                    }
+                    case "blank" -> {
+                        textFilterPredicate = cb.or(cb.isNull(field), cb.equal(field, ""));
+                    }
+                    case "notBlank" -> {
+                        textFilterPredicate = cb.and(cb.isNotNull(field), cb.notEqual(field, ""));
+                    }
+                }
+                
+                if (textFilterPredicate != null) {
+                    predicates.add(textFilterPredicate);
+                }
             }
 
             // todo: another types of filter
@@ -188,7 +205,7 @@ public class QueryBuilder<E> {
         query.where(predicates.toArray(new Predicate[0]));
     }
     
-    private void groupBy(CriteriaBuilder cb, CriteriaQuery<E> query, Root<E> root, ServerSideGetRowsRequest request) {
+    private void groupBy(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request) {
         boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
         if (isGrouping) {
             List<Expression<?>> groupByExpressions = new ArrayList<>();
@@ -200,34 +217,61 @@ public class QueryBuilder<E> {
         }
     }
     
-    private void orderBy(CriteriaBuilder cb, CriteriaQuery<E> query, Root<E> root, ServerSideGetRowsRequest request) {
+    private void orderBy(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request) {
         boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
-        // order by
-        if (!request.getSortModel().isEmpty()) {
-
-            List<Order> orders = new ArrayList<>(request.getSortModel().size());
-            for (int i = 0; i < request.getSortModel().size(); i++) {
-                SortModel sortModel = request.getSortModel().get(i);
-                if (isGrouping && request.getRowGroupCols().stream().noneMatch(c -> c.getField().equals(sortModel.getColId()))) {
-                    continue;
-                }
-
-                if (sortModel.getSort().equalsIgnoreCase("asc")) {
-                    orders.add(cb.asc(root.get(sortModel.getColId())));
-                } else if (sortModel.getSort().equalsIgnoreCase("desc")) {
-                    orders.add(cb.desc(root.get(sortModel.getColId())));
-                } else {
-                    throw new IllegalArgumentException("Unsupported sort type: " + sortModel.getSort());
-                }
-            }
-
-            query.orderBy(orders);
-        }
+        int limit = isGrouping ? request.getGroupKeys().size() + 1 : MAX_VALUE;
+        
+        List<Order> orderByCols = request.getSortModel().stream()
+                .filter(model -> {
+                    if (isGrouping) {
+                        return
+                                request.getRowGroupCols().stream().anyMatch(c -> c.getField().equals(model.getColId()))
+                                || request.getValueCols().stream().anyMatch(c -> c.getField().equals(model.getColId()));
+                    } else {
+                        try {
+                            root.get(model.getColId());
+                            return true;
+                        } catch (IllegalArgumentException e) {
+                            return false;
+                        }
+                    }
+                })
+                .filter(Objects::nonNull)
+                .map(sortModel -> {
+                    Path<?> field = root.get(sortModel.getColId());
+                    if (sortModel.getSort().equalsIgnoreCase("asc")) {
+                        return cb.asc(root.get(sortModel.getColId()));
+                    } else if (sortModel.getSort().equalsIgnoreCase("desc")) {
+                        return cb.desc(root.get(sortModel.getColId()));
+                    } else {
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .limit(limit)
+                .toList();
+        
+        query.orderBy(orderByCols);
     }
     
-    private void limitOffset(TypedQuery<E> typedQuery, ServerSideGetRowsRequest request) {
+    private void limitOffset(TypedQuery<Tuple> typedQuery, ServerSideGetRowsRequest request) {
         typedQuery.setFirstResult(request.getStartRow());
         typedQuery.setMaxResults(request.getEndRow() - request.getStartRow() + 1);
+    }
+    
+    private static List<Map<String, Object>> tupleToMap(List<Tuple> tuples) {
+        return tuples.stream()
+                .map(tuple -> {
+                    Map<String, Object> map = new HashMap<>();
+                    tuple.getElements().forEach(element -> {
+                        String alias = element.getAlias();
+                        if (alias != null) {
+                            map.put(alias, tuple.get(alias));
+                        }
+                    });
+                    return map;
+                })
+                .toList();
     }
     
 }

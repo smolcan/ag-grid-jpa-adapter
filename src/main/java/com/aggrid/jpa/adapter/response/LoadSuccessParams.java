@@ -9,9 +9,9 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class LoadSuccessParams<E> {
+public class LoadSuccessParams {
     // Data retrieved from the server as requested by the grid.
-    private List<E> rowData;
+    private List<Map<String, Object>> rowData;
     // The last row, if known, to help Infinite Scroll.
     private Integer rowCount;
     // Any extra information for the grid to associate with this load.

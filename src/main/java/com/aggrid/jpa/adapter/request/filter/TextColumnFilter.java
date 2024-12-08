@@ -8,8 +8,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter @Setter
-public class NumberColumnFilter extends ColumnFilter {
+public class TextColumnFilter extends ColumnFilter {
     private String type;
-    private Integer filter;
-    private Integer filterTo;
+    private String filter;
 }
