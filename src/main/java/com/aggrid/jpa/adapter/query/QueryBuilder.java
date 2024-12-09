@@ -129,22 +129,20 @@ public class QueryBuilder<E> {
 
         // filter where
         if (request.getFilterModel() != null) {
-            // simple filter has format {colId: {...filter object}}
-            boolean isSimpleFilter = request.getFilterModel().values().stream().allMatch(value -> value instanceof Map);
+            // according to documentation, filterModel: FilterModel | AdvancedFilterModel
+            boolean isFilterModel = request.getFilterModel().values().stream().allMatch(value -> value instanceof Map);
             
-            if (isSimpleFilter) {
-                // simple filter
+            if (isFilterModel) {
+                // filter model
                 request.getFilterModel().forEach((colId, filter) -> {
                     FilterModel filterModel = parseFilterModel(colId, (Map<String, Object>) filter);
                     
                     Predicate predicate;
                     if (filterModel instanceof SimpleFilterModel sfm) {
                         // value is simple filter
-                        // todo: check aggregation
                         predicate = sfm.toPredicate(cb, root, colId);
                     } else if (filterModel instanceof AdvancedFilterModel afm) {
                         // value is advanced filter
-                        // todo: check aggregation
                         predicate = afm.toPredicate(cb, root);
                     } else {
                         throw new IllegalStateException();
@@ -155,7 +153,6 @@ public class QueryBuilder<E> {
             } else {
                 // advanced filter
                 AdvancedFilterModel advancedFilter = parseAdvancedFilter(request.getFilterModel());
-                // todo: check aggregation
                 Predicate predicate = advancedFilter.toPredicate(cb, root);
                 predicates.add(predicate);
             }
@@ -198,10 +195,8 @@ public class QueryBuilder<E> {
                 .filter(Objects::nonNull)
                 .map(sortModel -> {
                     if (sortModel.getSort().equalsIgnoreCase("asc")) {
-                        // todo: check aggregation
                         return cb.asc(root.get(sortModel.getColId()));
                     } else if (sortModel.getSort().equalsIgnoreCase("desc")) {
-                        // todo: check aggregation
                         return cb.desc(root.get(sortModel.getColId()));
                     } else {
                         return null;
