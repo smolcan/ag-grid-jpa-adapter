@@ -2,6 +2,7 @@ package com.aggrid.jpa.adapter.query;
 
 import com.aggrid.jpa.adapter.request.ColumnVO;
 import com.aggrid.jpa.adapter.request.ServerSideGetRowsRequest;
+import com.aggrid.jpa.adapter.request.SortType;
 import com.aggrid.jpa.adapter.request.filter.FilterModel;
 import com.aggrid.jpa.adapter.request.filter.advanced.AdvancedFilterModel;
 import com.aggrid.jpa.adapter.request.filter.simple.*;
@@ -182,25 +183,11 @@ public class QueryBuilder<E> {
         int limit = isGrouping ? request.getGroupKeys().size() + 1 : MAX_VALUE;
         
         List<Order> orderByCols = request.getSortModel().stream()
-                .filter(model -> {
-                    if (isGrouping) {
-                        return
-                                request.getRowGroupCols().stream().anyMatch(c -> c.getField().equals(model.getColId()))
-                                || request.getValueCols().stream().anyMatch(c -> c.getField().equals(model.getColId()));
-                    } else {
-                        try {
-                            root.get(model.getColId());
-                            return true;
-                        } catch (IllegalArgumentException e) {
-                            return false;
-                        }
-                    }
-                })
-                .filter(Objects::nonNull)
+                .filter(model -> !isGrouping || request.getRowGroupCols().stream().anyMatch(rgc -> rgc.getField().equals(model.getColId())))
                 .map(sortModel -> {
-                    if (sortModel.getSort().equalsIgnoreCase("asc")) {
+                    if (sortModel.getSort() == SortType.asc) {
                         return cb.asc(root.get(sortModel.getColId()));
-                    } else if (sortModel.getSort().equalsIgnoreCase("desc")) {
+                    } else if (sortModel.getSort() == SortType.desc) {
                         return cb.desc(root.get(sortModel.getColId()));
                     } else {
                         return null;

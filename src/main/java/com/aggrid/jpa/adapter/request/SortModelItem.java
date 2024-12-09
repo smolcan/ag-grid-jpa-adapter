@@ -11,5 +11,5 @@ import lombok.Setter;
 @Getter @Setter
 public class SortModelItem {
     private String colId;
-    private String sort;
+    private SortType sort;
 }
