@@ -4,9 +4,12 @@ import com.aggrid.jpa.adapter.request.filter.advanced.enums.JoinAdvancedFilterMo
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.List;
 
+@Getter @Setter
 public class JoinAdvancedFilterModel implements AdvancedFilterModel {
     private final String filterType = "join";
     private JoinAdvancedFilterModelType type;

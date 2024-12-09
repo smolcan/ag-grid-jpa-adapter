@@ -57,6 +57,7 @@ public class QueryBuilder<E> {
     
     private void select(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request) {
         // select
+        // we know data are still grouped if request contains more group columns than group keys
         boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
         if (!isGrouping) {
             // SELECT * from root if not grouping
@@ -117,7 +118,8 @@ public class QueryBuilder<E> {
     private void where(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request) {
         // where
         List<Predicate> predicates = new ArrayList<>();
-        // grouping where
+        
+        // must add where statement for every group column that also has a key (was expanded)
         for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size(); i++) {
             String groupKey = request.getGroupKeys().get(i);
             String groupCol = request.getRowGroupCols().get(i).getField();
@@ -162,6 +164,7 @@ public class QueryBuilder<E> {
     }
     
     private void groupBy(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request) {
+        // we know data are still grouped if request contains more group columns than group keys
         boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
         if (isGrouping) {
             List<Expression<?>> groupByExpressions = new ArrayList<>();
@@ -174,6 +177,7 @@ public class QueryBuilder<E> {
     }
     
     private void orderBy(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request) {
+        // we know data are still grouped if request contains more group columns than group keys
         boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
         int limit = isGrouping ? request.getGroupKeys().size() + 1 : MAX_VALUE;
         
