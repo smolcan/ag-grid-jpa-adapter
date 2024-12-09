@@ -5,6 +5,7 @@ import com.aggrid.jpa.adapter.request.ServerSideGetRowsRequest;
 import com.aggrid.jpa.adapter.request.filter.FilterModel;
 import com.aggrid.jpa.adapter.request.filter.advanced.AdvancedFilterModel;
 import com.aggrid.jpa.adapter.request.filter.simple.*;
+import com.aggrid.jpa.adapter.request.filter.simple.enums.SimpleFilterModelType;
 import com.aggrid.jpa.adapter.response.LoadSuccessParams;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Tuple;
@@ -65,7 +66,8 @@ public class QueryBuilder<E> {
 
         List<Selection<?>> selections = new ArrayList<>();
         // group columns
-        for (ColumnVO groupCol : request.getRowGroupCols()) {
+        for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size() + 1; i++) {
+            ColumnVO groupCol = request.getRowGroupCols().get(i);
             selections.add(root.get(groupCol.getField()).alias(groupCol.getField()));
         }
         // aggregated columns
@@ -116,7 +118,7 @@ public class QueryBuilder<E> {
         // where
         List<Predicate> predicates = new ArrayList<>();
         // grouping where
-        for (int i = 0; i < request.getGroupKeys().size() && i < request.getRowGroupCols().size(); i++) {
+        for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size(); i++) {
             String groupKey = request.getGroupKeys().get(i);
             String groupCol = request.getRowGroupCols().get(i).getField();
 
@@ -133,13 +135,29 @@ public class QueryBuilder<E> {
             if (isSimpleFilter) {
                 // simple filter
                 request.getFilterModel().forEach((colId, filter) -> {
-                    FilterModel simpleFilter = parseSimpleFilter((Map<String, Object>) filter);
-                    // todo: simple filter
+                    FilterModel filterModel = parseFilterModel(colId, (Map<String, Object>) filter);
+                    
+                    Predicate predicate;
+                    if (filterModel instanceof SimpleFilterModel sfm) {
+                        // value is simple filter
+                        // todo: check aggregation
+                        predicate = sfm.toPredicate(cb, root, colId);
+                    } else if (filterModel instanceof AdvancedFilterModel afm) {
+                        // value is advanced filter
+                        // todo: check aggregation
+                        predicate = afm.toPredicate(cb, root);
+                    } else {
+                        throw new IllegalStateException();
+                    }
+                    
+                    predicates.add(predicate);
                 });
             } else {
                 // advanced filter
                 AdvancedFilterModel advancedFilter = parseAdvancedFilter(request.getFilterModel());
-                // todo: advanced filter
+                // todo: check aggregation
+                Predicate predicate = advancedFilter.toPredicate(cb, root);
+                predicates.add(predicate);
             }
         }
         
@@ -150,7 +168,7 @@ public class QueryBuilder<E> {
         boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
         if (isGrouping) {
             List<Expression<?>> groupByExpressions = new ArrayList<>();
-            for (int i = 0; i < request.getRowGroupCols().size(); i++) {
+            for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size() + 1; i++) {
                 String groupCol = request.getRowGroupCols().get(i).getField();
                 groupByExpressions.add(root.get(groupCol));
             }
@@ -179,10 +197,11 @@ public class QueryBuilder<E> {
                 })
                 .filter(Objects::nonNull)
                 .map(sortModel -> {
-                    Path<?> field = root.get(sortModel.getColId());
                     if (sortModel.getSort().equalsIgnoreCase("asc")) {
+                        // todo: check aggregation
                         return cb.asc(root.get(sortModel.getColId()));
                     } else if (sortModel.getSort().equalsIgnoreCase("desc")) {
+                        // todo: check aggregation
                         return cb.desc(root.get(sortModel.getColId()));
                     } else {
                         return null;
@@ -216,7 +235,11 @@ public class QueryBuilder<E> {
     }
     
     
-    private static FilterModel parseSimpleFilter(Map<String, Object> data) {
+    private static FilterModel parseFilterModel(String colId, Map<String, Object> data) {
+        return null;
+    }
+    
+    private static SimpleFilterModel parseSimpleFilter(Map<String, Object> data) {
         String filterType = Optional.ofNullable(data.get("filterType")).map(Object::toString).orElseThrow(() -> new IllegalArgumentException("no filter type found"));
         switch (filterType) {
             case "date" -> {
