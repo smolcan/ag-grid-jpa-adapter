@@ -1,4 +1,4 @@
-package com.aggrid.jpa.adapter.filter.simple;
+package com.aggrid.jpa.adapter.filter.simple.model;
 
 public enum SimpleFilterModelType {
     empty,

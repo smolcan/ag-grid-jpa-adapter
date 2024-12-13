@@ -1,6 +1,7 @@
-package com.aggrid.jpa.adapter.filter.simple;
+package com.aggrid.jpa.adapter.filter.simple.mapper;
 
 import com.aggrid.jpa.adapter.filter.JoinOperator;
+import com.aggrid.jpa.adapter.filter.simple.model.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

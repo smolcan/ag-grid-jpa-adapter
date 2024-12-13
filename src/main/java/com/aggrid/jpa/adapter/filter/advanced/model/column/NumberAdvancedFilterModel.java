@@ -1,41 +1,44 @@
-package com.aggrid.jpa.adapter.filter.advanced.column;
+package com.aggrid.jpa.adapter.filter.advanced.model.column;
 
-import com.aggrid.jpa.adapter.filter.advanced.ColumnAdvancedFilterModel;
+import com.aggrid.jpa.adapter.filter.advanced.model.ColumnAdvancedFilterModel;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 
-import java.time.LocalDate;
+import java.math.BigDecimal;
 
-public class DateStringAdvancedFilterModel extends ColumnAdvancedFilterModel {
+public class NumberAdvancedFilterModel extends ColumnAdvancedFilterModel {
     
     private ScalarAdvancedFilterModelType type;
-    private LocalDate filter;
-
-    public DateStringAdvancedFilterModel(String colId) {
-        super("dateString", colId);
+    private BigDecimal filter;
+    
+    public NumberAdvancedFilterModel(String colId) {
+        super("number", colId);
     }
-
+    
     @Override
     public Predicate toPredicate(CriteriaBuilder cb, Root<?> root) {
         Predicate predicate;
 
-        Expression<LocalDate> path = root.get(this.getColId()).as(LocalDate.class);
+        // ensuring number compatibility
+        // comparing any number types without problem, cast both to big decimal
+        Expression<BigDecimal> path = root.get(this.getColId()).as(BigDecimal.class);
         switch (this.type) {
             case blank -> predicate = cb.isNull(path);
             case notBlank -> predicate = cb.isNotNull(path);
             case equals -> predicate = cb.equal(path, this.filter);
             case notEqual -> predicate = cb.notEqual(path, this.filter);
-            case lessThan -> predicate = cb.lessThan(path, this.filter);
-            case lessThanOrEqual -> predicate = cb.lessThanOrEqualTo(path, this.filter);
-            case greaterThan -> predicate = cb.greaterThan(path, this.filter);
-            case greaterThanOrEqual -> predicate = cb.greaterThanOrEqualTo(path, this.filter);
+            case lessThan -> predicate = cb.lt(path, this.filter);
+            case lessThanOrEqual -> predicate = cb.le(path, this.filter);
+            case greaterThan -> predicate = cb.gt(path, this.filter);
+            case greaterThanOrEqual -> predicate = cb.ge(path, this.filter);
             default -> throw new IllegalStateException("Unexpected value: " + this.type);
         }
 
         return predicate;
     }
+
 
     public ScalarAdvancedFilterModelType getType() {
         return type;
@@ -45,11 +48,11 @@ public class DateStringAdvancedFilterModel extends ColumnAdvancedFilterModel {
         this.type = type;
     }
 
-    public LocalDate getFilter() {
+    public BigDecimal getFilter() {
         return filter;
     }
 
-    public void setFilter(LocalDate filter) {
+    public void setFilter(BigDecimal filter) {
         this.filter = filter;
     }
 }

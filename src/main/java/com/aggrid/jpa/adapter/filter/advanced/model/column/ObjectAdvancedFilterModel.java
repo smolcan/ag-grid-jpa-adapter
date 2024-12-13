@@ -1,25 +1,22 @@
-package com.aggrid.jpa.adapter.filter.advanced.column;
+package com.aggrid.jpa.adapter.filter.advanced.model.column;
 
-import com.aggrid.jpa.adapter.filter.advanced.ColumnAdvancedFilterModel;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.Path;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
+import com.aggrid.jpa.adapter.filter.advanced.model.ColumnAdvancedFilterModel;
+import jakarta.persistence.criteria.*;
 
-public class TextAdvancedFilterModel extends ColumnAdvancedFilterModel {
+public class ObjectAdvancedFilterModel extends ColumnAdvancedFilterModel {
     
     private TextAdvancedFilterModelType type;
     private String filter;
     
-    public TextAdvancedFilterModel(String colId) {
-        super("text", colId);
+    public ObjectAdvancedFilterModel(String colId) {
+        super("object", colId);
     }
-    
+
     @Override
     public Predicate toPredicate(CriteriaBuilder cb, Root<?> root) {
         Predicate predicate;
 
-        Path<String> path = root.get(this.getColId());
+        Expression<String> path = root.get(this.getColId()).as(String.class);
         switch (this.type) {
             case blank -> predicate = cb.or(cb.isNull(path), cb.equal(path, ""));
             case notBlank -> predicate = cb.and(cb.isNotNull(path), cb.notEqual(path, ""));
@@ -31,7 +28,7 @@ public class TextAdvancedFilterModel extends ColumnAdvancedFilterModel {
             case endsWith -> predicate = cb.like(path, "%" + filter);
             default -> throw new IllegalStateException("Unexpected value: " + this.type);
         }
-        
+
         return predicate;
     }
 
@@ -50,5 +47,4 @@ public class TextAdvancedFilterModel extends ColumnAdvancedFilterModel {
     public void setFilter(String filter) {
         this.filter = filter;
     }
-
 }

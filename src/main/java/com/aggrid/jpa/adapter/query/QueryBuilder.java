@@ -1,11 +1,12 @@
 package com.aggrid.jpa.adapter.query;
 
+import com.aggrid.jpa.adapter.filter.simple.mapper.ColumnFilterMapper;
+import com.aggrid.jpa.adapter.filter.simple.model.ColumnFilter;
 import com.aggrid.jpa.adapter.request.ColumnVO;
 import com.aggrid.jpa.adapter.request.ServerSideGetRowsRequest;
 import com.aggrid.jpa.adapter.request.SortType;
-import com.aggrid.jpa.adapter.filter.advanced.AdvancedFilterMapper;
-import com.aggrid.jpa.adapter.filter.advanced.AdvancedFilterModel;
-import com.aggrid.jpa.adapter.filter.simple.*;
+import com.aggrid.jpa.adapter.filter.advanced.mapper.AdvancedFilterMapper;
+import com.aggrid.jpa.adapter.filter.advanced.model.AdvancedFilterModel;
 import com.aggrid.jpa.adapter.response.LoadSuccessParams;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Tuple;

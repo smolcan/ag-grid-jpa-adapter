@@ -1,4 +1,4 @@
-package com.aggrid.jpa.adapter.filter.simple;
+package com.aggrid.jpa.adapter.filter.simple.model;
 
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Path;

@@ -1,4 +1,4 @@
-package com.aggrid.jpa.adapter.filter.advanced;
+package com.aggrid.jpa.adapter.filter.advanced.model;
 
 import com.aggrid.jpa.adapter.filter.JoinOperator;
 import jakarta.persistence.criteria.CriteriaBuilder;

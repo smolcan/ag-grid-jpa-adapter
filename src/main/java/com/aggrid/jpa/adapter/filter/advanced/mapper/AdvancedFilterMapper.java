@@ -1,7 +1,10 @@
-package com.aggrid.jpa.adapter.filter.advanced;
+package com.aggrid.jpa.adapter.filter.advanced.mapper;
 
 import com.aggrid.jpa.adapter.filter.JoinOperator;
-import com.aggrid.jpa.adapter.filter.advanced.column.*;
+import com.aggrid.jpa.adapter.filter.advanced.model.AdvancedFilterModel;
+import com.aggrid.jpa.adapter.filter.advanced.model.ColumnAdvancedFilterModel;
+import com.aggrid.jpa.adapter.filter.advanced.model.JoinAdvancedFilterModel;
+import com.aggrid.jpa.adapter.filter.advanced.model.column.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

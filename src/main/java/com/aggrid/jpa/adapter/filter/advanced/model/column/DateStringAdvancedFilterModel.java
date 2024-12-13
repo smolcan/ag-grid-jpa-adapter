@@ -1,6 +1,6 @@
-package com.aggrid.jpa.adapter.filter.advanced.column;
+package com.aggrid.jpa.adapter.filter.advanced.model.column;
 
-import com.aggrid.jpa.adapter.filter.advanced.ColumnAdvancedFilterModel;
+import com.aggrid.jpa.adapter.filter.advanced.model.ColumnAdvancedFilterModel;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
@@ -8,15 +8,15 @@ import jakarta.persistence.criteria.Root;
 
 import java.time.LocalDate;
 
-public class DateAdvancedFilterModel extends ColumnAdvancedFilterModel {
+public class DateStringAdvancedFilterModel extends ColumnAdvancedFilterModel {
     
     private ScalarAdvancedFilterModelType type;
     private LocalDate filter;
-    
-    public DateAdvancedFilterModel(String colId) {
-        super("date", colId);
+
+    public DateStringAdvancedFilterModel(String colId) {
+        super("dateString", colId);
     }
-    
+
     @Override
     public Predicate toPredicate(CriteriaBuilder cb, Root<?> root) {
         Predicate predicate;
@@ -33,7 +33,7 @@ public class DateAdvancedFilterModel extends ColumnAdvancedFilterModel {
             case greaterThanOrEqual -> predicate = cb.greaterThanOrEqualTo(path, this.filter);
             default -> throw new IllegalStateException("Unexpected value: " + this.type);
         }
-        
+
         return predicate;
     }
 
