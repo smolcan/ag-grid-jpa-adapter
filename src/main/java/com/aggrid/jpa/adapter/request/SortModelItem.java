@@ -1,15 +1,30 @@
 package com.aggrid.jpa.adapter.request;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
-
-@NoArgsConstructor
-@AllArgsConstructor
-@Getter @Setter
 public class SortModelItem {
     private String colId;
     private SortType sort;
+
+    public SortModelItem() {
+    }
+
+    public SortModelItem(String colId, SortType sort) {
+        this.colId = colId;
+        this.sort = sort;
+    }
+
+    public String getColId() {
+        return colId;
+    }
+
+    public void setColId(String colId) {
+        this.colId = colId;
+    }
+
+    public SortType getSort() {
+        return sort;
+    }
+
+    public void setSort(SortType sort) {
+        this.sort = sort;
+    }
 }

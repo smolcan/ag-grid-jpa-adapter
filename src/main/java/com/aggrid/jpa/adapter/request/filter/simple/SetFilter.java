@@ -4,13 +4,10 @@ import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
-import lombok.Getter;
-import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@Getter @Setter
 public class SetFilter extends ColumnFilter {
     
     public List<String> values = new ArrayList<>();
@@ -27,5 +24,13 @@ public class SetFilter extends ColumnFilter {
         this.values.forEach(inClause::value);
         
         return inClause;
+    }
+
+    public List<String> getValues() {
+        return values;
+    }
+
+    public void setValues(List<String> values) {
+        this.values = values;
     }
 }

@@ -3,13 +3,10 @@ package com.aggrid.jpa.adapter.request.filter.simple;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
-import lombok.Getter;
-import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@Getter @Setter
 public class CombinedSimpleModel<E extends ColumnFilter> extends ColumnFilter {
     
     private JoinOperator operator;
@@ -25,5 +22,22 @@ public class CombinedSimpleModel<E extends ColumnFilter> extends ColumnFilter {
         } else {
             throw new IllegalStateException();
         }
+    }
+
+
+    public JoinOperator getOperator() {
+        return operator;
+    }
+
+    public void setOperator(JoinOperator operator) {
+        this.operator = operator;
+    }
+
+    public List<E> getConditions() {
+        return conditions;
+    }
+
+    public void setConditions(List<E> conditions) {
+        this.conditions = conditions;
     }
 }

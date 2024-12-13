@@ -1,13 +1,10 @@
 package com.aggrid.jpa.adapter.request.filter.simple;
 
 import jakarta.persistence.criteria.*;
-import lombok.Getter;
-import lombok.Setter;
 
 import java.math.BigDecimal;
 
 
-@Getter @Setter
 public class NumberFilter extends ColumnFilter {
 
     private SimpleFilterModelType type;
@@ -39,5 +36,29 @@ public class NumberFilter extends ColumnFilter {
         }
         
         return predicate;
+    }
+
+    public SimpleFilterModelType getType() {
+        return type;
+    }
+
+    public void setType(SimpleFilterModelType type) {
+        this.type = type;
+    }
+
+    public BigDecimal getFilter() {
+        return filter;
+    }
+
+    public void setFilter(BigDecimal filter) {
+        this.filter = filter;
+    }
+
+    public BigDecimal getFilterTo() {
+        return filterTo;
+    }
+
+    public void setFilterTo(BigDecimal filterTo) {
+        this.filterTo = filterTo;
     }
 }

@@ -1,12 +1,9 @@
 package com.aggrid.jpa.adapter.request.filter.simple;
 
 import jakarta.persistence.criteria.*;
-import lombok.Getter;
-import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-@Getter @Setter
 public class DateFilter extends ColumnFilter {
 
     private SimpleFilterModelType type;
@@ -37,5 +34,29 @@ public class DateFilter extends ColumnFilter {
         }
         
         return predicate;
+    }
+
+    public SimpleFilterModelType getType() {
+        return type;
+    }
+
+    public void setType(SimpleFilterModelType type) {
+        this.type = type;
+    }
+
+    public LocalDateTime getDateFrom() {
+        return dateFrom;
+    }
+
+    public void setDateFrom(LocalDateTime dateFrom) {
+        this.dateFrom = dateFrom;
+    }
+
+    public LocalDateTime getDateTo() {
+        return dateTo;
+    }
+
+    public void setDateTo(LocalDateTime dateTo) {
+        this.dateTo = dateTo;
     }
 }
