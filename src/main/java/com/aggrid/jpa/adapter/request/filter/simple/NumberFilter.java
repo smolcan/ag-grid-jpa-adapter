@@ -1,13 +1,11 @@
 package com.aggrid.jpa.adapter.request.filter.simple;
 
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.Path;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.*;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+
 
 @Getter @Setter
 public class NumberFilter extends ColumnFilter {
@@ -24,7 +22,9 @@ public class NumberFilter extends ColumnFilter {
     public Predicate toPredicate(CriteriaBuilder cb, Root<?> root, String columnName) {
         Predicate predicate;
 
-        Path<? extends Number> path = root.get(columnName);
+        // ensuring number compatibility
+        // comparing any number types without problem, cast both to big decimal
+        Expression<BigDecimal> path = root.get(columnName).as(BigDecimal.class);
         switch (this.type) {
             case empty, blank -> predicate = cb.isNull(path);
             case notBlank -> predicate = cb.isNotNull(path);

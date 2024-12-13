@@ -13,6 +13,9 @@ import jakarta.persistence.metamodel.EntityType;
 import jakarta.persistence.metamodel.Metamodel;
 import jakarta.persistence.metamodel.SingularAttribute;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import static java.lang.Integer.MAX_VALUE;
@@ -70,24 +73,12 @@ public class QueryBuilder<E> {
         for (ColumnVO columnVO : request.getValueCols()) {
             Expression<?> aggregatedField;
             switch (columnVO.getAggFunc()) {
-                case avg -> {
-                    aggregatedField = cb.avg(root.get(columnVO.getField()));
-                }
-                case sum -> {
-                    aggregatedField = cb.sum(root.get(columnVO.getField()));
-                }
-                case min -> {
-                    aggregatedField = cb.min(root.get(columnVO.getField()));
-                }
-                case max -> {
-                    aggregatedField = cb.max(root.get(columnVO.getField()));
-                }
-                case count -> {
-                    aggregatedField = cb.count(root.get(columnVO.getField()));
-                }
-                default -> {
-                    throw new IllegalArgumentException("unsupported aggregation function: " + columnVO.getAggFunc());
-                }
+                case avg -> aggregatedField = cb.avg(root.get(columnVO.getField()));
+                case sum -> aggregatedField = cb.sum(root.get(columnVO.getField()));
+                case min -> aggregatedField = cb.min(root.get(columnVO.getField()));
+                case max -> aggregatedField = cb.max(root.get(columnVO.getField()));
+                case count -> aggregatedField = cb.count(root.get(columnVO.getField()));
+                default -> throw new IllegalArgumentException("unsupported aggregation function: " + columnVO.getAggFunc());
             }
             selections.add(aggregatedField.alias(columnVO.getField()));
         }
@@ -187,8 +178,8 @@ public class QueryBuilder<E> {
                 })
                 .toList();
     }
-    
-    
+
+    @SuppressWarnings("unchecked")
     private Predicate filterToPredicate(CriteriaBuilder cb, Root<E> root, Map<String, Object> filterModel) {
         
         Predicate predicate;
@@ -215,17 +206,29 @@ public class QueryBuilder<E> {
                         }
                     }
                     case "date" -> {
-                        columnFilter = new DateFilter();
+                        if (isCombinedFilter) {
+                            CombinedSimpleModel<DateFilter> combinedTextFilter = new CombinedSimpleModel<>();
+                            combinedTextFilter.setFilterType("date");
+                            combinedTextFilter.setOperator(JoinOperator.valueOf(filter.get("operator").toString()));
+                            combinedTextFilter.setConditions(((List<Map<String, Object>>) filter.get("conditions")).stream().map(this::parseDateFilter).toList());
+                            columnFilter = combinedTextFilter;
+                        } else {
+                            columnFilter = this.parseDateFilter(filter);
+                        }
                     }
                     case "number" -> {
-                        columnFilter = new NumberFilter();
+                        if (isCombinedFilter) {
+                            CombinedSimpleModel<NumberFilter> combinedNumberFilter = new CombinedSimpleModel<>();
+                            combinedNumberFilter.setFilterType("number");
+                            combinedNumberFilter.setOperator(JoinOperator.valueOf(filter.get("operator").toString()));
+                            combinedNumberFilter.setConditions(((List<Map<String, Object>>) filter.get("conditions")).stream().map(this::parseNumberFilter).toList());
+                            columnFilter = combinedNumberFilter;
+                        } else {
+                            columnFilter = this.parseNumberFilter(filter);
+                        }
                     }
-                    case "set" -> {
-                        columnFilter = parseSetFilter(filter);
-                    }
-                    default -> {
-                        throw new IllegalArgumentException("unsupported filter type: " + filterType);
-                    }
+                    case "set" -> columnFilter = parseSetFilter(filter);
+                    default -> throw new IllegalArgumentException("unsupported filter type: " + filterType);
                 }
                 
                 predicates.add(columnFilter.toPredicate(cb, root, columnName));
@@ -249,10 +252,30 @@ public class QueryBuilder<E> {
         textFilter.setFilterTo(Optional.ofNullable(filter.get("filterTo")).map(Object::toString).orElse(null));
         return textFilter;
     }
-    
+
+    @SuppressWarnings("unchecked")
     private SetFilter parseSetFilter(Map<String, Object> filter) {
         SetFilter setFilter = new SetFilter();
         setFilter.setValues((List<String>) filter.get("values"));
         return setFilter;
+    }
+    
+    private NumberFilter parseNumberFilter(Map<String, Object> filter) {
+        NumberFilter numberFilter = new NumberFilter();
+        numberFilter.setType(SimpleFilterModelType.valueOf(filter.get("type").toString()));
+        numberFilter.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).map(BigDecimal::new).orElse(null));
+        numberFilter.setFilterTo(Optional.ofNullable(filter.get("filterTo")).map(Object::toString).map(BigDecimal::new).orElse(null));
+        return numberFilter;
+    }
+    
+    private DateFilter parseDateFilter(Map<String, Object> filter) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        
+        DateFilter dateFilter = new DateFilter();
+        dateFilter.setType(SimpleFilterModelType.valueOf(filter.get("type").toString()));
+        dateFilter.setDateFrom(Optional.ofNullable(filter.get("dateFrom")).map(Object::toString).map(d -> LocalDateTime.parse(d, formatter)).orElse(null));
+        dateFilter.setDateTo(Optional.ofNullable(filter.get("dateTo")).map(Object::toString).map(d -> LocalDateTime.parse(d, formatter)).orElse(null));
+
+        return dateFilter;
     }
 }
