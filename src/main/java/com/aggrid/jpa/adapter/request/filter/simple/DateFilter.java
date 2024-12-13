@@ -1,9 +1,6 @@
 package com.aggrid.jpa.adapter.request.filter.simple;
 
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.Path;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -25,16 +22,18 @@ public class DateFilter extends ColumnFilter {
     public Predicate toPredicate(CriteriaBuilder cb, Root<?> root, String columnName) {
         Predicate predicate;
         
-        Path<?> path = root.get(columnName);
+        Expression<LocalDateTime> path = root.get(columnName).as(LocalDateTime.class);
         switch (this.type) {
             case empty, blank -> predicate = cb.isNull(path);
             case notBlank -> predicate = cb.isNotNull(path);
             case equals -> predicate = cb.equal(path, this.dateFrom);
             case notEqual -> predicate = cb.notEqual(path, this.dateFrom);
-            default -> {
-                // todo: rest of the types, handle cast
-                throw new IllegalStateException("Unexpected value: " + this.type);
-            }
+            case lessThan -> predicate = cb.lessThan(path, this.dateFrom);
+            case lessThanOrEqual -> predicate = cb.lessThanOrEqualTo(path, this.dateFrom);
+            case greaterThan -> predicate = cb.greaterThan(path, this.dateFrom);
+            case greaterThanOrEqual -> predicate = cb.greaterThanOrEqualTo(path, this.dateFrom);
+            case inRange -> predicate = cb.and(cb.greaterThanOrEqualTo(path, this.dateFrom), cb.lessThanOrEqualTo(path, this.dateTo));
+            default -> throw new IllegalStateException("Unexpected value: " + this.type);
         }
         
         return predicate;
