@@ -1,4 +1,4 @@
-package com.aggrid.jpa.adapter.request.filter;
+package com.aggrid.jpa.adapter.filter;
 
 public enum JoinOperator {
     AND,

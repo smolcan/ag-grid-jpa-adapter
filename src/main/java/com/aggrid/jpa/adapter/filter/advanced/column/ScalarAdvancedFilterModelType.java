@@ -1,4 +1,4 @@
-package com.aggrid.jpa.adapter.request.filter.advanced.column;
+package com.aggrid.jpa.adapter.filter.advanced.column;
 
 public enum ScalarAdvancedFilterModelType {
     equals,

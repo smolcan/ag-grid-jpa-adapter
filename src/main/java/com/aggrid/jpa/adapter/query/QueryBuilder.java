@@ -3,12 +3,9 @@ package com.aggrid.jpa.adapter.query;
 import com.aggrid.jpa.adapter.request.ColumnVO;
 import com.aggrid.jpa.adapter.request.ServerSideGetRowsRequest;
 import com.aggrid.jpa.adapter.request.SortType;
-import com.aggrid.jpa.adapter.request.filter.JoinOperator;
-import com.aggrid.jpa.adapter.request.filter.advanced.AdvancedFilterModel;
-import com.aggrid.jpa.adapter.request.filter.advanced.ColumnAdvancedFilterModel;
-import com.aggrid.jpa.adapter.request.filter.advanced.JoinAdvancedFilterModel;
-import com.aggrid.jpa.adapter.request.filter.advanced.column.*;
-import com.aggrid.jpa.adapter.request.filter.simple.*;
+import com.aggrid.jpa.adapter.filter.advanced.AdvancedFilterMapper;
+import com.aggrid.jpa.adapter.filter.advanced.AdvancedFilterModel;
+import com.aggrid.jpa.adapter.filter.simple.*;
 import com.aggrid.jpa.adapter.response.LoadSuccessParams;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Tuple;
@@ -18,10 +15,6 @@ import jakarta.persistence.metamodel.EntityType;
 import jakarta.persistence.metamodel.Metamodel;
 import jakarta.persistence.metamodel.SingularAttribute;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import static java.lang.Integer.MAX_VALUE;
@@ -189,161 +182,27 @@ public class QueryBuilder<E> {
     private Predicate filterToPredicate(CriteriaBuilder cb, Root<E> root, Map<String, Object> filterModel) {
         
         Predicate predicate;
-        if (filterModel.values().stream().allMatch(v -> v instanceof Map)) {
+        if (ColumnFilterMapper.isColumnFilter(filterModel)) {
             // simple filter
             // columnName: filter
-            List<Predicate> predicates = new ArrayList<>();
-            filterModel.forEach((columnName, o) -> {
-                Map<String, Object> filter = (Map<String, Object>) o;
-                
-                String filterType = filter.get("filterType").toString();
-                boolean isCombinedFilter = filter.containsKey("conditions");
-                ColumnFilter columnFilter;
-                switch (filterType) {
-                    case "text" -> {
-                        if (isCombinedFilter) {
-                            CombinedSimpleModel<TextFilter> combinedTextFilter = new CombinedSimpleModel<>();
-                            combinedTextFilter.setFilterType("text");
-                            combinedTextFilter.setOperator(JoinOperator.valueOf(filter.get("operator").toString()));
-                            combinedTextFilter.setConditions(((List<Map<String, Object>>) filter.get("conditions")).stream().map(this::parseTextFilter).toList());
-                            columnFilter = combinedTextFilter;
-                        } else {
-                            columnFilter = this.parseTextFilter(filter);
-                        }
-                    }
-                    case "date" -> {
-                        if (isCombinedFilter) {
-                            CombinedSimpleModel<DateFilter> combinedTextFilter = new CombinedSimpleModel<>();
-                            combinedTextFilter.setFilterType("date");
-                            combinedTextFilter.setOperator(JoinOperator.valueOf(filter.get("operator").toString()));
-                            combinedTextFilter.setConditions(((List<Map<String, Object>>) filter.get("conditions")).stream().map(this::parseDateFilter).toList());
-                            columnFilter = combinedTextFilter;
-                        } else {
-                            columnFilter = this.parseDateFilter(filter);
-                        }
-                    }
-                    case "number" -> {
-                        if (isCombinedFilter) {
-                            CombinedSimpleModel<NumberFilter> combinedNumberFilter = new CombinedSimpleModel<>();
-                            combinedNumberFilter.setFilterType("number");
-                            combinedNumberFilter.setOperator(JoinOperator.valueOf(filter.get("operator").toString()));
-                            combinedNumberFilter.setConditions(((List<Map<String, Object>>) filter.get("conditions")).stream().map(this::parseNumberFilter).toList());
-                            columnFilter = combinedNumberFilter;
-                        } else {
-                            columnFilter = this.parseNumberFilter(filter);
-                        }
-                    }
-                    case "set" -> columnFilter = parseSetFilter(filter);
-                    default -> throw new IllegalArgumentException("unsupported filter type: " + filterType);
-                }
-                
-                predicates.add(columnFilter.toPredicate(cb, root, columnName));
-            });
+            List<Predicate> predicates = filterModel.entrySet()
+                    .stream()
+                    .map(entry -> {
+                        String columnName = entry.getKey();
+                        Map<String, Object> filter = (Map<String, Object>) entry.getValue();
+
+                        ColumnFilter columnFilter = ColumnFilterMapper.fromMap(filter);
+                        return columnFilter.toPredicate(cb, root, columnName);
+                    })
+                    .toList();
             
             predicate = cb.and(predicates.toArray(new Predicate[0]));
         } else {
             // advanced filter
-            AdvancedFilterModel advancedFilterModel = this.parseAdvancedFilter(filterModel);
+            AdvancedFilterModel advancedFilterModel = AdvancedFilterMapper.fromMap(filterModel);
             predicate = advancedFilterModel.toPredicate(cb, root);
         }
         
         return predicate;
     }
-    
-    
-    private TextFilter parseTextFilter(Map<String, Object> filter) {
-        TextFilter textFilter = new TextFilter();
-        textFilter.setType(SimpleFilterModelType.valueOf(filter.get("type").toString()));
-        textFilter.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).orElse(null));
-        textFilter.setFilterTo(Optional.ofNullable(filter.get("filterTo")).map(Object::toString).orElse(null));
-        return textFilter;
-    }
-
-    @SuppressWarnings("unchecked")
-    private SetFilter parseSetFilter(Map<String, Object> filter) {
-        SetFilter setFilter = new SetFilter();
-        setFilter.setValues((List<String>) filter.get("values"));
-        return setFilter;
-    }
-    
-    private NumberFilter parseNumberFilter(Map<String, Object> filter) {
-        NumberFilter numberFilter = new NumberFilter();
-        numberFilter.setType(SimpleFilterModelType.valueOf(filter.get("type").toString()));
-        numberFilter.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).map(BigDecimal::new).orElse(null));
-        numberFilter.setFilterTo(Optional.ofNullable(filter.get("filterTo")).map(Object::toString).map(BigDecimal::new).orElse(null));
-        return numberFilter;
-    }
-    
-    private DateFilter parseDateFilter(Map<String, Object> filter) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        
-        DateFilter dateFilter = new DateFilter();
-        dateFilter.setType(SimpleFilterModelType.valueOf(filter.get("type").toString()));
-        dateFilter.setDateFrom(Optional.ofNullable(filter.get("dateFrom")).map(Object::toString).map(d -> LocalDateTime.parse(d, formatter)).orElse(null));
-        dateFilter.setDateTo(Optional.ofNullable(filter.get("dateTo")).map(Object::toString).map(d -> LocalDateTime.parse(d, formatter)).orElse(null));
-
-        return dateFilter;
-    }
-
-    @SuppressWarnings("unchecked")
-    private AdvancedFilterModel parseAdvancedFilter(Map<String, Object> filter) {
-        
-        String filterType = filter.get("filterType").toString();
-        if (filterType.equals("join")) {
-            // join
-            JoinAdvancedFilterModel joinAdvancedFilterModel = new JoinAdvancedFilterModel();
-            joinAdvancedFilterModel.setType(JoinOperator.valueOf(filter.get("type").toString()));
-            joinAdvancedFilterModel.setConditions(((List<Map<String, Object>>) filter.get("conditions")).stream().map(this::parseAdvancedFilter).toList());
-            
-            return joinAdvancedFilterModel;
-        } else {
-            // column
-            return this.parseColumnAdvancedFilter(filter);
-        }
-    }
-    
-    private ColumnAdvancedFilterModel parseColumnAdvancedFilter(Map<String, Object> filter) {
-
-        String colId = filter.get("colId").toString();
-        String filterType = filter.get("filterType").toString();
-        
-        switch (filterType) {
-            case "text" -> {
-                TextAdvancedFilterModel textAdvancedFilterModel = new TextAdvancedFilterModel(colId);
-                textAdvancedFilterModel.setType(TextAdvancedFilterModelType.valueOf(filter.get("type").toString()));
-                textAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).orElse(null));
-                return textAdvancedFilterModel;
-            }
-            case "date" -> {
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-                DateAdvancedFilterModel dateAdvancedFilterModel = new DateAdvancedFilterModel(colId);
-                dateAdvancedFilterModel.setType(ScalarAdvancedFilterModelType.valueOf(filter.get("type").toString()));
-                dateAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).map(f -> LocalDate.parse(f, formatter)).orElse(null));
-                return dateAdvancedFilterModel;
-            }
-            case "dateString" -> {
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-                DateStringAdvancedFilterModel dateAdvancedFilterModel = new DateStringAdvancedFilterModel(colId);
-                dateAdvancedFilterModel.setType(ScalarAdvancedFilterModelType.valueOf(filter.get("type").toString()));
-                dateAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).map(f -> LocalDate.parse(f, formatter)).orElse(null));
-                return dateAdvancedFilterModel;
-            }
-            case "number" -> {
-                NumberAdvancedFilterModel numberAdvancedFilterModel = new NumberAdvancedFilterModel(colId);
-                numberAdvancedFilterModel.setType(ScalarAdvancedFilterModelType.valueOf(filter.get("type").toString()));
-                numberAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).map(BigDecimal::new).orElse(null));
-                return numberAdvancedFilterModel;
-            }
-            case "object" -> {
-                ObjectAdvancedFilterModel objectAdvancedFilterModel = new ObjectAdvancedFilterModel(colId);
-                objectAdvancedFilterModel.setType(TextAdvancedFilterModelType.valueOf(filter.get("type").toString()));
-                objectAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).orElse(null));
-                return objectAdvancedFilterModel;
-            }
-            default -> throw new UnsupportedOperationException("Unsupported filter type: " + filterType);
-        }
-        
-    }
-    
-    
 }

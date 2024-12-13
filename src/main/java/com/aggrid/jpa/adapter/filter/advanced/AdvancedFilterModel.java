@@ -1,4 +1,4 @@
-package com.aggrid.jpa.adapter.request.filter.advanced;
+package com.aggrid.jpa.adapter.filter.advanced;
 
 
 import jakarta.persistence.criteria.CriteriaBuilder;

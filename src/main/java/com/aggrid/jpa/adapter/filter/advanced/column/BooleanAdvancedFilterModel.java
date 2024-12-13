@@ -1,6 +1,6 @@
-package com.aggrid.jpa.adapter.request.filter.advanced.column;
+package com.aggrid.jpa.adapter.filter.advanced.column;
 
-import com.aggrid.jpa.adapter.request.filter.advanced.ColumnAdvancedFilterModel;
+import com.aggrid.jpa.adapter.filter.advanced.ColumnAdvancedFilterModel;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
