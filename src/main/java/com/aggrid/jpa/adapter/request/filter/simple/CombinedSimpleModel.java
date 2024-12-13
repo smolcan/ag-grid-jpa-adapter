@@ -1,5 +1,6 @@
 package com.aggrid.jpa.adapter.request.filter.simple;
 
+import com.aggrid.jpa.adapter.request.filter.JoinOperator;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
