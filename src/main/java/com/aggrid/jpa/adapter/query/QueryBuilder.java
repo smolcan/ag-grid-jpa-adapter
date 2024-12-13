@@ -3,10 +3,7 @@ package com.aggrid.jpa.adapter.query;
 import com.aggrid.jpa.adapter.request.ColumnVO;
 import com.aggrid.jpa.adapter.request.ServerSideGetRowsRequest;
 import com.aggrid.jpa.adapter.request.SortType;
-import com.aggrid.jpa.adapter.request.filter.FilterModel;
-import com.aggrid.jpa.adapter.request.filter.advanced.AdvancedFilterModel;
 import com.aggrid.jpa.adapter.request.filter.simple.*;
-import com.aggrid.jpa.adapter.request.filter.simple.enums.SimpleFilterModelType;
 import com.aggrid.jpa.adapter.response.LoadSuccessParams;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Tuple;
@@ -16,9 +13,6 @@ import jakarta.persistence.metamodel.EntityType;
 import jakarta.persistence.metamodel.Metamodel;
 import jakarta.persistence.metamodel.SingularAttribute;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import static java.lang.Integer.MAX_VALUE;
@@ -62,7 +56,7 @@ public class QueryBuilder<E> {
         boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
         if (!isGrouping) {
             // SELECT * from root if not grouping
-            this.selectAll(cb, query, root);
+            this.selectAll(query, root);
             return;
         }
 
@@ -101,7 +95,7 @@ public class QueryBuilder<E> {
         query.multiselect(selections);
     }
     
-    private void selectAll(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root) {
+    private void selectAll(CriteriaQuery<Tuple> query, Root<E> root) {
         List<Selection<?>> selections = new ArrayList<>();
         
         // fetch all fields from given entity
@@ -129,36 +123,10 @@ public class QueryBuilder<E> {
             predicates.add(groupPredicate);
         }
         
-
         // filter where
         if (request.getFilterModel() != null) {
-            // according to documentation, filterModel: FilterModel | AdvancedFilterModel
-            boolean isFilterModel = request.getFilterModel().values().stream().allMatch(value -> value instanceof Map);
-            
-            if (isFilterModel) {
-                // filter model
-                request.getFilterModel().forEach((colId, filter) -> {
-                    FilterModel filterModel = parseFilterModel(colId, (Map<String, Object>) filter);
-                    
-                    Predicate predicate;
-                    if (filterModel instanceof SimpleFilterModel sfm) {
-                        // value is simple filter
-                        predicate = sfm.toPredicate(cb, root, colId);
-                    } else if (filterModel instanceof AdvancedFilterModel afm) {
-                        // value is advanced filter
-                        predicate = afm.toPredicate(cb, root);
-                    } else {
-                        throw new IllegalStateException();
-                    }
-                    
-                    predicates.add(predicate);
-                });
-            } else {
-                // advanced filter
-                AdvancedFilterModel advancedFilter = parseAdvancedFilter(request.getFilterModel());
-                Predicate predicate = advancedFilter.toPredicate(cb, root);
-                predicates.add(predicate);
-            }
+            Predicate filterPredicate = this.filterToPredicate(cb, root, request.getFilterModel());
+            predicates.add(filterPredicate);
         }
         
         query.where(predicates.toArray(new Predicate[0]));
@@ -221,66 +189,70 @@ public class QueryBuilder<E> {
     }
     
     
-    private static FilterModel parseFilterModel(String colId, Map<String, Object> data) {
-        return null;
-    }
-    
-    private static SimpleFilterModel parseSimpleFilter(Map<String, Object> data) {
-        String filterType = Optional.ofNullable(data.get("filterType")).map(Object::toString).orElseThrow(() -> new IllegalArgumentException("no filter type found"));
-        switch (filterType) {
-            case "date" -> {
-                DateFilterModel dateFilterModel = new DateFilterModel();
-                dateFilterModel.setType(SimpleFilterModelType.valueOf(data.get("type").toString()));
-
-                LocalDateTime dateFrom = Optional.ofNullable(data.get("dateFrom")).map(Object::toString).map(v -> LocalDateTime.parse(v, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))).orElse(null);
-                dateFilterModel.setDateFrom(dateFrom);
+    private Predicate filterToPredicate(CriteriaBuilder cb, Root<E> root, Map<String, Object> filterModel) {
+        
+        Predicate predicate;
+        if (filterModel.values().stream().allMatch(v -> v instanceof Map)) {
+            // simple filter
+            // columnName: filter
+            List<Predicate> predicates = new ArrayList<>();
+            filterModel.forEach((columnName, o) -> {
+                Map<String, Object> filter = (Map<String, Object>) o;
                 
-                LocalDateTime dateTo = Optional.ofNullable(data.get("dateTo")).map(Object::toString).map(v -> LocalDateTime.parse(v, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))).orElse(null);
-                dateFilterModel.setDateTo(dateTo);
+                String filterType = filter.get("filterType").toString();
+                boolean isCombinedFilter = filter.containsKey("conditions");
+                ColumnFilter columnFilter;
+                switch (filterType) {
+                    case "text" -> {
+                        if (isCombinedFilter) {
+                            CombinedSimpleModel<TextFilter> combinedTextFilter = new CombinedSimpleModel<>();
+                            combinedTextFilter.setFilterType("text");
+                            combinedTextFilter.setOperator(JoinOperator.valueOf(filter.get("operator").toString()));
+                            combinedTextFilter.setConditions(((List<Map<String, Object>>) filter.get("conditions")).stream().map(this::parseTextFilter).toList());
+                            columnFilter = combinedTextFilter;
+                        } else {
+                            columnFilter = this.parseTextFilter(filter);
+                        }
+                    }
+                    case "date" -> {
+                        columnFilter = new DateFilter();
+                    }
+                    case "number" -> {
+                        columnFilter = new NumberFilter();
+                    }
+                    case "set" -> {
+                        columnFilter = parseSetFilter(filter);
+                    }
+                    default -> {
+                        throw new IllegalArgumentException("unsupported filter type: " + filterType);
+                    }
+                }
                 
-                return dateFilterModel;
-            }
-            case "number" -> {
-                NumberFilterModel numberFilterModel = new NumberFilterModel();
-                numberFilterModel.setType(SimpleFilterModelType.valueOf(data.get("type").toString()));
-
-                BigDecimal filter = Optional.ofNullable(data.get("filter")).map(Object::toString).map(BigDecimal::new).orElse(null);
-                numberFilterModel.setFilter(filter);
-                
-                BigDecimal filterTo = Optional.ofNullable(data.get("filterTo")).map(Object::toString).map(BigDecimal::new).orElse(null);
-                numberFilterModel.setFilterTo(filterTo);
-                
-                return numberFilterModel;
-            }
-            case "set" -> {
-                SetFilterModel setFilterModel = new SetFilterModel();
-                
-                List<String> values = Optional.ofNullable(data.get("values")).map(o -> (List<String>) o).orElse(null);
-                setFilterModel.setValues(values);
-                
-                return setFilterModel;
-            }
-            case "text" -> {
-                TextFilterModel textFilterModel = new TextFilterModel();
-                textFilterModel.setType(SimpleFilterModelType.valueOf(data.get("type").toString()));
-
-                String filter = Optional.ofNullable(data.get("filter")).map(Object::toString).orElse(null);
-                textFilterModel.setFilter(filter);
-
-                String filterTo = Optional.ofNullable(data.get("filterTo")).map(Object::toString).orElse(null);
-                textFilterModel.setFilterTo(filterTo);
-                
-                return textFilterModel;
-            }
-            default -> {
-                throw new UnsupportedOperationException("unsupported filter type: " + data.get("type") + " data: " + data);
-            }
+                predicates.add(columnFilter.toPredicate(cb, root, columnName));
+            });
+            
+            predicate = cb.and(predicates.toArray(new Predicate[0]));
+        } else {
+            // advanced filter
+            
+            predicate = cb.and();
         }
+        
+        return predicate;
     }
     
     
-    private static AdvancedFilterModel parseAdvancedFilter(Map<String, Object> data) {
-        return null;
+    private TextFilter parseTextFilter(Map<String, Object> filter) {
+        TextFilter textFilter = new TextFilter();
+        textFilter.setType(SimpleFilterModelType.valueOf(filter.get("type").toString()));
+        textFilter.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).orElse(null));
+        textFilter.setFilterTo(Optional.ofNullable(filter.get("filterTo")).map(Object::toString).orElse(null));
+        return textFilter;
     }
     
+    private SetFilter parseSetFilter(Map<String, Object> filter) {
+        SetFilter setFilter = new SetFilter();
+        setFilter.setValues((List<String>) filter.get("values"));
+        return setFilter;
+    }
 }
