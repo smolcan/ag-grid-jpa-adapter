@@ -18,6 +18,7 @@ import jakarta.persistence.metamodel.Metamodel;
 import jakarta.persistence.metamodel.SingularAttribute;
 
 import java.util.*;
+import java.util.stream.Stream;
 
 import static java.lang.Integer.MAX_VALUE;
 
@@ -113,7 +114,7 @@ public class QueryBuilder<E> {
             
             // try to synchronize col and key to same data type to prevent errors
             // for example, group key is date as string, but field is date, need to parse to date and then compare
-            TypeValueSynchronizer.Result synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(root.get(groupCol), groupKey);
+            TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(root.get(groupCol), groupKey);
             Predicate groupPredicate = cb.equal(synchronizedValueType.getSynchronizedPath(), synchronizedValueType.getSynchronizedValue());
             predicates.add(groupPredicate);
         }
@@ -145,6 +146,8 @@ public class QueryBuilder<E> {
         boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
         int limit = isGrouping ? request.getGroupKeys().size() + 1 : MAX_VALUE;
         
+        // if grouping, ordering can be done on all fields
+        // otherwise, only by grouped fields
         List<Order> orderByCols = request.getSortModel().stream()
                 .filter(model -> !isGrouping || request.getRowGroupCols().stream().anyMatch(rgc -> rgc.getField().equals(model.getColId())))
                 .map(sortModel -> {
@@ -159,6 +162,38 @@ public class QueryBuilder<E> {
                 .filter(Objects::nonNull)
                 .limit(limit)
                 .toList();
+        
+        // ordering can be also done on aggregated fields
+        if (isGrouping && !request.getValueCols().isEmpty()) {
+            List<Order> orderByAggregatedCols = request.getSortModel().stream()
+                    // not in grouped columns
+                    .filter(model -> request.getRowGroupCols().stream().noneMatch(rgc -> rgc.getField().equals(model.getColId())))
+                    // in aggregation columns
+                    .filter(model -> request.getValueCols().stream().anyMatch(aggCol -> aggCol.getField().equals(model.getColId())))
+                    .map(model -> {
+                        ColumnVO aggregatedColumn = request.getValueCols().stream().filter(aggCol -> aggCol.getField().equals(model.getColId())).findFirst().orElseThrow();
+                        Expression<? extends Number> aggregatedField;
+                        switch (aggregatedColumn.getAggFunc()) {
+                            case avg -> aggregatedField = cb.avg(root.get(model.getColId()));
+                            case sum -> aggregatedField = cb.sum(root.get(model.getColId()));
+                            case min -> aggregatedField = cb.min(root.get(model.getColId()));
+                            case max -> aggregatedField = cb.max(root.get(model.getColId()));
+                            case count -> aggregatedField = cb.count(root.get(model.getColId()));
+                            default -> throw new IllegalArgumentException("unsupported aggregation function: " + aggregatedColumn.getAggFunc());
+                        }
+                        
+                        if (model.getSort() == SortType.asc) {
+                            return cb.asc(aggregatedField);
+                        } else if (model.getSort() == SortType.desc) {
+                            return cb.desc(aggregatedField);
+                        } else {
+                            return null;
+                        }
+                    })
+                    .toList();
+            
+            orderByCols = Stream.concat(orderByCols.stream(), orderByAggregatedCols.stream()).toList();
+        }
         
         query.orderBy(orderByCols);
     }
