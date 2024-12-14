@@ -8,6 +8,7 @@ import com.aggrid.jpa.adapter.request.SortType;
 import com.aggrid.jpa.adapter.filter.advanced.mapper.AdvancedFilterMapper;
 import com.aggrid.jpa.adapter.filter.advanced.model.AdvancedFilterModel;
 import com.aggrid.jpa.adapter.response.LoadSuccessParams;
+import com.aggrid.jpa.adapter.utils.TypeValueSynchronizer;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Tuple;
 import jakarta.persistence.TypedQuery;
@@ -16,26 +17,11 @@ import jakarta.persistence.metamodel.EntityType;
 import jakarta.persistence.metamodel.Metamodel;
 import jakarta.persistence.metamodel.SingularAttribute;
 
-import java.math.BigDecimal;
-import java.time.*;
-import java.time.temporal.Temporal;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.*;
 
 import static java.lang.Integer.MAX_VALUE;
 
 public class QueryBuilder<E> {
-
-    private static final List<DateTimeFormatter> FORMATTERS = List.of(
-            DateTimeFormatter.ISO_DATE_TIME,                   // "1999-12-31T23:00:00"
-            DateTimeFormatter.ISO_INSTANT,                     // "1999-12-31T23:00:00Z"
-            DateTimeFormatter.ISO_LOCAL_DATE_TIME,             // "1999-12-31T23:00:00.838"
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),// "1999-12-31 23:00:00"
-            DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss"),// "1999/12/31 23:00:00"
-            DateTimeFormatter.ofPattern("yyyy-MM-dd"),         // "1999-12-31"
-            DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss") // "31-12-1999 23:00:00"
-    );
     
     private final Class<E> entityClass;
     private final EntityManager entityManager;
@@ -124,9 +110,11 @@ public class QueryBuilder<E> {
         for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size(); i++) {
             String groupKey = request.getGroupKeys().get(i);
             String groupCol = request.getRowGroupCols().get(i).getField();
-            Path<?> groupColField = root.get(groupCol);
-
-            Predicate groupPredicate = this.makeEqualsPredicate(cb, groupColField, groupKey);
+            
+            // try to synchronize col and key to same data type to prevent errors
+            // for example, group key is date as string, but field is date, need to parse to date and then compare
+            TypeValueSynchronizer.Result synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(root.get(groupCol), groupKey);
+            Predicate groupPredicate = cb.equal(synchronizedValueType.getSynchronizedPath(), synchronizedValueType.getSynchronizedValue());
             predicates.add(groupPredicate);
         }
         
@@ -221,60 +209,5 @@ public class QueryBuilder<E> {
         }
         
         return predicate;
-    }
-    
-    private Predicate makeEqualsPredicate(CriteriaBuilder cb, Path<?> field, String stringValue) {
-        Class<?> fieldType = field.getJavaType();
-        
-        if (fieldType.equals(String.class)) {
-            return cb.equal(field, stringValue);
-        }
-        
-        if (Date.class.isAssignableFrom(fieldType) || Temporal.class.isAssignableFrom(fieldType)) {
-            return cb.equal(field.as(LocalDateTime.class), parseToLocalDateTime(stringValue));
-        }
-        
-        if (Number.class.isAssignableFrom(fieldType)) {
-            return cb.equal(field.as(BigDecimal.class), new BigDecimal(stringValue));
-        }
-        
-        if (fieldType.equals(Boolean.class)) {
-            return cb.equal(field.as(Boolean.class), Boolean.parseBoolean(stringValue));
-        }
-        
-        // idk wtf this field is, compare without check, universe might explode
-        return cb.equal(field, stringValue);
-    }
-
-    public static LocalDateTime parseToLocalDateTime(String dateTimeStr) {
-        if (dateTimeStr == null || dateTimeStr.isBlank()) {
-            throw new IllegalArgumentException("Date string cannot be null or blank");
-        }
-
-        // 1. Handle ISO-8601 strings with "Z" or time zone offsets
-        try {
-            Instant instant = Instant.parse(dateTimeStr); // Parses strings like "2000-01-02T00:20:41.396Z"
-            return LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
-        } catch (DateTimeParseException ignored) {
-            // Not an Instant, move to other patterns
-        }
-
-        try {
-            ZonedDateTime zonedDateTime = ZonedDateTime.parse(dateTimeStr, DateTimeFormatter.ISO_ZONED_DATE_TIME);
-            return zonedDateTime.toLocalDateTime();
-        } catch (DateTimeParseException ignored) {
-            // Not a ZonedDateTime, move on
-        }
-
-        // 2. Attempt parsing with other common formats
-        for (DateTimeFormatter formatter : FORMATTERS) {
-            try {
-                return LocalDateTime.parse(dateTimeStr, formatter);
-            } catch (DateTimeParseException ignored) {
-                // Continue to the next formatter
-            }
-        }
-
-        throw new DateTimeParseException("Unable to parse date-time string", dateTimeStr, 0);
     }
 }
