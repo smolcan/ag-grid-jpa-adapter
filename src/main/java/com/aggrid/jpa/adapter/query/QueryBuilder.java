@@ -73,7 +73,7 @@ public class QueryBuilder<E> {
         }
         // aggregated columns
         for (ColumnVO columnVO : request.getValueCols()) {
-            Expression<?> aggregatedField;
+            Expression<? extends Number> aggregatedField;
             switch (columnVO.getAggFunc()) {
                 case avg -> aggregatedField = cb.avg(root.get(columnVO.getField()));
                 case sum -> aggregatedField = cb.sum(root.get(columnVO.getField()));
