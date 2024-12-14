@@ -86,7 +86,7 @@ public class TypeValueSynchronizer {
                         expr.as(LocalDate.class),
                         parseToLocalDate(value)
                 );
-            } else if (exprType.isAssignableFrom(ZonedDateTime.class)) {
+            } else if (exprType.equals(ZonedDateTime.class)) {
                 return new Result<>(
                         expr.as(ZonedDateTime.class),
                         parseToZonedDateTime(value)
