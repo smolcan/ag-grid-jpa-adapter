@@ -190,6 +190,7 @@ public class QueryBuilder<E> {
                             return null;
                         }
                     })
+                    .filter(Objects::nonNull)
                     .toList();
             
             orderByCols = Stream.concat(orderByCols.stream(), orderByAggregatedCols.stream()).toList();
