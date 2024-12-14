@@ -31,7 +31,7 @@ public class TypeValueSynchronizer {
         Class<?> valueType = value.getClass();
         
         // compatible
-        if (exprType.isAssignableFrom(valueType)) {
+        if (exprType.equals(valueType)) {
             return new Result(expr, value);
         }
 
