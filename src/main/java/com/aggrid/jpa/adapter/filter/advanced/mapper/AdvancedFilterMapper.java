@@ -69,6 +69,19 @@ public class AdvancedFilterMapper {
                 objectAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).orElse(null));
                 return objectAdvancedFilterModel;
             }
+            case "boolean" -> {
+                BooleanAdvancedFilterModel booleanAdvancedFilterModel = new BooleanAdvancedFilterModel(colId);
+                booleanAdvancedFilterModel.setType(Optional.ofNullable(filter.get("type")).map(Object::toString).map(v -> {
+                    if (v.equalsIgnoreCase("true")) {
+                        return BooleanAdvancedFilterModelType.TRUE;
+                    } else if (v.equalsIgnoreCase("false")) {
+                        return BooleanAdvancedFilterModelType.FALSE;
+                    } else {
+                        return BooleanAdvancedFilterModelType.valueOf(v);
+                    }
+                }).orElseThrow());
+                return booleanAdvancedFilterModel;
+            }
             default -> throw new UnsupportedOperationException("Unsupported filter type: " + filterType);
         }
 

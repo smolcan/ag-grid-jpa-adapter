@@ -7,7 +7,7 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 
 public class BooleanAdvancedFilterModel extends ColumnAdvancedFilterModel {
-    private boolean type;
+    private BooleanAdvancedFilterModelType type;
 
     public BooleanAdvancedFilterModel(String colId) {
         super("boolean", colId);
@@ -18,20 +18,22 @@ public class BooleanAdvancedFilterModel extends ColumnAdvancedFilterModel {
         Predicate predicate;
 
         Path<Boolean> path = root.get(this.getColId());
-        if (this.type) {
-            predicate = cb.isTrue(path);
-        } else {
-            predicate = cb.isFalse(path);
+        switch (this.type) {
+            case TRUE -> predicate = cb.isTrue(path);
+            case FALSE -> predicate = cb.isFalse(path);
+            case blank -> predicate = cb.isNull(path);
+            case notBlank -> predicate = cb.isNotNull(path);
+            default -> throw new IllegalStateException("Unexpected value: " + this.type);
         }
         
         return predicate;
     }
 
-    public boolean isType() {
+    public BooleanAdvancedFilterModelType getType() {
         return type;
     }
 
-    public void setType(boolean type) {
+    public void setType(BooleanAdvancedFilterModelType type) {
         this.type = type;
     }
 }
