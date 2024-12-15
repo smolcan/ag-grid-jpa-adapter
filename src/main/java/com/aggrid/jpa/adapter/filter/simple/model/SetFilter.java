@@ -1,12 +1,11 @@
 package com.aggrid.jpa.adapter.filter.simple.model;
 
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.Path;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
+import com.aggrid.jpa.adapter.utils.TypeValueSynchronizer;
+import jakarta.persistence.criteria.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class SetFilter extends ColumnFilter {
     
@@ -18,12 +17,21 @@ public class SetFilter extends ColumnFilter {
 
     @Override
     public Predicate toPredicate(CriteriaBuilder cb, Root<?> root, String columnName) {
-        Path<String> path = root.get(columnName);
-
-        CriteriaBuilder.In<String> inClause = cb.in(path);
-        this.values.forEach(inClause::value);
+        if (this.values.isEmpty()) {
+            // empty values, FALSE predicate
+            return cb.disjunction();
+        }
         
-        return inClause;
+        Path<?> path = root.get(columnName);
+        Expression<?> expr = null;
+        List<Object> values = new ArrayList<>(this.values.size());
+        for (String value : this.values) {
+            var syncResult = TypeValueSynchronizer.synchronizeTypes(path, value);
+            expr = syncResult.getSynchronizedPath(); 
+            values.add(syncResult.getSynchronizedValue());
+        }
+        
+        return Objects.requireNonNull(expr).in(values);
     }
 
     public List<String> getValues() {
