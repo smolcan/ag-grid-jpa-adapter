@@ -19,11 +19,25 @@ public class BooleanAdvancedFilterModel extends ColumnAdvancedFilterModel {
 
         Path<Boolean> path = root.get(this.getColId());
         switch (this.type) {
-            case TRUE -> predicate = cb.isTrue(path);
-            case FALSE -> predicate = cb.isFalse(path);
-            case blank -> predicate = cb.isNull(path);
-            case notBlank -> predicate = cb.isNotNull(path);
-            default -> throw new IllegalStateException("Unexpected value: " + this.type);
+            case TRUE: {
+                predicate = cb.isTrue(path);
+                break;
+            }
+            case FALSE: {
+                predicate = cb.isFalse(path);
+                break;
+            }
+            case blank: {
+                predicate = cb.isNull(path);
+                break;
+            }
+            case notBlank: {
+                predicate = cb.isNotNull(path);
+                break;
+            }
+            default: {
+                throw new IllegalStateException("Unexpected value: " + this.type);
+            }
         }
         
         return predicate;

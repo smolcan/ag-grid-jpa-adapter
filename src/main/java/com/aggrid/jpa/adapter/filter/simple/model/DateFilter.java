@@ -21,16 +21,45 @@ public class DateFilter extends ColumnFilter {
         
         Expression<LocalDateTime> path = root.get(columnName).as(LocalDateTime.class);
         switch (this.type) {
-            case empty, blank -> predicate = cb.isNull(path);
-            case notBlank -> predicate = cb.isNotNull(path);
-            case equals -> predicate = cb.equal(path, this.dateFrom);
-            case notEqual -> predicate = cb.notEqual(path, this.dateFrom);
-            case lessThan -> predicate = cb.lessThan(path, this.dateFrom);
-            case lessThanOrEqual -> predicate = cb.lessThanOrEqualTo(path, this.dateFrom);
-            case greaterThan -> predicate = cb.greaterThan(path, this.dateFrom);
-            case greaterThanOrEqual -> predicate = cb.greaterThanOrEqualTo(path, this.dateFrom);
-            case inRange -> predicate = cb.and(cb.greaterThanOrEqualTo(path, this.dateFrom), cb.lessThanOrEqualTo(path, this.dateTo));
-            default -> throw new IllegalStateException("Unexpected value: " + this.type);
+            case empty: case blank: {
+                predicate = cb.isNull(path);
+                break;
+            }
+            case notBlank: {
+                predicate = cb.isNotNull(path);
+                break;
+            }
+            case equals: {
+                predicate = cb.equal(path, this.dateFrom);
+                break;
+            }
+            case notEqual: {
+                predicate = cb.notEqual(path, this.dateFrom);
+                break;
+            }
+            case lessThan: {
+                predicate = cb.lessThan(path, this.dateFrom);
+                break;
+            }
+            case lessThanOrEqual: {
+                predicate = cb.lessThanOrEqualTo(path, this.dateFrom);
+                break;
+            }
+            case greaterThan: {
+                predicate = cb.greaterThan(path, this.dateFrom);
+                break;
+            }
+            case greaterThanOrEqual: {
+                predicate = cb.greaterThanOrEqualTo(path, this.dateFrom);
+                break;
+            }
+            case inRange: {
+                predicate = cb.and(cb.greaterThanOrEqualTo(path, this.dateFrom), cb.lessThanOrEqualTo(path, this.dateTo));
+                break;
+            }
+            default: {
+                throw new IllegalStateException("Unexpected value: " + this.type);
+            }
         }
         
         return predicate;

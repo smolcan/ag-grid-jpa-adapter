@@ -9,6 +9,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class ColumnFilterMapper {
     
@@ -24,41 +25,49 @@ public class ColumnFilterMapper {
         boolean isCombinedFilter = filter.containsKey("conditions");
         ColumnFilter columnFilter;
         switch (filterType) {
-            case "text" -> {
+            case "text": {
                 if (isCombinedFilter) {
                     CombinedSimpleModel<TextFilter> combinedTextFilter = new CombinedSimpleModel<>();
                     combinedTextFilter.setFilterType("text");
                     combinedTextFilter.setOperator(JoinOperator.valueOf(filter.get("operator").toString()));
-                    combinedTextFilter.setConditions(((List<Map<String, Object>>) filter.get("conditions")).stream().map(ColumnFilterMapper::parseTextFilter).toList());
+                    combinedTextFilter.setConditions(((List<Map<String, Object>>) filter.get("conditions")).stream().map(ColumnFilterMapper::parseTextFilter).collect(Collectors.toList()));
                     columnFilter = combinedTextFilter;
                 } else {
                     columnFilter = parseTextFilter(filter);
                 }
+                break;
             }
-            case "date" -> {
+            case "date": {
                 if (isCombinedFilter) {
                     CombinedSimpleModel<DateFilter> combinedTextFilter = new CombinedSimpleModel<>();
                     combinedTextFilter.setFilterType("date");
                     combinedTextFilter.setOperator(JoinOperator.valueOf(filter.get("operator").toString()));
-                    combinedTextFilter.setConditions(((List<Map<String, Object>>) filter.get("conditions")).stream().map(ColumnFilterMapper::parseDateFilter).toList());
+                    combinedTextFilter.setConditions(((List<Map<String, Object>>) filter.get("conditions")).stream().map(ColumnFilterMapper::parseDateFilter).collect(Collectors.toList()));
                     columnFilter = combinedTextFilter;
                 } else {
                     columnFilter = parseDateFilter(filter);
                 }
+                break;
             }
-            case "number" -> {
+            case "number": {
                 if (isCombinedFilter) {
                     CombinedSimpleModel<NumberFilter> combinedNumberFilter = new CombinedSimpleModel<>();
                     combinedNumberFilter.setFilterType("number");
                     combinedNumberFilter.setOperator(JoinOperator.valueOf(filter.get("operator").toString()));
-                    combinedNumberFilter.setConditions(((List<Map<String, Object>>) filter.get("conditions")).stream().map(ColumnFilterMapper::parseNumberFilter).toList());
+                    combinedNumberFilter.setConditions(((List<Map<String, Object>>) filter.get("conditions")).stream().map(ColumnFilterMapper::parseNumberFilter).collect(Collectors.toList()));
                     columnFilter = combinedNumberFilter;
                 } else {
                     columnFilter = parseNumberFilter(filter);
                 }
+                break;
             }
-            case "set" -> columnFilter = parseSetFilter(filter);
-            default -> throw new IllegalArgumentException("unsupported filter type: " + filterType);
+            case "set": {
+                columnFilter = parseSetFilter(filter);
+                break;
+            }
+            default: {
+                throw new IllegalArgumentException("unsupported filter type: " + filterType);
+            }
         }
         
         return columnFilter;
