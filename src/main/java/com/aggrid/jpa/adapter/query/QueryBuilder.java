@@ -32,14 +32,14 @@ public class QueryBuilder<E> {
     // map of supported custom column filter types
     // key is filter type
     // value is mapper function that receives map and should map it to a custom implementation of ColumnFilter
-    private final Map<String, Function<Map<String, Object>, ? extends ColumnFilter>> registeredCustomColumnFilters = new HashMap<>();
+    private final Map<String, Function<Map<String, Object>, ColumnFilter>> registeredCustomColumnFilters = new HashMap<>();
     
     public QueryBuilder(Class<E> entityClass, EntityManager entityManager) {
         this.entityClass = entityClass;
         this.entityManager = entityManager;
     }
     
-    public QueryBuilder<E> registerCustomColumnFilter(String filterType, Function<Map<String, Object>, ? extends ColumnFilter> mappingFunction) {
+    public QueryBuilder<E> registerCustomColumnFilter(String filterType, Function<Map<String, Object>, ColumnFilter> mappingFunction) {
         this.registeredCustomColumnFilters.put(filterType, mappingFunction);
         return this;
     }
