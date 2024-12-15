@@ -7,6 +7,7 @@ import jakarta.persistence.criteria.Root;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class JoinAdvancedFilterModel extends AdvancedFilterModel {
     
@@ -19,7 +20,7 @@ public class JoinAdvancedFilterModel extends AdvancedFilterModel {
 
     @Override
     public Predicate toPredicate(CriteriaBuilder cb, Root<?> root) {
-        List<Predicate> predicates = this.conditions.stream().map(c -> c.toPredicate(cb, root)).toList();
+        List<Predicate> predicates = this.conditions.stream().map(c -> c.toPredicate(cb, root)).collect(Collectors.toList());
         if (this.type == JoinOperator.AND) {
             return cb.and(predicates.toArray(new Predicate[0]));
         } else if (this.type == JoinOperator.OR) {

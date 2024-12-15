@@ -7,6 +7,7 @@ import jakarta.persistence.criteria.Root;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class CombinedSimpleModel<E extends ColumnFilter> extends ColumnFilter {
     
@@ -15,7 +16,7 @@ public class CombinedSimpleModel<E extends ColumnFilter> extends ColumnFilter {
 
     @Override
     public Predicate toPredicate(CriteriaBuilder cb, Root<?> root, String columnName) {
-        List<Predicate> predicates = this.conditions.stream().map(c -> c.toPredicate(cb, root, columnName)).toList();
+        List<Predicate> predicates = this.conditions.stream().map(c -> c.toPredicate(cb, root, columnName)).collect(Collectors.toList());
         if (this.operator == JoinOperator.AND) {
             return cb.and(predicates.toArray(new Predicate[0]));
         } else if (this.operator == JoinOperator.OR) {

@@ -12,6 +12,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class AdvancedFilterMapper {
     
@@ -24,7 +25,7 @@ public class AdvancedFilterMapper {
             // join
             JoinAdvancedFilterModel joinAdvancedFilterModel = new JoinAdvancedFilterModel();
             joinAdvancedFilterModel.setType(JoinOperator.valueOf(filter.get("type").toString()));
-            joinAdvancedFilterModel.setConditions(((List<Map<String, Object>>) filter.get("conditions")).stream().map(AdvancedFilterMapper::fromMap).toList());
+            joinAdvancedFilterModel.setConditions(((List<Map<String, Object>>) filter.get("conditions")).stream().map(AdvancedFilterMapper::fromMap).collect(Collectors.toList()));
 
             return joinAdvancedFilterModel;
         } else {
@@ -39,37 +40,37 @@ public class AdvancedFilterMapper {
         String filterType = filter.get("filterType").toString();
 
         switch (filterType) {
-            case "text" -> {
+            case "text": {
                 TextAdvancedFilterModel textAdvancedFilterModel = new TextAdvancedFilterModel(colId);
                 textAdvancedFilterModel.setType(TextAdvancedFilterModelType.valueOf(filter.get("type").toString()));
                 textAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).orElse(null));
                 return textAdvancedFilterModel;
             }
-            case "date" -> {
+            case "date": {
                 DateAdvancedFilterModel dateAdvancedFilterModel = new DateAdvancedFilterModel(colId);
                 dateAdvancedFilterModel.setType(ScalarAdvancedFilterModelType.valueOf(filter.get("type").toString()));
                 dateAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).map(f -> LocalDate.parse(f, DATE_FORMATTER)).orElse(null));
                 return dateAdvancedFilterModel;
             }
-            case "dateString" -> {
+            case "dateString": {
                 DateStringAdvancedFilterModel dateAdvancedFilterModel = new DateStringAdvancedFilterModel(colId);
                 dateAdvancedFilterModel.setType(ScalarAdvancedFilterModelType.valueOf(filter.get("type").toString()));
                 dateAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).map(f -> LocalDate.parse(f, DATE_FORMATTER)).orElse(null));
                 return dateAdvancedFilterModel;
             }
-            case "number" -> {
+            case "number": {
                 NumberAdvancedFilterModel numberAdvancedFilterModel = new NumberAdvancedFilterModel(colId);
                 numberAdvancedFilterModel.setType(ScalarAdvancedFilterModelType.valueOf(filter.get("type").toString()));
                 numberAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).map(BigDecimal::new).orElse(null));
                 return numberAdvancedFilterModel;
             }
-            case "object" -> {
+            case "object": {
                 ObjectAdvancedFilterModel objectAdvancedFilterModel = new ObjectAdvancedFilterModel(colId);
                 objectAdvancedFilterModel.setType(TextAdvancedFilterModelType.valueOf(filter.get("type").toString()));
                 objectAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).orElse(null));
                 return objectAdvancedFilterModel;
             }
-            case "boolean" -> {
+            case "boolean": {
                 BooleanAdvancedFilterModel booleanAdvancedFilterModel = new BooleanAdvancedFilterModel(colId);
                 booleanAdvancedFilterModel.setType(Optional.ofNullable(filter.get("type")).map(Object::toString).map(v -> {
                     if (v.equalsIgnoreCase("true")) {
@@ -82,7 +83,7 @@ public class AdvancedFilterMapper {
                 }).orElseThrow());
                 return booleanAdvancedFilterModel;
             }
-            default -> throw new UnsupportedOperationException("Unsupported filter type: " + filterType);
+            default: throw new UnsupportedOperationException("Unsupported filter type: " + filterType);
         }
 
     }

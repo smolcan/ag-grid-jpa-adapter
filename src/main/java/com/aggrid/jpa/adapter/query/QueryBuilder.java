@@ -18,6 +18,7 @@ import jakarta.persistence.metamodel.Metamodel;
 import jakarta.persistence.metamodel.SingularAttribute;
 
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.lang.Integer.MAX_VALUE;
@@ -75,12 +76,29 @@ public class QueryBuilder<E> {
         for (ColumnVO columnVO : request.getValueCols()) {
             Expression<? extends Number> aggregatedField;
             switch (columnVO.getAggFunc()) {
-                case avg -> aggregatedField = cb.avg(root.get(columnVO.getField()));
-                case sum -> aggregatedField = cb.sum(root.get(columnVO.getField()));
-                case min -> aggregatedField = cb.min(root.get(columnVO.getField()));
-                case max -> aggregatedField = cb.max(root.get(columnVO.getField()));
-                case count -> aggregatedField = cb.count(root.get(columnVO.getField()));
-                default -> throw new IllegalArgumentException("unsupported aggregation function: " + columnVO.getAggFunc());
+                case avg: {
+                    aggregatedField = cb.avg(root.get(columnVO.getField()));
+                    break;
+                }
+                case sum: {
+                    aggregatedField = cb.sum(root.get(columnVO.getField()));
+                    break;
+                }
+                case min: {
+                    aggregatedField = cb.min(root.get(columnVO.getField()));
+                    break;
+                }
+                case max: {
+                    aggregatedField = cb.max(root.get(columnVO.getField()));
+                    break;
+                }
+                case count: {
+                    aggregatedField = cb.count(root.get(columnVO.getField()));
+                    break;
+                }
+                default: {
+                    throw new IllegalArgumentException("unsupported aggregation function: " + columnVO.getAggFunc());
+                }
             }
             selections.add(aggregatedField.alias(columnVO.getField()));
         }
@@ -161,7 +179,7 @@ public class QueryBuilder<E> {
                 })
                 .filter(Objects::nonNull)
                 .limit(limit)
-                .toList();
+                .collect(Collectors.toList());
         
         // ordering can be also done on aggregated fields
         if (isGrouping && !request.getValueCols().isEmpty()) {
@@ -174,12 +192,29 @@ public class QueryBuilder<E> {
                         ColumnVO aggregatedColumn = request.getValueCols().stream().filter(aggCol -> aggCol.getField().equals(model.getColId())).findFirst().orElseThrow();
                         Expression<? extends Number> aggregatedField;
                         switch (aggregatedColumn.getAggFunc()) {
-                            case avg -> aggregatedField = cb.avg(root.get(model.getColId()));
-                            case sum -> aggregatedField = cb.sum(root.get(model.getColId()));
-                            case min -> aggregatedField = cb.min(root.get(model.getColId()));
-                            case max -> aggregatedField = cb.max(root.get(model.getColId()));
-                            case count -> aggregatedField = cb.count(root.get(model.getColId()));
-                            default -> throw new IllegalArgumentException("unsupported aggregation function: " + aggregatedColumn.getAggFunc());
+                            case avg: {
+                                aggregatedField = cb.avg(root.get(model.getColId()));
+                                break;
+                            }
+                            case sum: {
+                                aggregatedField = cb.sum(root.get(model.getColId()));
+                                break;
+                            }
+                            case min: {
+                                aggregatedField = cb.min(root.get(model.getColId()));
+                                break;
+                            }
+                            case max: {
+                                aggregatedField = cb.max(root.get(model.getColId()));
+                                break;
+                            }
+                            case count: {
+                                aggregatedField = cb.count(root.get(model.getColId()));
+                                break;
+                            }
+                            default: {
+                                throw new IllegalArgumentException("unsupported aggregation function: " + aggregatedColumn.getAggFunc());
+                            }
                         }
                         
                         if (model.getSort() == SortType.asc) {
@@ -191,9 +226,9 @@ public class QueryBuilder<E> {
                         }
                     })
                     .filter(Objects::nonNull)
-                    .toList();
+                    .collect(Collectors.toList());
             
-            orderByCols = Stream.concat(orderByCols.stream(), orderByAggregatedCols.stream()).toList();
+            orderByCols = Stream.concat(orderByCols.stream(), orderByAggregatedCols.stream()).collect(Collectors.toList());
         }
         
         query.orderBy(orderByCols);
@@ -216,7 +251,7 @@ public class QueryBuilder<E> {
                     });
                     return map;
                 })
-                .toList();
+                .collect(Collectors.toList());
     }
 
     @SuppressWarnings("unchecked")
@@ -235,7 +270,7 @@ public class QueryBuilder<E> {
                         ColumnFilter columnFilter = ColumnFilterMapper.fromMap(filter);
                         return columnFilter.toPredicate(cb, root, columnName);
                     })
-                    .toList();
+                    .collect(Collectors.toList());
             
             predicate = cb.and(predicates.toArray(new Predicate[0]));
         } else {
