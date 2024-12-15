@@ -66,7 +66,7 @@ public class ColumnFilterMapper {
                 break;
             }
             default: {
-                throw new IllegalArgumentException("unsupported filter type: " + filterType);
+                columnFilter = null;
             }
         }
         

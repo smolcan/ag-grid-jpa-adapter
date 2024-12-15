@@ -18,6 +18,7 @@ import jakarta.persistence.metamodel.Metamodel;
 import jakarta.persistence.metamodel.SingularAttribute;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -28,10 +29,19 @@ public class QueryBuilder<E> {
     private final Class<E> entityClass;
     private final EntityManager entityManager;
     
+    // map of supported custom column filter types
+    // key is filter type
+    // value is mapper function that receives map and should map it to a custom implementation of ColumnFilter
+    private final Map<String, Function<Map<String, Object>, ? extends ColumnFilter>> registeredCustomColumnFilters = new HashMap<>();
+    
     public QueryBuilder(Class<E> entityClass, EntityManager entityManager) {
         this.entityClass = entityClass;
         this.entityManager = entityManager;
-        
+    }
+    
+    public QueryBuilder<E> registerCustomColumnFilter(String filterType, Function<Map<String, Object>, ? extends ColumnFilter> mappingFunction) {
+        this.registeredCustomColumnFilters.put(filterType, mappingFunction);
+        return this;
     }
     
     public LoadSuccessParams getRows(ServerSideGetRowsRequest request) {
@@ -265,9 +275,17 @@ public class QueryBuilder<E> {
                     .stream()
                     .map(entry -> {
                         String columnName = entry.getKey();
-                        Map<String, Object> filter = (Map<String, Object>) entry.getValue();
+                        Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();
 
-                        ColumnFilter columnFilter = ColumnFilterMapper.fromMap(filter);
+                        ColumnFilter columnFilter = ColumnFilterMapper.fromMap(filterMap);
+                        if (columnFilter == null) {
+                            // not found filter type in one of default filter types
+                            String filterType = filterMap.get("filterType").toString();
+                            columnFilter = Optional.ofNullable(this.registeredCustomColumnFilters.get(filterType))
+                                    .map(c -> c.apply(filterMap))
+                                    .orElseThrow(() -> new IllegalArgumentException("Not recognized filter type " + filterType + " either in custom or default types"));
+                        }
+                        
                         return columnFilter.toPredicate(cb, root, columnName);
                     })
                     .collect(Collectors.toList());
