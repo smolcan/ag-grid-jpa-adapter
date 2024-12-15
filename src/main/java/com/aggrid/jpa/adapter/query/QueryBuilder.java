@@ -148,7 +148,7 @@ public class QueryBuilder<E> {
         }
         
         // filter where
-        if (request.getFilterModel() != null) {
+        if (request.getFilterModel() != null && !request.getFilterModel().isEmpty()) {
             Predicate filterPredicate = this.filterToPredicate(cb, root, request.getFilterModel());
             predicates.add(filterPredicate);
         }
