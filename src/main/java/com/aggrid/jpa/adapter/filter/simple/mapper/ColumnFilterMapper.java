@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -65,6 +66,10 @@ public class ColumnFilterMapper {
                 columnFilter = parseSetFilter(filter);
                 break;
             }
+            case "multi": {
+                columnFilter = parseMultiFilter(filter);
+                break;
+            }
             default: {
                 columnFilter = null;
             }
@@ -73,6 +78,19 @@ public class ColumnFilterMapper {
         return columnFilter;
     }
 
+    @SuppressWarnings("unchecked")
+    private static MultiFilter parseMultiFilter(Map<String, Object> filter) {
+        MultiFilter multiFilter = new MultiFilter();
+        if (filter.containsKey("filterModels") && filter.get("filterModels") != null) {
+            multiFilter.setFilterModels(((List<Map<String, Object>>) filter.get("filterModels"))
+                    .stream()
+                    .filter(Objects::nonNull)
+                    .map(ColumnFilterMapper::fromMap)
+                    .collect(Collectors.toList())
+            );
+        }
+        return multiFilter;
+    }
 
     private static TextFilter parseTextFilter(Map<String, Object> filter) {
         TextFilter textFilter = new TextFilter();
