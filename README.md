@@ -1,6 +1,11 @@
 # **JPA Adapter for AG Grid Server-Side Mode**
 
-A lightweight Maven library for integrating **AG Grid Server-Side Mode** with backend applications using **JPA**. This solution simplifies querying mapped entities for AG Grid and supports advanced server-side operations, including sorting, filtering, pagination, row grouping, and pivoting.
+A lightweight Maven library for integrating **[AG Grid Server-Side Mode](https://ag-grid.com/angular-data-grid/server-side-model/)** with backend applications using **JPA**. This solution simplifies querying mapped entities for AG Grid and supports advanced server-side operations, including sorting, filtering, pagination, row grouping, and pivoting.
+
+## **⚠️ Disclaimer: Active Development**
+This project is currently in active development.
+It is not fully tested and may contain bugs or incomplete features.
+Development will continue for the next 12 months, and significant changes or breaking updates may occur during this time.
 
 ---
 
@@ -10,7 +15,7 @@ A lightweight Maven library for integrating **AG Grid Server-Side Mode** with ba
 - **Filtering**: Apply built-in or custom filters to your data.
 - **Pagination**: Efficiently handle large datasets with server-side pagination.
 - **Row Grouping**: Group rows seamlessly using JPA queries.
-- **Pivoting**: Execute pivot operations on your grid data.
+- **Pivoting**: Execute pivot operations on your grid data <b>(not implemented yet)</b>.
 
 ---
 
@@ -23,16 +28,9 @@ A lightweight Maven library for integrating **AG Grid Server-Side Mode** with ba
 ---
 
 ## **3. Installation** 📦
+This library is currently **not published yet** to Maven Central. To use it in your project, you need to manually copy the files into your project.
+It will be published after the version is properly tested and stable.
 
-Add the following Maven dependency to your project:
-
-```xml
-<dependency>
-    <groupId>sk.smolcan</groupId>
-    <artifactId>ag-grid-jpa-adapter</artifactId>
-    <version>1.0.0</version>
-</dependency>
-```
 
 ## **4. How it works** 📘
 1. The AG Grid frontend sends a ServerSideGetRowsRequest object to the backend.
