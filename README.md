@@ -11,11 +11,11 @@ Development will continue for the next 12 months, and significant changes or bre
 
 ## **1. Key Features** 🚀
 
-- **Sorting**: Sort data directly at the database level.
-- **Filtering**: Apply built-in or custom filters to your data.
-- **Pagination**: Efficiently handle large datasets with server-side pagination.
-- **Row Grouping**: Group rows seamlessly using JPA queries.
-- **Pivoting**: Execute pivot operations on your grid data <b>(not implemented yet)</b>.
+- **[Sorting](https://ag-grid.com/angular-data-grid/server-side-model-sorting/)**: Sort data directly at the database level.
+- **[Filtering](https://ag-grid.com/angular-data-grid/server-side-model-filtering/)**: Apply built-in or custom filters to your data.
+- **[Pagination](https://ag-grid.com/angular-data-grid/server-side-model-pagination/)**: Efficiently handle large datasets with server-side pagination.
+- **[Row Grouping](https://ag-grid.com/angular-data-grid/server-side-model-grouping/)**: Group rows seamlessly using JPA queries.
+- **[Pivoting](https://ag-grid.com/angular-data-grid/server-side-model-pivoting/)**: Execute pivot operations on your grid data <b>(not implemented yet)</b>.
 
 ---
 
@@ -33,16 +33,16 @@ It will be published after the version is properly tested and stable.
 
 
 ## **4. How it works** 📘
-1. The AG Grid frontend sends a ServerSideGetRowsRequest object to the backend.
-2. The QueryBuilder processes the request:
+1. The AG Grid frontend sends a [ServerSideGetRowsRequest](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/request/ServerSideGetRowsRequest.java) object to the backend.
+2. The [QueryBuilder](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/query/QueryBuilder.java) processes the request:
     - Builds a dynamic JPA Criteria query based on the request parameters.
     - Executes the query to fetch and process the requested data.
 3. The backend returns a LoadSuccessParams object to the frontend
 
 ## **5. Usage** 📘
-**Initialize the QueryBuilder** <br/>
-The QueryBuilder class dynamically generates and executes queries based on the ServerSideGetRowsRequest from AG Grid and returns a LoadSuccessParams object. <br/><br/>
-**Here’s an example of a service class using the QueryBuilder**
+**Initialize the [QueryBuilder](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/query/QueryBuilder.java)** <br/>
+The [QueryBuilder](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/query/QueryBuilder.java) class dynamically generates and executes queries based on the [ServerSideGetRowsRequest](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/request/ServerSideGetRowsRequest.java) from AG Grid and returns a [LoadSuccessParams](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/response/LoadSuccessParams.java) object. <br/><br/>
+**Here’s an example of a service class using the [QueryBuilder](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/query/QueryBuilder.java)**
 ```java
 import com.aggrid.jpa.adapter.query.QueryBuilder;
 import com.aggrid.jpa.adapter.response.LoadSuccessParams;
