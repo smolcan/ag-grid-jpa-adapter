@@ -41,7 +41,7 @@ It will be published after the version is properly tested and stable.
 2. The [QueryBuilder](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/query/QueryBuilder.java) processes the request:
     - Builds a dynamic JPA Criteria query based on the request parameters.
     - Executes the query to fetch and process the requested data.
-3. The backend returns a LoadSuccessParams object to the frontend
+3. The backend returns a [LoadSuccessParams](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/response/LoadSuccessParams.java) object to the frontend
 
 ## **5. Usage** 📘
 **Initialize the [QueryBuilder](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/query/QueryBuilder.java)** <br/>
