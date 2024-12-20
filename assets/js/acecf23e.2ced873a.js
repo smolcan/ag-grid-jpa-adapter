@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkdocs=self.webpackChunkdocs||[]).push([[1903],{1912:a=>{a.exports=JSON.parse('{"blogBasePath":"/ag-grid-jpa-adapter/blog","blogTitle":"Blog","authorsListPath":"/ag-grid-jpa-adapter/blog/authors"}')}}]);
