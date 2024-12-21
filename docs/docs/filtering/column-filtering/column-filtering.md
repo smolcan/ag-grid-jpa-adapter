@@ -41,3 +41,5 @@ Default built-in filters in AG Grid are:
 - Multi Filter
 
 These filters are recognized and applied in this solution out of the box without any further configuration needed.
+
+In AG Grid JPA Adapter is column filter implemented in class [ColumnFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/filter/simple/ColumnFilter.java).
