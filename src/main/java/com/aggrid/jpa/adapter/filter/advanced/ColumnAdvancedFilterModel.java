@@ -1,4 +1,4 @@
-package com.aggrid.jpa.adapter.filter.advanced.model;
+package com.aggrid.jpa.adapter.filter.advanced;
 
 public abstract class ColumnAdvancedFilterModel extends AdvancedFilterModel {
     private String colId;

@@ -1,24 +1,27 @@
-package com.aggrid.jpa.adapter.filter.advanced.model.column;
+package com.aggrid.jpa.adapter.filter.simple;
 
-import com.aggrid.jpa.adapter.filter.advanced.model.ColumnAdvancedFilterModel;
-import jakarta.persistence.criteria.*;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Path;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 
-public class ObjectAdvancedFilterModel extends ColumnAdvancedFilterModel {
+public class TextFilter extends ColumnFilter {
     
-    private TextAdvancedFilterModelType type;
+    private SimpleFilterModelType type;
     private String filter;
+    private String filterTo;
     
-    public ObjectAdvancedFilterModel(String colId) {
-        super("object", colId);
+    public TextFilter() {
+        super("text");
     }
 
     @Override
-    public Predicate toPredicate(CriteriaBuilder cb, Root<?> root) {
+    public Predicate toPredicate(CriteriaBuilder cb, Root<?> root, String columnName) {
         Predicate predicate;
-
-        Expression<String> path = root.get(this.getColId()).as(String.class);
+        
+        Path<String> path = root.get(columnName);
         switch (this.type) {
-            case blank: {
+            case empty: case blank: {
                 predicate = cb.or(cb.isNull(path), cb.equal(path, ""));
                 break;
             }
@@ -27,7 +30,7 @@ public class ObjectAdvancedFilterModel extends ColumnAdvancedFilterModel {
                 break;
             }
             case equals: {
-                predicate = cb.equal(path, this.filter);
+                predicate = cb.equal(path, filter);
                 break;
             }
             case notEqual: {
@@ -54,15 +57,15 @@ public class ObjectAdvancedFilterModel extends ColumnAdvancedFilterModel {
                 throw new IllegalStateException("Unexpected value: " + this.type);
             }
         }
-
+        
         return predicate;
     }
 
-    public TextAdvancedFilterModelType getType() {
+    public SimpleFilterModelType getType() {
         return type;
     }
 
-    public void setType(TextAdvancedFilterModelType type) {
+    public void setType(SimpleFilterModelType type) {
         this.type = type;
     }
 
@@ -72,5 +75,13 @@ public class ObjectAdvancedFilterModel extends ColumnAdvancedFilterModel {
 
     public void setFilter(String filter) {
         this.filter = filter;
+    }
+
+    public String getFilterTo() {
+        return filterTo;
+    }
+
+    public void setFilterTo(String filterTo) {
+        this.filterTo = filterTo;
     }
 }

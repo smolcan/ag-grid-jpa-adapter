@@ -1,4 +1,4 @@
-package com.aggrid.jpa.adapter.filter.advanced.model.column;
+package com.aggrid.jpa.adapter.filter.advanced.column;
 
 public enum BooleanAdvancedFilterModelType {
     TRUE,
