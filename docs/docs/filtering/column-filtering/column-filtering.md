@@ -37,8 +37,8 @@ Default built-in filters in AG Grid are:
 - [Number Filter](https://ag-grid.com/angular-data-grid/filter-number/)
 - [Date Filter](https://ag-grid.com/angular-data-grid/filter-date/)
 - Combined Filter
-- Set Filter
-- Multi Filter
+- [Set Filter](https://ag-grid.com/angular-data-grid/filter-set/)
+- [Multi Filter](https://ag-grid.com/angular-data-grid/filter-multi/)
 
 These filters are recognized and applied in this solution out of the box without any further configuration needed.
 
