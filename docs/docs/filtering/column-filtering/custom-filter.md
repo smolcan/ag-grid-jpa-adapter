@@ -31,10 +31,10 @@ returns other value than **null** is the match!.
 
         ```typescript title="Angular custom filter component"
         @Component({
-        selector: 'app-custom-number-filter',
-        imports: [FormsModule],
-        templateUrl: './custom-number-filter.component.html',
-        styleUrl: './custom-number-filter.component.css'
+            selector: 'app-custom-number-filter',
+            imports: [FormsModule],
+            templateUrl: './custom-number-filter.component.html',
+            styleUrl: './custom-number-filter.component.css'
         })
         export class CustomNumberFilterComponent implements IFilterAngularComp {
             params!: IFilterParams;
@@ -46,26 +46,26 @@ returns other value than **null** is the match!.
 
             doesFilterPass(params: IDoesFilterPassParams): boolean {
                 if (this.value === 'All') {
-                return true;
+                    return true;
                 }
 
                 const tradeId = params.data.tradeId;
                 if (tradeId === null) {
-                return false;
+                    return false;
                 }
 
                 const mod = Number(tradeId) % 2;
                 if (this.value === 'Even') {
-                return mod === 0;
+                    return mod === 0;
                 } else {
-                return mod === 1;
+                    return mod === 1;
                 }
             }
 
             getModel(): any {
                 return {
-                filterType: "customNumber",
-                value: this.value,
+                    filterType: "customNumber",
+                    value: this.value,
                 }
             }
 
