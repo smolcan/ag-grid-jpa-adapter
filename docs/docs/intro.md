@@ -1,47 +1,50 @@
 ---
-sidebar_position: 1
+slug: /
+sidebar_position: 0
 ---
+# Quick Start
+## Introduction
+A lightweight Maven library for integrating **[AG Grid Server-Side Mode](https://ag-grid.com/angular-data-grid/server-side-model/)** with backend applications using **JPA**. 
+This solution simplifies querying mapped entities for AG Grid and supports advanced server-side operations, including sorting, filtering, pagination, row grouping, and pivoting.
 
-# Tutorial Intro
+## Using AG Grid JPA Adapter
+When enabling 'serverSide' row model type in your AG Grid, you must provide [datasource](https://ag-grid.com/react-data-grid/server-side-model-datasource/),
+which is used to fetch rows for the grid, such as:
+``` javascript title="AG Grid example of datasource"
+const createDatasource = server => {
+    return {
+        // called by the grid when more rows are required
+        getRows: params => {
 
-Let's discover **Docusaurus in less than 5 minutes**.
+            // get data for request from server
+            const response = server.getData(params.request);
 
-## Getting Started
-
-Get started by **creating a new site**.
-
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
-
-### What you'll need
-
-- [Node.js](https://nodejs.org/en/download/) version 18.0 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
-
-## Generate a new site
-
-Generate a new Docusaurus site using the **classic template**.
-
-The classic template will automatically be added to your project after you run the command:
-
-```bash
-npm init docusaurus@latest my-website classic
+            if (response.success) {
+                // supply rows for requested block to grid
+                params.success({
+                    rowData: response.rows
+                });
+            } else {
+                // inform grid request failed
+                params.fail();
+            }
+        }
+    };
+}
 ```
 
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
+**AG Grid JPA Adapter** can process the AG Grid’s request and return corresponding data using JPA abstraction, 
+which avoids the use of native queries, 
+ensures compatibility with multiple databases, 
+and promotes maintainable and scalable code.
 
-The command also installs all necessary dependencies you need to run Docusaurus.
-
-## Start your site
-
-Run the development server:
-
-```bash
-cd my-website
-npm run start
+The only entrypoint you interact with is [QueryBuilder](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/query/QueryBuilder.java),
+and it's method **getRows**, which processes a [ServerSideGetRowsRequest](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/request/ServerSideGetRowsRequest.java) object,
+builds the query using **JPA Criteria API**, executes it and returns [LoadSuccessParams](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/response/LoadSuccessParams.java) object,
+which you can directly return to the grid.
+```java title="Java getRows method using QueryBuilder"
+public LoadSuccessParams getRows(ServerSideGetRowsRequest request) {
+    QueryBuilder<YouEntityClass> queryBuilder = new QueryBuilder<>(YouEntityClass.class, entityManager);
+    return queryBuilder.getRows(request);
+}
 ```
-
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
-
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
-
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
