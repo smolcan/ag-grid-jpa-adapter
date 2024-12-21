@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Sorting
 [Sorting](https://ag-grid.com/angular-data-grid/server-side-model-sorting/) is performed according to received **sortModel** in [ServerSideGetRowsRequest](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/request/ServerSideGetRowsRequest.java)
-```JSON title="Sort model example from AG Grid documentation"
+```javascript title="Sort model example from AG Grid documentation"
 {
     sortModel: [
         { colId: 'country', sort: 'asc' },
