@@ -7,6 +7,28 @@ sidebar_position: 0
 A lightweight Maven library for integrating **[AG Grid Server-Side Mode](https://ag-grid.com/angular-data-grid/server-side-model/)** with backend applications using **JPA**. 
 This solution simplifies querying mapped entities for AG Grid and supports advanced server-side operations, including sorting, filtering, pagination, row grouping, and pivoting.
 
+**⚠️ Disclaimer: Active Development**
+This project is currently in active development.
+It is not fully tested and may contain bugs or incomplete features.
+Development will continue for the next 12 months, and significant changes or breaking updates may occur during this time.
+
+
+## Installation
+This library is currently **not published yet** to Maven Central. To use it in your project, you need to manually copy the files into your project.
+It will be published after the version is properly tested and stable.
+
+**After publishing**, it will be available via maven dependency
+```xml
+<dependency>
+    <groupId>sk.smolcan</groupId>
+    <artifactId>ag-grid-jpa-adapter</artifactId>
+    <version>1.0.0-alpha</version>
+</dependency>
+```
+**Requirements 🛠️**
+- **Java**: Version **11** or higher.
+- **JPA**: Version **3.1.0**.
+
 ## Using AG Grid JPA Adapter
 When enabling 'serverSide' row model type in your AG Grid, you must provide [datasource](https://ag-grid.com/react-data-grid/server-side-model-datasource/),
 which is used to fetch rows for the grid, such as:
