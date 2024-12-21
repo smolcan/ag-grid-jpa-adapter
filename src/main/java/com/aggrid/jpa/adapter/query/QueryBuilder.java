@@ -146,7 +146,7 @@ public class QueryBuilder<E> {
     }
     
     
-    private void select(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request) {
+    protected void select(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request) {
         // select
         // we know data are still grouped if request contains more group columns than group keys
         boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
@@ -211,7 +211,7 @@ public class QueryBuilder<E> {
     }
     
     
-    private void where(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request) {
+    protected void where(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request) {
         // where
         List<Predicate> predicates = new ArrayList<>();
         
@@ -236,7 +236,7 @@ public class QueryBuilder<E> {
         query.where(predicates.toArray(new Predicate[0]));
     }
     
-    private void groupBy(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request) {
+    protected void groupBy(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request) {
         // we know data are still grouped if request contains more group columns than group keys
         boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
         if (isGrouping) {
@@ -249,7 +249,7 @@ public class QueryBuilder<E> {
         }
     }
     
-    private void orderBy(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request) {
+    protected void orderBy(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request) {
         // we know data are still grouped if request contains more group columns than group keys
         boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
         int limit = isGrouping ? request.getGroupKeys().size() + 1 : MAX_VALUE;
@@ -324,7 +324,7 @@ public class QueryBuilder<E> {
         query.orderBy(orderByCols);
     }
     
-    private void limitOffset(TypedQuery<Tuple> typedQuery, ServerSideGetRowsRequest request) {
+    protected void limitOffset(TypedQuery<Tuple> typedQuery, ServerSideGetRowsRequest request) {
         typedQuery.setFirstResult(request.getStartRow());
         typedQuery.setMaxResults(request.getEndRow() - request.getStartRow() + 1);
     }
