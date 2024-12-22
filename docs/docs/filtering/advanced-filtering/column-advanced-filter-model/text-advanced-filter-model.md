@@ -16,7 +16,7 @@ filterModel: {
 ```
 
 
-In AG Grid JPA Adapter is text advanced filter model implemented in class [TextAdvancedFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/github/smolcan/aggrid/jpa/adapter/filter/advanced/column/TextAdvancedFilterModelType.java).
+In AG Grid JPA Adapter is text advanced filter model implemented in class [TextAdvancedFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/advanced/column/TextAdvancedFilterModelType.java).
 
 
 Text advanced filter model supports these types:

@@ -14,7 +14,7 @@ filterModel: {
 }
 ```
 
-In AG Grid JPA Adapter is boolean advanced filter model implemented in class [BooleanAdvancedFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/github/smolcan/aggrid/jpa/adapter/filter/advanced/column/BooleanAdvancedFilterModel.java).
+In AG Grid JPA Adapter is boolean advanced filter model implemented in class [BooleanAdvancedFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/advanced/column/BooleanAdvancedFilterModel.java).
 
 
 Boolean advanced filter model supports these types:

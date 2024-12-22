@@ -76,4 +76,4 @@ As you can see from the interface definition, it can wrap multiple instances of 
 Combined filter is recognized as it always has **filterType** property that has value  **'text'**, **'number'** or **'date'** and
 also has **operator** field and **conditions** field.
 
-In AG Grid JPA Adapter is date filter implemented in class [CombinedSimpleModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/github/smolcan/aggrid/jpa/adapter/filter/simple/CombinedSimpleModel.java).
+In AG Grid JPA Adapter is date filter implemented in class [CombinedSimpleModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/simple/CombinedSimpleModel.java).

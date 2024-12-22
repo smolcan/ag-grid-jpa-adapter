@@ -26,4 +26,4 @@ export type ColumnAdvancedFilterModel =
 ```
 As you can see from the structure, Advanced Filter model can be either [JoinAdvancedFilterModel](./join-advanced-filter-model/join-advanced-filter-model.md) or [ColumnAdvancedFilterModel](./column-advanced-filter-model/column-advanced-filter-model.md);
 
-In AG Grid JPA Adapter is advanced filter model implemented in class [AdvancedFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/github/smolcan/aggrid/jpa/adapter/filter/advanced/AdvancedFilterModel.java).
+In AG Grid JPA Adapter is advanced filter model implemented in class [AdvancedFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/advanced/AdvancedFilterModel.java).

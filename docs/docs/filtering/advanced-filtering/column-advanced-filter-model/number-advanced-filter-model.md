@@ -15,7 +15,7 @@ filterModel: {
 }
 ```
 
-In AG Grid JPA Adapter is number advanced filter model implemented in class [NumberAdvancedFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/github/smolcan/aggrid/jpa/adapter/filter/advanced/column/NumberAdvancedFilterModel.java).
+In AG Grid JPA Adapter is number advanced filter model implemented in class [NumberAdvancedFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/advanced/column/NumberAdvancedFilterModel.java).
 
 
 Number advanced filter model supports these types:

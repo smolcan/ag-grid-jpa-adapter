@@ -15,4 +15,4 @@ export type ColumnAdvancedFilterModel =
     ObjectAdvancedFilterModel;
 ```
 
-In AG Grid JPA Adapter is column advanced filter model implemented in class [ColumnAdvancedFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/github/smolcan/aggrid/jpa/adapter/filter/advanced/ColumnAdvancedFilterModel.java).
+In AG Grid JPA Adapter is column advanced filter model implemented in class [ColumnAdvancedFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/advanced/ColumnAdvancedFilterModel.java).

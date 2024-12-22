@@ -3,7 +3,7 @@ sidebar_position: 3
 ---
 
 # Grouping
-We receive information about [Row grouping](https://ag-grid.com/react-data-grid/server-side-model-grouping/) in [ServerSideGetRowsRequest](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/github/smolcan/aggrid/jpa/adapter/request/ServerSideGetRowsRequest.java) in these two fields:
+We receive information about [Row grouping](https://ag-grid.com/react-data-grid/server-side-model-grouping/) in [ServerSideGetRowsRequest](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/request/ServerSideGetRowsRequest.java) in these two fields:
 ```java title="Grouping information in ServerSideGetRowsRequest"
 public class ServerSideGetRowsRequest {
     // ... other params
@@ -20,7 +20,7 @@ public class ServerSideGetRowsRequest {
 **rowGroupCols** tells us which columns are grouped and
 **groupKeys** tells us about expanded groups and their keys.
 
-In [QueryBuilder](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/github/smolcan/aggrid/jpa/adapter/query/QueryBuilder.java), this functionality
+In [QueryBuilder](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/query/QueryBuilder.java), this functionality
 is implemented in method **groupBy** for grouping data and in method **where** to filter data of expanded group.
 
 

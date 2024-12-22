@@ -13,7 +13,7 @@ filterModel: {
 },
 ```
 
-In AG Grid JPA Adapter is number advanced filter model implemented in class [DateAdvancedFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/github/smolcan/aggrid/jpa/adapter/filter/advanced/column/DateAdvancedFilterModel.java).
+In AG Grid JPA Adapter is number advanced filter model implemented in class [DateAdvancedFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/advanced/column/DateAdvancedFilterModel.java).
 
 
 Date advanced filter model supports these types:

@@ -26,4 +26,4 @@ filterModel: {
 
 Date filter is recognized as it always has **filterType** property that has value **'set'**.
 
-In AG Grid JPA Adapter is set filter implemented in class [SetFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/github/smolcan/aggrid/jpa/adapter/filter/simple/SetFilter.java).
+In AG Grid JPA Adapter is set filter implemented in class [SetFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/simple/SetFilter.java).
