@@ -24,7 +24,7 @@ filterModel: {
 
 Text filter is recognized as it always has **filterType** property that has value **'text'**.
 
-In AG Grid JPA Adapter is text filter implemented in class [TextFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/filter/simple/TextFilter.java).
+In AG Grid JPA Adapter is text filter implemented in class [TextFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/github/smolcan/aggrid/jpa/adapter/filter/simple/TextFilter.java).
 
 Text filter supports these types:
 - empty

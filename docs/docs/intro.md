@@ -60,9 +60,9 @@ which avoids the use of native queries,
 ensures compatibility with multiple databases, 
 and promotes maintainable and scalable code.
 
-The only entrypoint you interact with is [QueryBuilder](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/query/QueryBuilder.java),
-and it's method **getRows**, which processes a [ServerSideGetRowsRequest](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/request/ServerSideGetRowsRequest.java) object,
-builds the query using **JPA Criteria API**, executes it and returns [LoadSuccessParams](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/response/LoadSuccessParams.java) object,
+The only entrypoint you interact with is [QueryBuilder](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/github/smolcan/aggrid/jpa/adapter/query/QueryBuilder.java),
+and it's method **getRows**, which processes a [ServerSideGetRowsRequest](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/github/smolcan/aggrid/jpa/adapter/request/ServerSideGetRowsRequest.java) object,
+builds the query using **JPA Criteria API**, executes it and returns [LoadSuccessParams](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/github/smolcan/aggrid/jpa/adapter/response/LoadSuccessParams.java) object,
 which you can directly return to the grid.
 ```java title="Java getRows method using QueryBuilder"
 public LoadSuccessParams getRows(ServerSideGetRowsRequest request) {

@@ -50,5 +50,5 @@ filterModel: {
 
 Text filter is recognized as it always has **filterType** property that has value **'multi'**.
 
-In AG Grid JPA Adapter is multi filter implemented in class [MultiFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/filter/simple/MultiFilter.java).
+In AG Grid JPA Adapter is multi filter implemented in class [MultiFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/github/smolcan/aggrid/jpa/adapter/filter/simple/MultiFilter.java).
 

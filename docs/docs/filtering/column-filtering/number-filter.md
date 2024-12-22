@@ -25,7 +25,7 @@ filterModel: {
 
 Number filter is recognized as it always has **filterType** property that has value **'number'**.
 
-In AG Grid JPA Adapter is number filter implemented in class [NumberFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/filter/simple/NumberFilter.java).
+In AG Grid JPA Adapter is number filter implemented in class [NumberFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/github/smolcan/aggrid/jpa/adapter/filter/simple/NumberFilter.java).
 
 Number filter supports these types:
 - empty

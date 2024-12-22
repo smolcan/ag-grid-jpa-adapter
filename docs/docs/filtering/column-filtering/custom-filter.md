@@ -6,7 +6,7 @@ sidebar_position: 7
 # Custom Filter
 In case of [custom filter](https://ag-grid.com/angular-data-grid/component-filter/), you need to register your own
 column filter recognizer.
-You can do so with [QueryBuilder](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/query/QueryBuilder.java)'s method:
+You can do so with [QueryBuilder](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/github/smolcan/aggrid/jpa/adapter/query/QueryBuilder.java)'s method:
 ```java
 public QueryBuilder<E> registerCustomColumnFilterRecognizer(Function<Map<String, Object>, ColumnFilter> recognizerFunction) {
     this.customColumnFilterRecognizers.add(Objects.requireNonNull(recognizerFunction));
@@ -14,7 +14,7 @@ public QueryBuilder<E> registerCustomColumnFilterRecognizer(Function<Map<String,
 }
 ```
 The **recognizerFunction** argument is an function that receives Map object and returns:
-- your custom [ColumnFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/filter/simple/ColumnFilter.java) implementation if you recognized your custom filter
+- your custom [ColumnFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/github/smolcan/aggrid/jpa/adapter/filter/simple/ColumnFilter.java) implementation if you recognized your custom filter
 - **null** otherwise
 
 The AG Grid JPA Adapter first tries to match the **filterModel** with one of the default column filters, 

@@ -25,7 +25,7 @@ filterModel: {
 
 Date filter is recognized as it always has **filterType** property that has value **'date'**.
 
-In AG Grid JPA Adapter is date filter implemented in class [DateFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/filter/simple/DateFilter.java).
+In AG Grid JPA Adapter is date filter implemented in class [DateFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/github/smolcan/aggrid/jpa/adapter/filter/simple/DateFilter.java).
 
 Date filter supports these types:
 - empty

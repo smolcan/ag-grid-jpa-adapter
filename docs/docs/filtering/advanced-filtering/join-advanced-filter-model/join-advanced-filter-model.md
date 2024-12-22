@@ -51,4 +51,4 @@ Example of received joined advanced filter model:
 }
 ```
 
-In AG Grid JPA Adapter is advanced filter model implemented in class [JoinAdvancedFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/aggrid/jpa/adapter/filter/advanced/JoinAdvancedFilterModel.java).
+In AG Grid JPA Adapter is advanced filter model implemented in class [JoinAdvancedFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/com/github/smolcan/aggrid/jpa/adapter/filter/advanced/JoinAdvancedFilterModel.java).
