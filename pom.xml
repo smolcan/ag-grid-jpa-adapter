@@ -2,7 +2,7 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.github.smolcan</groupId>
+  <groupId>io.github.smolcan</groupId>
   <artifactId>ag-grid-jpa-adapter</artifactId>
   <version>1.0.0-alpha</version>
   <packaging>jar</packaging>
