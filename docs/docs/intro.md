@@ -14,15 +14,13 @@ Development will continue for the next 12 months, and significant changes or bre
 
 
 ## Installation
-This library is currently **not published yet** to Maven Central. To use it in your project, you need to manually copy the files into your project.
-It will be published after the version is properly tested and stable.
 
-**After publishing**, it will be available via maven dependency
+**Available via maven dependency**
 ```xml
 <dependency>
-    <groupId>sk.smolcan</groupId>
+    <groupId>io.github.smolcan</groupId>
     <artifactId>ag-grid-jpa-adapter</artifactId>
-    <version>1.0.0-alpha</version>
+    <version>0.0.1</version>
 </dependency>
 ```
 **Requirements 🛠️**
