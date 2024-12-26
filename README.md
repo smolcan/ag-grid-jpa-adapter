@@ -5,6 +5,9 @@ A lightweight Maven library for integrating **[AG Grid Server-Side Mode](https:/
 <p align="center">
    <a href="https://smolcan.github.io/ag-grid-jpa-adapter/"><strong>Explore Docs >></strong></a>
 </p>
+<p align="center">
+   <a href="https://github.com/smolcan/ag-grid-jpa-adapter-showcase"><strong>Showcase >></strong></a>
+</p>
 
 ## **⚠️ Disclaimer: Active Development**
 This project is currently in active development.
