@@ -32,7 +32,8 @@ import static java.lang.Integer.MAX_VALUE;
 public class QueryBuilder<E> {
     private static final DateTimeFormatter DATE_TIME_FORMATTER_FOR_DATE_FILTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter DATE_FORMATTER_FOR_DATE_ADVANCED_FILTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-
+    private static final String AUTO_GROUP_COLUMN_NAME = "ag-Grid-AutoColumn";
+    
     private final Class<E> entityClass;
     private final EntityManager entityManager;
 
@@ -258,6 +259,7 @@ public class QueryBuilder<E> {
         // otherwise, only by grouped fields
         List<Order> orderByCols = request.getSortModel().stream()
                 .filter(model -> !isGrouping || request.getRowGroupCols().stream().anyMatch(rgc -> rgc.getField().equals(model.getColId())))
+                .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))    // ignore auto-generated column
                 .map(sortModel -> {
                     if (sortModel.getSort() == SortType.asc) {
                         return cb.asc(root.get(sortModel.getColId()));
@@ -278,6 +280,8 @@ public class QueryBuilder<E> {
                     .filter(model -> request.getRowGroupCols().stream().noneMatch(rgc -> rgc.getField().equals(model.getColId())))
                     // in aggregation columns
                     .filter(model -> request.getValueCols().stream().anyMatch(aggCol -> aggCol.getField().equals(model.getColId())))
+                    // ignore auto-generated column
+                    .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))
                     .map(model -> {
                         ColumnVO aggregatedColumn = request.getValueCols().stream().filter(aggCol -> aggCol.getField().equals(model.getColId())).findFirst().orElseThrow();
                         Expression<? extends Number> aggregatedField;
