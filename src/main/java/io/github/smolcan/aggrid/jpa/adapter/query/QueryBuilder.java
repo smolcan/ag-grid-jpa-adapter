@@ -306,11 +306,11 @@ public class QueryBuilder<E> {
                                 Expression<?> aggregatedField;
                                 switch (columnVO.getAggFunc()) {
                                     case avg: {
-                                        aggregatedField = cb.avg(caseExpression.as(BigDecimal.class));
+                                        aggregatedField = cb.avg((Expression<? extends Number>) caseExpression);
                                         break;
                                     }
                                     case sum: {
-                                        aggregatedField = cb.sum(caseExpression.as(BigDecimal.class));
+                                        aggregatedField = cb.sum((Expression<? extends Number>) caseExpression);
                                         break;
                                     }
                                     case min: {
