@@ -210,7 +210,8 @@ public class QueryBuilder<E> {
         
         boolean isPivoting = request.isPivotMode() && !request.getPivotCols().isEmpty();
         if (isPivoting) {
-            selections.addAll(this.createPivotingSelections(cb, root, request, pivotValues));
+            List<Selection<?>> pivotingSelections = this.createPivotingSelections(cb, root, request, pivotValues);
+            selections.addAll(pivotingSelections);
         } else {
             // aggregated columns
             for (ColumnVO columnVO : request.getValueCols()) {
@@ -225,11 +226,11 @@ public class QueryBuilder<E> {
                         break;
                     }
                     case min: {
-                        aggregatedField = cb.min(root.get(columnVO.getField()));
+                        aggregatedField = cb.least((Expression) root.get(columnVO.getField()));
                         break;
                     }
                     case max: {
-                        aggregatedField = cb.max(root.get(columnVO.getField()));
+                        aggregatedField = cb.greatest((Expression) root.get(columnVO.getField()));
                         break;
                     }
                     case count: {
@@ -264,7 +265,7 @@ public class QueryBuilder<E> {
     protected List<Selection<?>> createPivotingSelections(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, Map<String, List<Object>> pivotValues) {
         // each pivot column with pair with pivot value
         List<Set<Pair<String, Object>>> pivotPairs = this.createPivotPairs(pivotValues);
-        Set<Set<Pair<String, Object>>> cartesianProduct = CartesianProductHelper.cartesianProduct(pivotPairs);
+        List<List<Pair<String, Object>>> cartesianProduct = CartesianProductHelper.cartesianProduct(pivotPairs);
         
         return cartesianProduct
                 .stream()
@@ -283,41 +284,45 @@ public class QueryBuilder<E> {
                             })
                             .collect(Collectors.joining(this.serverSidePivotResultFieldSeparator));
                     
-                    CriteriaBuilder.Case<?> caseExpression = null;
-                    for (Pair<String, Object> pair : pairs) {
-                        if (caseExpression == null) {
-                            caseExpression = cb.selectCase()
-                                    .when(cb.equal(root.get(pair.getKey()), pair.getValue()), root.get(pair.getKey()));
-                        } else {
-                            caseExpression = cb.selectCase()
-                                    .when(cb.equal(root.get(pair.getKey()), pair.getValue()), caseExpression);
-                        }
-                    }
 
-                    CriteriaBuilder.Case<?> finalCaseExpression = Objects.requireNonNull(caseExpression);
                     return request.getValueCols()
                             .stream()
                             .map(columnVO -> {
+                                
+                                Path<?> field = root.get(columnVO.getField());
+
+                                CriteriaBuilder.Case<?> caseExpression = null;
+                                for (Pair<String, Object> pair : pairs) {
+                                    if (caseExpression == null) {
+                                        caseExpression = cb.selectCase()
+                                                .when(cb.equal(root.get(pair.getKey()), pair.getValue()), field);
+                                    } else {
+                                        caseExpression = cb.selectCase()
+                                                .when(cb.equal(root.get(pair.getKey()), pair.getValue()), caseExpression);
+                                    }
+                                }
+                                Objects.requireNonNull(caseExpression);
+                                
                                 Expression<?> aggregatedField;
                                 switch (columnVO.getAggFunc()) {
                                     case avg: {
-                                        aggregatedField = cb.avg(finalCaseExpression.as(BigDecimal.class));
+                                        aggregatedField = cb.avg(caseExpression.as(BigDecimal.class));
                                         break;
                                     }
                                     case sum: {
-                                        aggregatedField = cb.sum(finalCaseExpression.as(BigDecimal.class));
+                                        aggregatedField = cb.sum(caseExpression.as(BigDecimal.class));
                                         break;
                                     }
                                     case min: {
-                                        aggregatedField = cb.min(finalCaseExpression.as(BigDecimal.class));
+                                        aggregatedField = cb.least((Expression) caseExpression);
                                         break;
                                     }
                                     case max: {
-                                        aggregatedField = cb.max(finalCaseExpression.as(BigDecimal.class));
+                                        aggregatedField = cb.greatest((Expression) caseExpression);
                                         break;
                                     }
                                     case count: {
-                                        aggregatedField = cb.count(finalCaseExpression);
+                                        aggregatedField = cb.count(caseExpression);
                                         break;
                                     }
                                     default: {
@@ -433,11 +438,11 @@ public class QueryBuilder<E> {
                                 break;
                             }
                             case min: {
-                                aggregatedField = cb.min(root.get(model.getColId()));
+                                aggregatedField = cb.least((Expression) root.get(model.getColId()));
                                 break;
                             }
                             case max: {
-                                aggregatedField = cb.max(root.get(model.getColId()));
+                                aggregatedField = cb.greatest((Expression) root.get(model.getColId()));
                                 break;
                             }
                             case count: {
@@ -470,13 +475,18 @@ public class QueryBuilder<E> {
         typedQuery.setFirstResult(request.getStartRow());
         typedQuery.setMaxResults(request.getEndRow() - request.getStartRow() + 1);
     }
-    
+
+    /**
+     * For each pivoting column fetch distinct values
+     * @return map where key is column name and value is distinct column values
+     */
     protected Map<String, List<Object>> getPivotValues(ServerSideGetRowsRequest request) {
         if (!request.isPivotMode() || request.getPivotCols().isEmpty()) {
+            // no pivoting
             return Collections.emptyMap();
         }
 
-        Map<String, List<Object>> pivotValues = new HashMap<>();
+        Map<String, List<Object>> pivotValues = new LinkedHashMap<>();
         for (ColumnVO column : request.getPivotCols()) {
             String field = column.getField();
             
@@ -486,6 +496,7 @@ public class QueryBuilder<E> {
             
             // select
             query.multiselect(root.get(field)).distinct(true);
+            query.orderBy(cb.asc(root.get(field)));
             
             // result
             List<Object> result = this.entityManager.createQuery(query).getResultList();

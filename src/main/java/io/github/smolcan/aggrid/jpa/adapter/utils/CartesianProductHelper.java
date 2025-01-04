@@ -4,29 +4,28 @@ import java.util.*;
 
 public class CartesianProductHelper {
 
-    public static <T> Set<Set<T>> cartesianProduct(Collection<Set<T>> sets) {
+    public static <T> List<List<T>> cartesianProduct(List<Set<T>> sets) {
         if (sets.size() < 2) {
             throw new IllegalArgumentException("Can't have a product of fewer than two sets (got " + sets.size() + ")");
         }
-        
-        List<Set<T>> setsList = new ArrayList<>(sets);
-        return _cartesianProduct(0, setsList);
+
+        return _cartesianProduct(0, sets);
     }
 
-    private static <T> Set<Set<T>> _cartesianProduct(int index, List<Set<T>> sets) {
-        Set<Set<T>> ret = new HashSet<>();
+    private static <T> List<List<T>> _cartesianProduct(int index, List<Set<T>> sets) {
+        List<List<T>> result = new ArrayList<>();
         if (index == sets.size()) {
-            ret.add(new HashSet<>());
+            result.add(new ArrayList<>());
         } else {
-            for (T obj : sets.get(index)) {
-                for (Set<T> set : _cartesianProduct(index + 1, sets)) {
-                    Set<T> newSet = new HashSet<>(set);
-                    newSet.add(obj);
-                    ret.add(newSet);
+            for (T element : sets.get(index)) {
+                for (List<T> product : _cartesianProduct(index + 1, sets)) {
+                    List<T> newProduct = new ArrayList<>(product);
+                    newProduct.add(0, element); // Maintain order
+                    result.add(newProduct);
                 }
             }
         }
-        return ret;
+        return result;
     }
 
 
