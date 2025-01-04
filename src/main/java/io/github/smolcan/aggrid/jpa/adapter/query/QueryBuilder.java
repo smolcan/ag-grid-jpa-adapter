@@ -9,6 +9,8 @@ import io.github.smolcan.aggrid.jpa.adapter.request.ServerSideGetRowsRequest;
 import io.github.smolcan.aggrid.jpa.adapter.request.SortType;
 import io.github.smolcan.aggrid.jpa.adapter.filter.advanced.AdvancedFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.response.LoadSuccessParams;
+import io.github.smolcan.aggrid.jpa.adapter.utils.CartesianProductHelper;
+import io.github.smolcan.aggrid.jpa.adapter.utils.Pair;
 import io.github.smolcan.aggrid.jpa.adapter.utils.TypeValueSynchronizer;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Tuple;
@@ -33,9 +35,11 @@ public class QueryBuilder<E> {
     private static final DateTimeFormatter DATE_TIME_FORMATTER_FOR_DATE_FILTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter DATE_FORMATTER_FOR_DATE_ADVANCED_FILTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final String AUTO_GROUP_COLUMN_NAME = "ag-Grid-AutoColumn";
+    private static final String DEFAULT_SERVER_SIDE_PIVOT_RESULT_FIELD_SEPARATOR = "_";
     
     private final Class<E> entityClass;
     private final EntityManager entityManager;
+    private String serverSidePivotResultFieldSeparator = DEFAULT_SERVER_SIDE_PIVOT_RESULT_FIELD_SEPARATOR;
 
     // List of custom filter recognizers for user-defined filters in AG Grid.
     // 
@@ -107,6 +111,11 @@ public class QueryBuilder<E> {
         this.customColumnFilterRecognizers.addAll(Objects.requireNonNull(recognizerFunctions));
         return this;
     }
+    
+    public QueryBuilder<E> setServerSidePivotResultFieldSeparator(String serverSidePivotResultFieldSeparator) {
+        this.serverSidePivotResultFieldSeparator = Objects.requireNonNull(serverSidePivotResultFieldSeparator);
+        return this;
+    }
 
 
     /**
@@ -130,8 +139,10 @@ public class QueryBuilder<E> {
 
         CriteriaQuery<Tuple> query = cb.createTupleQuery();
         Root<E> root = query.from(this.entityClass);
+
+        Map<String, List<Object>> pivotValues = this.getPivotValues(request);
         
-        this.select(cb, query, root, request);
+        this.select(cb, query, root, request, pivotValues);
         this.where(cb, query, root, request);
         this.groupBy(cb, query, root, request);
         this.orderBy(cb, query, root, request);
@@ -140,14 +151,47 @@ public class QueryBuilder<E> {
         this.limitOffset(typedQuery, request);
 
         List<Tuple> data = typedQuery.getResultList();
-        
+        return this.createResponse(request, data, pivotValues);
+    }
+    
+    protected LoadSuccessParams createResponse(ServerSideGetRowsRequest request, List<Tuple> data, Map<String, List<Object>> pivotValues) {
         LoadSuccessParams loadSuccessParams = new LoadSuccessParams();
         loadSuccessParams.setRowData(tupleToMap(data));
+        
+        if (request.isPivotMode() && !request.getPivotCols().isEmpty()) {
+            List<Set<Pair<String, Object>>> pivotPairs = this.createPivotPairs(pivotValues);
+            var cartesianProduct = CartesianProductHelper.cartesianProduct(pivotPairs);
+            
+            var pivotResultFields = cartesianProduct.stream()
+                    .flatMap(pairs -> {
+                        
+                        String alias = pairs.stream()
+                                .map(Pair::getValue)
+                                .map(value -> {
+                                    if (value instanceof LocalDate) {
+                                        return ((LocalDate) value).format(DateTimeFormatter.ISO_LOCAL_DATE);
+                                    } else if (value instanceof LocalDateTime) {
+                                        return ((LocalDateTime) value).format(DateTimeFormatter.ISO_LOCAL_DATE);
+                                    } else {
+                                        return String.valueOf(value);
+                                    }
+                                })
+                                .collect(Collectors.joining(this.serverSidePivotResultFieldSeparator));
+
+                        return request.getValueCols()
+                                .stream()
+                                .map(columnVO -> alias + this.serverSidePivotResultFieldSeparator + columnVO.getField());
+                    })
+                    .collect(Collectors.toList());
+            
+            loadSuccessParams.setPivotResultFields(pivotResultFields);
+        }
+        
         return loadSuccessParams;
     }
     
     
-    protected void select(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request) {
+    protected void select(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request, Map<String, List<Object>> pivotValues) {
         // select
         // we know data are still grouped if request contains more group columns than group keys
         boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
@@ -163,35 +207,41 @@ public class QueryBuilder<E> {
             ColumnVO groupCol = request.getRowGroupCols().get(i);
             selections.add(root.get(groupCol.getField()).alias(groupCol.getField()));
         }
-        // aggregated columns
-        for (ColumnVO columnVO : request.getValueCols()) {
-            Expression<? extends Number> aggregatedField;
-            switch (columnVO.getAggFunc()) {
-                case avg: {
-                    aggregatedField = cb.avg(root.get(columnVO.getField()));
-                    break;
+        
+        boolean isPivoting = request.isPivotMode() && !request.getPivotCols().isEmpty();
+        if (isPivoting) {
+            selections.addAll(this.createPivotingSelections(cb, root, request, pivotValues));
+        } else {
+            // aggregated columns
+            for (ColumnVO columnVO : request.getValueCols()) {
+                Expression<?> aggregatedField;
+                switch (columnVO.getAggFunc()) {
+                    case avg: {
+                        aggregatedField = cb.avg(root.get(columnVO.getField()));
+                        break;
+                    }
+                    case sum: {
+                        aggregatedField = cb.sum(root.get(columnVO.getField()));
+                        break;
+                    }
+                    case min: {
+                        aggregatedField = cb.min(root.get(columnVO.getField()));
+                        break;
+                    }
+                    case max: {
+                        aggregatedField = cb.max(root.get(columnVO.getField()));
+                        break;
+                    }
+                    case count: {
+                        aggregatedField = cb.count(root.get(columnVO.getField()));
+                        break;
+                    }
+                    default: {
+                        throw new IllegalArgumentException("unsupported aggregation function: " + columnVO.getAggFunc());
+                    }
                 }
-                case sum: {
-                    aggregatedField = cb.sum(root.get(columnVO.getField()));
-                    break;
-                }
-                case min: {
-                    aggregatedField = cb.min(root.get(columnVO.getField()));
-                    break;
-                }
-                case max: {
-                    aggregatedField = cb.max(root.get(columnVO.getField()));
-                    break;
-                }
-                case count: {
-                    aggregatedField = cb.count(root.get(columnVO.getField()));
-                    break;
-                }
-                default: {
-                    throw new IllegalArgumentException("unsupported aggregation function: " + columnVO.getAggFunc());
-                }
+                selections.add(aggregatedField.alias(columnVO.getField()));
             }
-            selections.add(aggregatedField.alias(columnVO.getField()));
         }
 
         query.multiselect(selections);
@@ -209,6 +259,94 @@ public class QueryBuilder<E> {
         }
 
         query.multiselect(selections);
+    }
+    
+    protected List<Selection<?>> createPivotingSelections(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, Map<String, List<Object>> pivotValues) {
+        // each pivot column with pair with pivot value
+        List<Set<Pair<String, Object>>> pivotPairs = this.createPivotPairs(pivotValues);
+        Set<Set<Pair<String, Object>>> cartesianProduct = CartesianProductHelper.cartesianProduct(pivotPairs);
+        
+        return cartesianProduct
+                .stream()
+                .flatMap(pairs -> {
+
+                    String alias = pairs.stream()
+                            .map(Pair::getValue)
+                            .map(value -> {
+                                if (value instanceof LocalDate) {
+                                    return ((LocalDate) value).format(DateTimeFormatter.ISO_LOCAL_DATE);
+                                } else if (value instanceof LocalDateTime) {
+                                    return ((LocalDateTime) value).format(DateTimeFormatter.ISO_LOCAL_DATE);
+                                } else {
+                                    return String.valueOf(value);
+                                }
+                            })
+                            .collect(Collectors.joining(this.serverSidePivotResultFieldSeparator));
+                    
+                    CriteriaBuilder.Case<?> caseExpression = null;
+                    for (Pair<String, Object> pair : pairs) {
+                        if (caseExpression == null) {
+                            caseExpression = cb.selectCase()
+                                    .when(cb.equal(root.get(pair.getKey()), pair.getValue()), root.get(pair.getKey()));
+                        } else {
+                            caseExpression = cb.selectCase()
+                                    .when(cb.equal(root.get(pair.getKey()), pair.getValue()), caseExpression);
+                        }
+                    }
+
+                    CriteriaBuilder.Case<?> finalCaseExpression = Objects.requireNonNull(caseExpression);
+                    return request.getValueCols()
+                            .stream()
+                            .map(columnVO -> {
+                                Expression<?> aggregatedField;
+                                switch (columnVO.getAggFunc()) {
+                                    case avg: {
+                                        aggregatedField = cb.avg(finalCaseExpression.as(BigDecimal.class));
+                                        break;
+                                    }
+                                    case sum: {
+                                        aggregatedField = cb.sum(finalCaseExpression.as(BigDecimal.class));
+                                        break;
+                                    }
+                                    case min: {
+                                        aggregatedField = cb.min(finalCaseExpression.as(BigDecimal.class));
+                                        break;
+                                    }
+                                    case max: {
+                                        aggregatedField = cb.max(finalCaseExpression.as(BigDecimal.class));
+                                        break;
+                                    }
+                                    case count: {
+                                        aggregatedField = cb.count(finalCaseExpression);
+                                        break;
+                                    }
+                                    default: {
+                                        throw new IllegalArgumentException("unsupported aggregation function: " + columnVO.getAggFunc());
+                                    }
+                                }
+                                
+                                return aggregatedField.alias(alias + this.serverSidePivotResultFieldSeparator + columnVO.getField());
+                            });
+                })
+                .collect(Collectors.toList());
+    }
+    
+    protected List<Set<Pair<String, Object>>> createPivotPairs(Map<String, List<Object>> pivotValues) {
+        List<Set<Pair<String, Object>>> pivotPairs = new ArrayList<>();
+        for (var entry : pivotValues.entrySet()) {
+            String column = entry.getKey();
+            List<Object> values = entry.getValue();
+
+            Set<Pair<String, Object>> pairs = new LinkedHashSet<>();
+            for (Object value : values) {
+                pairs.add(Pair.of(column, value));
+            }
+
+            // Add the set of pairs to the list
+            pivotPairs.add(pairs);
+        }
+        
+        return pivotPairs;
     }
     
     
@@ -331,6 +469,31 @@ public class QueryBuilder<E> {
     protected void limitOffset(TypedQuery<Tuple> typedQuery, ServerSideGetRowsRequest request) {
         typedQuery.setFirstResult(request.getStartRow());
         typedQuery.setMaxResults(request.getEndRow() - request.getStartRow() + 1);
+    }
+    
+    protected Map<String, List<Object>> getPivotValues(ServerSideGetRowsRequest request) {
+        if (!request.isPivotMode() || request.getPivotCols().isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Map<String, List<Object>> pivotValues = new HashMap<>();
+        for (ColumnVO column : request.getPivotCols()) {
+            String field = column.getField();
+            
+            CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
+            CriteriaQuery<Object> query = cb.createQuery(Object.class);
+            Root<E> root = query.from(this.entityClass);
+            
+            // select
+            query.multiselect(root.get(field)).distinct(true);
+            
+            // result
+            List<Object> result = this.entityManager.createQuery(query).getResultList();
+            
+            pivotValues.put(field, result);
+        }
+        
+        return pivotValues;
     }
     
     private static List<Map<String, Object>> tupleToMap(List<Tuple> tuples) {
