@@ -30,6 +30,9 @@ public class PivotingContextHelper<E> {
         this.serverSidePivotResultFieldSeparator = serverSidePivotResultFieldSeparator;
     }
 
+    /**
+     * Creates pivoting context object to hold all the info about pivoting
+     */
     public PivotingContext createPivotingContext() {
         
         PivotingContext pivotingContext = new PivotingContext();
@@ -65,7 +68,7 @@ public class PivotingContextHelper<E> {
                             })
                             .collect(Collectors.joining(this.serverSidePivotResultFieldSeparator));
 
-                    return request.getValueCols()
+                    return this.request.getValueCols()
                             .stream()
                             .map(columnVO -> alias + this.serverSidePivotResultFieldSeparator + columnVO.getField());
                 })
@@ -77,22 +80,17 @@ public class PivotingContextHelper<E> {
      * @return map where key is column name and value is distinct column values
      */
     private Map<String, List<Object>> getPivotValues() {
-        if (!this.request.isPivotMode() || this.request.getPivotCols().isEmpty()) {
-            // no pivoting
-            return Collections.emptyMap();
-        }
-
         Map<String, List<Object>> pivotValues = new LinkedHashMap<>();
         for (ColumnVO column : this.request.getPivotCols()) {
             String field = column.getField();
 
             CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
-            CriteriaQuery<Object> query = cb.createQuery(Object.class);
+            CriteriaQuery<Object> query = this.cb.createQuery(Object.class);
             Root<E> root = query.from(this.entityClass);
 
             // select
             query.multiselect(root.get(field)).distinct(true);
-            query.orderBy(cb.asc(root.get(field)));
+            query.orderBy(this.cb.asc(root.get(field)));
 
             // result
             List<Object> result = this.entityManager.createQuery(query).getResultList();
@@ -103,6 +101,26 @@ public class PivotingContextHelper<E> {
         return pivotValues;
     }
 
+    /**
+     * Creates pivot pairs from pivot values <br/>
+     * For example, for input: <br/>
+     * <code>
+     *     {
+     *         book: [Book1, Book2],
+     *         product: [Product1, Product2]
+     *     }
+     * </code> <br/>
+     * Output will be: <br/>
+     * <code>
+     *     [
+     *       [(book, Book1), (book, Book2)], 
+     *       [(product, Product1), (product, Product2)]
+     *     ]
+     * </code>
+     * 
+     * @param pivotValues   pivot values
+     * @return              pivot pairs
+     */
     private List<Set<Pair<String, Object>>> createPivotPairs(Map<String, List<Object>> pivotValues) {
         List<Set<Pair<String, Object>>> pivotPairs = new ArrayList<>();
         for (var entry : pivotValues.entrySet()) {
@@ -122,6 +140,11 @@ public class PivotingContextHelper<E> {
     }
 
 
+    /**
+     * Creates Selections from cartesian product of pivot pairs
+     * @param cartesianProduct  cartesian product of pivot pairs
+     * @return                  list of selections
+     */
     private List<Selection<?>> createPivotingSelections(List<List<Pair<String, Object>>> cartesianProduct) {
         // each pivot column with pair with pivot value
         return cartesianProduct
@@ -142,44 +165,45 @@ public class PivotingContextHelper<E> {
                             .collect(Collectors.joining(this.serverSidePivotResultFieldSeparator));
 
 
-                    return request.getValueCols()
+                    return this.request.getValueCols()
                             .stream()
                             .map(columnVO -> {
 
-                                Path<?> field = root.get(columnVO.getField());
+                                Path<?> field = this.root.get(columnVO.getField());
 
                                 CriteriaBuilder.Case<?> caseExpression = null;
                                 for (Pair<String, Object> pair : pairs) {
                                     if (caseExpression == null) {
-                                        caseExpression = cb.selectCase()
-                                                .when(cb.equal(root.get(pair.getKey()), pair.getValue()), field);
+                                        caseExpression = this.cb.selectCase()
+                                                .when(this.cb.equal(this.root.get(pair.getKey()), pair.getValue()), field);
                                     } else {
-                                        caseExpression = cb.selectCase()
-                                                .when(cb.equal(root.get(pair.getKey()), pair.getValue()), caseExpression);
+                                        caseExpression = this.cb.selectCase()
+                                                .when(this.cb.equal(this.root.get(pair.getKey()), pair.getValue()), caseExpression);
                                     }
                                 }
                                 Objects.requireNonNull(caseExpression);
 
+                                // wrap case expression onto aggregation
                                 Expression<?> aggregatedField;
                                 switch (columnVO.getAggFunc()) {
                                     case avg: {
-                                        aggregatedField = cb.avg((Expression<? extends Number>) caseExpression);
+                                        aggregatedField = this.cb.avg((Expression<? extends Number>) caseExpression);
                                         break;
                                     }
                                     case sum: {
-                                        aggregatedField = cb.sum((Expression<? extends Number>) caseExpression);
+                                        aggregatedField = this.cb.sum((Expression<? extends Number>) caseExpression);
                                         break;
                                     }
                                     case min: {
-                                        aggregatedField = cb.least((Expression) caseExpression);
+                                        aggregatedField = this.cb.least((Expression) caseExpression);
                                         break;
                                     }
                                     case max: {
-                                        aggregatedField = cb.greatest((Expression) caseExpression);
+                                        aggregatedField = this.cb.greatest((Expression) caseExpression);
                                         break;
                                     }
                                     case count: {
-                                        aggregatedField = cb.count(caseExpression);
+                                        aggregatedField = this.cb.count(caseExpression);
                                         break;
                                     }
                                     default: {

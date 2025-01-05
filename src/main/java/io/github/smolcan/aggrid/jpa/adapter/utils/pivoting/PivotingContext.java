@@ -7,13 +7,30 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * To hold all the needed information about pivoting
+ */
 public class PivotingContext {
     
     private boolean isPivoting;
+    
+    // for each column, its distinct values
     private Map<String, List<Object>> pivotValues;
+    
+    // each pivot col with pair with its distinct values
+    // for example: [
+    //      [(book, Book1), (book, Book2)], 
+    //      [(product, Product1), (product, Product2)]
+    // ]
     private List<Set<Pair<String, Object>>> pivotPairs;
+    
+    // cartesian product of pivotPairs
     private List<List<Pair<String, Object>>> cartesianProduct;
+    
+    // selections for pivoting
     private List<Selection<?>> pivotingSelections;
+    
+    // pivoting result fields for response
     private List<String> pivotingResultFields;
 
     public boolean isPivoting() {

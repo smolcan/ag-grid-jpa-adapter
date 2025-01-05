@@ -147,6 +147,7 @@ public class QueryBuilder<E> {
         CriteriaQuery<Tuple> query = cb.createTupleQuery();
         Root<E> root = query.from(this.entityClass);
 
+        // if pivoting, load all information needed for pivoting into pivoting context
         PivotingContext pivotingContext = new PivotingContextHelper<>(this.entityClass, this.entityManager, cb, root, request, this.serverSidePivotResultFieldSeparator).createPivotingContext();
         
         this.select(cb, query, root, request, pivotingContext);
