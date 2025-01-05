@@ -85,12 +85,12 @@ public class PivotingContextHelper<E> {
             String field = column.getField();
 
             CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
-            CriteriaQuery<Object> query = this.cb.createQuery(Object.class);
+            CriteriaQuery<Object> query = cb.createQuery(Object.class);
             Root<E> root = query.from(this.entityClass);
 
             // select
             query.multiselect(root.get(field)).distinct(true);
-            query.orderBy(this.cb.asc(root.get(field)));
+            query.orderBy(cb.asc(root.get(field)));
 
             // result
             List<Object> result = this.entityManager.createQuery(query).getResultList();
