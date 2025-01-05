@@ -39,7 +39,9 @@ public class QueryBuilder<E> {
     
     private final Class<E> entityClass;
     private final EntityManager entityManager;
+    
     private String serverSidePivotResultFieldSeparator = DEFAULT_SERVER_SIDE_PIVOT_RESULT_FIELD_SEPARATOR;
+    private boolean groupAggFiltering;
 
     // List of custom filter recognizers for user-defined filters in AG Grid.
     // 
@@ -116,6 +118,11 @@ public class QueryBuilder<E> {
         this.serverSidePivotResultFieldSeparator = Objects.requireNonNull(serverSidePivotResultFieldSeparator);
         return this;
     }
+    
+    public QueryBuilder<E> setGroupAggFiltering(boolean groupAggFiltering) {
+        this.groupAggFiltering = groupAggFiltering;
+        return this;
+    }
 
 
     /**
@@ -143,9 +150,9 @@ public class QueryBuilder<E> {
         PivotingContext pivotingContext = new PivotingContextHelper<>(this.entityClass, this.entityManager, cb, root, request, this.serverSidePivotResultFieldSeparator).createPivotingContext();
         
         this.select(cb, query, root, request, pivotingContext);
-        this.where(cb, query, root, request);
+        this.where(cb, query, root, request, pivotingContext);
         this.groupBy(cb, query, root, request);
-        this.orderBy(cb, query, root, request);
+        this.orderBy(cb, query, root, request, pivotingContext);
 
         TypedQuery<Tuple> typedQuery = this.entityManager.createQuery(query);
         this.limitOffset(typedQuery, request);
@@ -230,7 +237,7 @@ public class QueryBuilder<E> {
     }
     
     
-    protected void where(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request) {
+    protected void where(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request, PivotingContext pivotingContext) {
         // where
         List<Predicate> predicates = new ArrayList<>();
         
@@ -268,7 +275,7 @@ public class QueryBuilder<E> {
         }
     }
     
-    protected void orderBy(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request) {
+    protected void orderBy(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request, PivotingContext pivotingContext) {
         // we know data are still grouped if request contains more group columns than group keys
         boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
         int limit = isGrouping ? request.getGroupKeys().size() + 1 : MAX_VALUE;
