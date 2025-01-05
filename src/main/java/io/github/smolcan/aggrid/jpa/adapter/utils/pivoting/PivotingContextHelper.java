@@ -195,10 +195,6 @@ public class PivotingContextHelper<E> {
 
 
     private static <T> List<List<T>> cartesianProduct(List<Set<T>> sets) {
-        if (sets.size() < 2) {
-            throw new IllegalArgumentException("Can't have a product of fewer than two sets (got " + sets.size() + ")");
-        }
-
         return _cartesianProduct(0, sets);
     }
 
