@@ -153,8 +153,8 @@ public class QueryBuilder<E> {
         this.select(cb, query, root, request, pivotingContext);
         this.where(cb, query, root, request, pivotingContext);
         this.groupBy(cb, query, root, request);
-        this.orderBy(cb, query, root, request, pivotingContext);
         this.having(cb, query, root, request, pivotingContext);
+        this.orderBy(cb, query, root, request, pivotingContext);
 
         TypedQuery<Tuple> typedQuery = this.entityManager.createQuery(query);
         this.limitOffset(typedQuery, request);
