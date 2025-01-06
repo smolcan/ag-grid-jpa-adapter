@@ -410,7 +410,7 @@ public class QueryBuilder<E> {
             List<Predicate> predicates = filterModel.entrySet()
                     .stream()
                     // filter out pivot filtering (should be in having clause since it's filtering of aggregated fields)
-                    .filter(entry -> !pivotingContext.getColumnNamesToExpression().containsKey(entry.getKey()))
+                    .filter(entry -> !pivotingContext.isPivoting() || !pivotingContext.getColumnNamesToExpression().containsKey(entry.getKey()))
                     .map(entry -> {
                         String columnName = entry.getKey();
                         Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();
