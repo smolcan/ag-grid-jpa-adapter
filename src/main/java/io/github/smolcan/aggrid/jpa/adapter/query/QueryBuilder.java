@@ -282,11 +282,12 @@ public class QueryBuilder<E> {
         boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
         int limit = isGrouping ? request.getGroupKeys().size() + 1 : MAX_VALUE;
         
-        // if grouping, ordering can be done on all fields
+        // if not grouping, ordering can be done on all fields
         // otherwise, only by grouped fields
         List<Order> orderByCols = request.getSortModel().stream()
                 .filter(model -> !isGrouping || request.getRowGroupCols().stream().anyMatch(rgc -> rgc.getField().equals(model.getColId())))
                 .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))    // ignore auto-generated column
+                .filter(model -> !pivotingContext.isPivoting() || pivotingContext.getColumnNamesToExpression().containsKey(model.getColId()))  // ignore pivoting sorting
                 .map(sortModel -> {
                     if (sortModel.getSort() == SortType.asc) {
                         return cb.asc(root.get(sortModel.getColId()));
@@ -309,6 +310,8 @@ public class QueryBuilder<E> {
                     .filter(model -> request.getValueCols().stream().anyMatch(aggCol -> aggCol.getField().equals(model.getColId())))
                     // ignore auto-generated column
                     .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))
+                    // ignore pivoting sorting
+                    .filter(model -> !pivotingContext.isPivoting() || pivotingContext.getColumnNamesToExpression().containsKey(model.getColId()))
                     .map(model -> {
                         ColumnVO aggregatedColumn = request.getValueCols().stream().filter(aggCol -> aggCol.getField().equals(model.getColId())).findFirst().orElseThrow();
                         Expression<? extends Number> aggregatedField;
@@ -350,6 +353,27 @@ public class QueryBuilder<E> {
                     .collect(Collectors.toList());
             
             orderByCols = Stream.concat(orderByCols.stream(), orderByAggregatedCols.stream()).collect(Collectors.toList());
+        }
+        
+        // ordering of pivoting cols
+        if (pivotingContext.isPivoting()) {
+            List<Order> orderByPivotingCols = request.getSortModel()
+                    .stream()
+                    .filter(model -> pivotingContext.getColumnNamesToExpression().containsKey(model.getColId()))
+                    .map(model -> {
+                        Expression<?> pivotingColExpression = pivotingContext.getColumnNamesToExpression().get(model.getColId());
+                        if (model.getSort() == SortType.asc) {
+                            return cb.asc(pivotingColExpression);
+                        } else if (model.getSort() == SortType.desc) {
+                            return cb.desc(pivotingColExpression);
+                        } else {
+                            return null;
+                        }
+                    })
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
+            orderByCols = Stream.concat(orderByCols.stream(), orderByPivotingCols.stream()).collect(Collectors.toList());
         }
         
         query.orderBy(orderByCols);
