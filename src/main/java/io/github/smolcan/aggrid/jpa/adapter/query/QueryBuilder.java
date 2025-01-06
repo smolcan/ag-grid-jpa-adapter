@@ -154,6 +154,7 @@ public class QueryBuilder<E> {
         this.where(cb, query, root, request, pivotingContext);
         this.groupBy(cb, query, root, request);
         this.orderBy(cb, query, root, request, pivotingContext);
+        this.having(cb, query, root, request, pivotingContext);
 
         TypedQuery<Tuple> typedQuery = this.entityManager.createQuery(query);
         this.limitOffset(typedQuery, request);
@@ -256,7 +257,7 @@ public class QueryBuilder<E> {
         
         // filter where
         if (request.getFilterModel() != null && !request.getFilterModel().isEmpty()) {
-            Predicate filterPredicate = this.filterToPredicate(cb, root, request.getFilterModel());
+            Predicate filterPredicate = this.filterToWherePredicate(cb, root, request.getFilterModel(), pivotingContext);
             predicates.add(filterPredicate);
         }
         
@@ -353,6 +354,31 @@ public class QueryBuilder<E> {
         
         query.orderBy(orderByCols);
     }
+
+    @SuppressWarnings("unchecked")
+    protected void having(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request, PivotingContext pivotingContext) {
+        List<Predicate> havingPredicates = new ArrayList<>();
+        
+        if (pivotingContext.isPivoting() && this.isColumnFilter(request.getFilterModel())) {
+            // pivoting filters
+            request.getFilterModel().entrySet()
+                    .stream()
+                    .filter(entry -> pivotingContext.getColumnNamesToExpression().containsKey(entry.getKey()))
+                    .forEach(entry -> {
+                        String columnName = entry.getKey();
+                        Expression<?> columnExpression = pivotingContext.getColumnNamesToExpression().get(columnName);
+                        
+                        Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();
+
+                        ColumnFilter columnFilter = this.recognizeColumnFilter(filterMap);
+                        havingPredicates.add(columnFilter.toPredicate(cb, columnExpression));
+                    });
+        }
+        
+        if (!havingPredicates.isEmpty()) {
+            query.having(havingPredicates.toArray(new Predicate[0]));
+        }
+    }
     
     protected void limitOffset(TypedQuery<Tuple> typedQuery, ServerSideGetRowsRequest request) {
         typedQuery.setFirstResult(request.getStartRow());
@@ -375,7 +401,7 @@ public class QueryBuilder<E> {
     }
 
     @SuppressWarnings("unchecked")
-    private Predicate filterToPredicate(CriteriaBuilder cb, Root<E> root, Map<String, Object> filterModel) {
+    private Predicate filterToWherePredicate(CriteriaBuilder cb, Root<E> root, Map<String, Object> filterModel, PivotingContext pivotingContext) {
         
         Predicate predicate;
         if (this.isColumnFilter(filterModel)) {
@@ -383,6 +409,8 @@ public class QueryBuilder<E> {
             // columnName: filter
             List<Predicate> predicates = filterModel.entrySet()
                     .stream()
+                    // filter out pivot filtering (should be in having clause since it's filtering of aggregated fields)
+                    .filter(entry -> !pivotingContext.getColumnNamesToExpression().containsKey(entry.getKey()))
                     .map(entry -> {
                         String columnName = entry.getKey();
                         Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();

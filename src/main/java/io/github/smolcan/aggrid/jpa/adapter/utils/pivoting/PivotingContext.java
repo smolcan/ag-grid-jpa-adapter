@@ -1,6 +1,7 @@
 package io.github.smolcan.aggrid.jpa.adapter.utils.pivoting;
 
 import io.github.smolcan.aggrid.jpa.adapter.utils.Pair;
+import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Selection;
 
 import java.util.List;
@@ -26,6 +27,8 @@ public class PivotingContext {
     
     // cartesian product of pivotPairs
     private List<List<Pair<String, Object>>> cartesianProduct;
+    
+    private Map<String, Expression<?>> columnNamesToExpression;
     
     // selections for pivoting
     private List<Selection<?>> pivotingSelections;
@@ -79,5 +82,13 @@ public class PivotingContext {
     
     public void setPivotingResultFields(List<String> pivotingResultFields) {
         this.pivotingResultFields = pivotingResultFields;
+    }
+
+    public Map<String, Expression<?>> getColumnNamesToExpression() {
+        return columnNamesToExpression;
+    }
+
+    public void setColumnNamesToExpression(Map<String, Expression<?>> columnNamesToExpression) {
+        this.columnNamesToExpression = columnNamesToExpression;
     }
 }

@@ -41,39 +41,104 @@ public class PivotingContextHelper<E> {
             pivotingContext.setPivoting(false);
         } else {
             pivotingContext.setPivoting(true);
-            pivotingContext.setPivotValues(this.getPivotValues());
-            pivotingContext.setPivotPairs(this.createPivotPairs(pivotingContext.getPivotValues()));
-            pivotingContext.setCartesianProduct(cartesianProduct(pivotingContext.getPivotPairs()));
-            pivotingContext.setPivotingSelections(this.createPivotingSelections(pivotingContext.getCartesianProduct()));
-            pivotingContext.setPivotingResultFields(this.createPivotResultFields(pivotingContext.getCartesianProduct()));
+
+            // distinct values for pivoting
+            Map<String, List<Object>> pivotValues = this.getPivotValues();
+            // pair pivot columns with values
+            List<Set<Pair<String, Object>>> pivotPairs = this.createPivotPairs(pivotValues);
+            // cartesian product of pivot pairs
+            List<List<Pair<String, Object>>> cartesianProduct = cartesianProduct(pivotPairs);
+            // for each column name its expression
+            Map<String, Expression<?>> columnNamesToExpression = this.createPivotingExpressions(cartesianProduct);
+            // expressions with selections
+            List<Selection<?>> pivotingSelections = columnNamesToExpression.entrySet().stream()
+                    .map(entry -> entry.getValue().alias(entry.getKey()))
+                    .collect(Collectors.toList());
+            // result fields are column names
+            List<String> pivotingResultFields = new ArrayList<>(columnNamesToExpression.keySet());
+            
+            pivotingContext.setPivotValues(pivotValues);
+            pivotingContext.setPivotPairs(pivotPairs);
+            pivotingContext.setCartesianProduct(cartesianProduct);
+            pivotingContext.setColumnNamesToExpression(columnNamesToExpression);
+            pivotingContext.setPivotingSelections(pivotingSelections);
+            pivotingContext.setPivotingResultFields(pivotingResultFields);
         }
 
         return pivotingContext;
     }
+    
+    private Map<String, Expression<?>> createPivotingExpressions(List<List<Pair<String, Object>>> cartesianProduct) {
+        Map<String, Expression<?>> pivotingExpressions = new LinkedHashMap<>();
+        
+        cartesianProduct.forEach(pairs -> {
+            
+            String alias = pairs.stream()
+                    .map(Pair::getValue)
+                    .map(value -> {
+                        if (value instanceof LocalDate) {
+                            return ((LocalDate) value).format(DateTimeFormatter.ISO_LOCAL_DATE);
+                        } else if (value instanceof LocalDateTime) {
+                            return ((LocalDateTime) value).format(DateTimeFormatter.ISO_LOCAL_DATE);
+                        } else {
+                            return String.valueOf(value);
+                        }
+                    })
+                    .collect(Collectors.joining(this.serverSidePivotResultFieldSeparator));
 
-    private List<String> createPivotResultFields(List<List<Pair<String, Object>>> cartesianProduct) {
-        return cartesianProduct.stream()
-                .flatMap(pairs -> {
+            this.request.getValueCols()
+                    .forEach(columnVO -> {
 
-                    String alias = pairs.stream()
-                            .map(Pair::getValue)
-                            .map(value -> {
-                                if (value instanceof LocalDate) {
-                                    return ((LocalDate) value).format(DateTimeFormatter.ISO_LOCAL_DATE);
-                                } else if (value instanceof LocalDateTime) {
-                                    return ((LocalDateTime) value).format(DateTimeFormatter.ISO_LOCAL_DATE);
-                                } else {
-                                    return String.valueOf(value);
-                                }
-                            })
-                            .collect(Collectors.joining(this.serverSidePivotResultFieldSeparator));
+                        Path<?> field = this.root.get(columnVO.getField());
 
-                    return this.request.getValueCols()
-                            .stream()
-                            .map(columnVO -> alias + this.serverSidePivotResultFieldSeparator + columnVO.getField());
-                })
-                .collect(Collectors.toList());
+                        CriteriaBuilder.Case<?> caseExpression = null;
+                        for (Pair<String, Object> pair : pairs) {
+                            if (caseExpression == null) {
+                                caseExpression = this.cb.selectCase()
+                                        .when(this.cb.equal(this.root.get(pair.getKey()), pair.getValue()), field);
+                            } else {
+                                caseExpression = this.cb.selectCase()
+                                        .when(this.cb.equal(this.root.get(pair.getKey()), pair.getValue()), caseExpression);
+                            }
+                        }
+                        Objects.requireNonNull(caseExpression);
+
+                        // wrap case expression onto aggregation
+                        Expression<?> aggregatedField;
+                        switch (columnVO.getAggFunc()) {
+                            case avg: {
+                                aggregatedField = this.cb.avg((Expression<? extends Number>) caseExpression);
+                                break;
+                            }
+                            case sum: {
+                                aggregatedField = this.cb.sum((Expression<? extends Number>) caseExpression);
+                                break;
+                            }
+                            case min: {
+                                aggregatedField = this.cb.least((Expression) caseExpression);
+                                break;
+                            }
+                            case max: {
+                                aggregatedField = this.cb.greatest((Expression) caseExpression);
+                                break;
+                            }
+                            case count: {
+                                aggregatedField = this.cb.count(caseExpression);
+                                break;
+                            }
+                            default: {
+                                throw new IllegalArgumentException("unsupported aggregation function: " + columnVO.getAggFunc());
+                            }
+                        }
+
+                        String columnName = alias + this.serverSidePivotResultFieldSeparator + columnVO.getField();
+                        pivotingExpressions.put(columnName, aggregatedField);
+                    });
+        });
+        
+        return pivotingExpressions;
     }
+
 
     /**
      * For each pivoting column fetch distinct values
@@ -137,84 +202,6 @@ public class PivotingContextHelper<E> {
         }
 
         return pivotPairs;
-    }
-
-
-    /**
-     * Creates Selections from cartesian product of pivot pairs
-     * @param cartesianProduct  cartesian product of pivot pairs
-     * @return                  list of selections
-     */
-    private List<Selection<?>> createPivotingSelections(List<List<Pair<String, Object>>> cartesianProduct) {
-        // each pivot column with pair with pivot value
-        return cartesianProduct
-                .stream()
-                .flatMap(pairs -> {
-
-                    String alias = pairs.stream()
-                            .map(Pair::getValue)
-                            .map(value -> {
-                                if (value instanceof LocalDate) {
-                                    return ((LocalDate) value).format(DateTimeFormatter.ISO_LOCAL_DATE);
-                                } else if (value instanceof LocalDateTime) {
-                                    return ((LocalDateTime) value).format(DateTimeFormatter.ISO_LOCAL_DATE);
-                                } else {
-                                    return String.valueOf(value);
-                                }
-                            })
-                            .collect(Collectors.joining(this.serverSidePivotResultFieldSeparator));
-
-
-                    return this.request.getValueCols()
-                            .stream()
-                            .map(columnVO -> {
-
-                                Path<?> field = this.root.get(columnVO.getField());
-
-                                CriteriaBuilder.Case<?> caseExpression = null;
-                                for (Pair<String, Object> pair : pairs) {
-                                    if (caseExpression == null) {
-                                        caseExpression = this.cb.selectCase()
-                                                .when(this.cb.equal(this.root.get(pair.getKey()), pair.getValue()), field);
-                                    } else {
-                                        caseExpression = this.cb.selectCase()
-                                                .when(this.cb.equal(this.root.get(pair.getKey()), pair.getValue()), caseExpression);
-                                    }
-                                }
-                                Objects.requireNonNull(caseExpression);
-
-                                // wrap case expression onto aggregation
-                                Expression<?> aggregatedField;
-                                switch (columnVO.getAggFunc()) {
-                                    case avg: {
-                                        aggregatedField = this.cb.avg((Expression<? extends Number>) caseExpression);
-                                        break;
-                                    }
-                                    case sum: {
-                                        aggregatedField = this.cb.sum((Expression<? extends Number>) caseExpression);
-                                        break;
-                                    }
-                                    case min: {
-                                        aggregatedField = this.cb.least((Expression) caseExpression);
-                                        break;
-                                    }
-                                    case max: {
-                                        aggregatedField = this.cb.greatest((Expression) caseExpression);
-                                        break;
-                                    }
-                                    case count: {
-                                        aggregatedField = this.cb.count(caseExpression);
-                                        break;
-                                    }
-                                    default: {
-                                        throw new IllegalArgumentException("unsupported aggregation function: " + columnVO.getAggFunc());
-                                    }
-                                }
-
-                                return aggregatedField.alias(alias + this.serverSidePivotResultFieldSeparator + columnVO.getField());
-                            });
-                })
-                .collect(Collectors.toList());
     }
 
 

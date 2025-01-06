@@ -1,6 +1,7 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.simple;
 
 import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 
@@ -27,6 +28,19 @@ public class MultiFilter extends ColumnFilter {
                     .map(f -> f.toPredicate(cb, root, columnName))
                     .collect(Collectors.toList());
         
+        return cb.and(predicates.toArray(new Predicate[0]));
+    }
+
+    @Override
+    public Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression) {
+        List<Predicate> predicates = this.filterModels == null
+                ? Collections.emptyList()
+                : this.filterModels
+                    .stream()
+                    .filter(Objects::nonNull)
+                    .map(f -> f.toPredicate(cb, expression))
+                    .collect(Collectors.toList());
+
         return cb.and(predicates.toArray(new Predicate[0]));
     }
 

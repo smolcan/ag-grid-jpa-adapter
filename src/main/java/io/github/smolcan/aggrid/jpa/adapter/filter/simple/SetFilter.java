@@ -23,14 +23,24 @@ public class SetFilter extends ColumnFilter {
         }
         
         Path<?> path = root.get(columnName);
+        return this.toPredicate(cb, path);
+    }
+
+    @Override
+    public Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression) {
+        if (this.values.isEmpty()) {
+            // empty values, FALSE predicate
+            return cb.disjunction();
+        }
+
         Expression<?> expr = null;
         List<Object> values = new ArrayList<>(this.values.size());
         for (String value : this.values) {
-            var syncResult = TypeValueSynchronizer.synchronizeTypes(path, value);
-            expr = syncResult.getSynchronizedPath(); 
+            var syncResult = TypeValueSynchronizer.synchronizeTypes(expression, value);
+            expr = syncResult.getSynchronizedPath();
             values.add(syncResult.getSynchronizedValue());
         }
-        
+
         return Objects.requireNonNull(expr).in(values);
     }
 

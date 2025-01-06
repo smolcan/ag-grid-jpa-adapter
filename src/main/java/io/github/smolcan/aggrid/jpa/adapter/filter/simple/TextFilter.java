@@ -1,9 +1,6 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.simple;
 
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.Path;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.*;
 
 public class TextFilter extends ColumnFilter {
     
@@ -17,47 +14,53 @@ public class TextFilter extends ColumnFilter {
 
     @Override
     public Predicate toPredicate(CriteriaBuilder cb, Root<?> root, String columnName) {
-        Predicate predicate;
-        
         Path<String> path = root.get(columnName);
+        return this.toPredicate(cb, path);
+    }
+
+    @Override
+    public Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression) {
+        Predicate predicate;
+
+        Expression<String> stringExpression = expression.as(String.class);
         switch (this.type) {
             case empty: case blank: {
-                predicate = cb.or(cb.isNull(path), cb.equal(path, ""));
+                predicate = cb.or(cb.isNull(stringExpression), cb.equal(stringExpression, ""));
                 break;
             }
             case notBlank: {
-                predicate = cb.and(cb.isNotNull(path), cb.notEqual(path, ""));
+                predicate = cb.and(cb.isNotNull(stringExpression), cb.notEqual(stringExpression, ""));
                 break;
             }
             case equals: {
-                predicate = cb.equal(path, filter);
+                predicate = cb.equal(stringExpression, filter);
                 break;
             }
             case notEqual: {
-                predicate = cb.notEqual(path, filter);
+                predicate = cb.notEqual(stringExpression, filter);
                 break;
             }
             case contains: {
-                predicate = cb.like(path, "%" + filter + "%");
+                predicate = cb.like(stringExpression, "%" + filter + "%");
                 break;
             }
             case notContains: {
-                predicate = cb.notLike(path, "%" + filter + "%");
+                predicate = cb.notLike(stringExpression, "%" + filter + "%");
                 break;
             }
             case startsWith: {
-                predicate = cb.like(path, filter + "%");
+                predicate = cb.like(stringExpression, filter + "%");
                 break;
             }
             case endsWith: {
-                predicate = cb.like(path, "%" + filter);
+                predicate = cb.like(stringExpression, "%" + filter);
                 break;
             }
             default: {
                 throw new IllegalStateException("Unexpected value: " + this.type);
             }
         }
-        
+
         return predicate;
     }
 

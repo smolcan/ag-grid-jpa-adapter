@@ -17,53 +17,61 @@ public class NumberFilter extends ColumnFilter {
 
     @Override
     public Predicate toPredicate(CriteriaBuilder cb, Root<?> root, String columnName) {
+        // ensuring number compatibility
+        // comparing any number types without problem, cast both to big decimal
+        Expression<BigDecimal> path = root.get(columnName).as(BigDecimal.class);
+        return this.toPredicate(cb, path);
+    }
+
+    @Override
+    public Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression) {
         Predicate predicate;
 
         // ensuring number compatibility
         // comparing any number types without problem, cast both to big decimal
-        Expression<BigDecimal> path = root.get(columnName).as(BigDecimal.class);
+        Expression<BigDecimal> numberExpression = expression.as(BigDecimal.class);
         switch (this.type) {
             case empty: case blank: {
-                predicate = cb.isNull(path);
+                predicate = cb.isNull(numberExpression);
                 break;
             }
             case notBlank: {
-                predicate = cb.isNotNull(path);
+                predicate = cb.isNotNull(numberExpression);
                 break;
             }
             case equals: {
-                predicate = cb.equal(path, this.filter);
+                predicate = cb.equal(numberExpression, this.filter);
                 break;
             }
             case notEqual: {
-                predicate = cb.notEqual(path, this.filter);
+                predicate = cb.notEqual(numberExpression, this.filter);
                 break;
             }
             case lessThan: {
-                predicate = cb.lt(path, this.filter);
+                predicate = cb.lt(numberExpression, this.filter);
                 break;
             }
             case lessThanOrEqual: {
-                predicate = cb.le(path, this.filter);
+                predicate = cb.le(numberExpression, this.filter);
                 break;
             }
             case greaterThan: {
-                predicate = cb.gt(path, this.filter);
+                predicate = cb.gt(numberExpression, this.filter);
                 break;
             }
             case greaterThanOrEqual: {
-                predicate = cb.ge(path, this.filter);
+                predicate = cb.ge(numberExpression, this.filter);
                 break;
             }
             case inRange: {
-                predicate = cb.and(cb.ge(path, this.filter), cb.le(path, this.filterTo));
+                predicate = cb.and(cb.ge(numberExpression, this.filter), cb.le(numberExpression, this.filterTo));
                 break;
             }
             default: {
                 throw new IllegalStateException("Unexpected value: " + this.type);
             }
         }
-        
+
         return predicate;
     }
 
