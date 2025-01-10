@@ -1,5 +1,6 @@
 package io.github.smolcan.aggrid.jpa.adapter.utils.pivoting;
 
+import io.github.smolcan.aggrid.jpa.adapter.exceptions.OnPivotMaxColumnsExceededException;
 import io.github.smolcan.aggrid.jpa.adapter.request.ColumnVO;
 import io.github.smolcan.aggrid.jpa.adapter.request.ServerSideGetRowsRequest;
 import io.github.smolcan.aggrid.jpa.adapter.utils.Pair;
@@ -20,20 +21,22 @@ public class PivotingContextHelper<E> {
     private final Root<E> root;
     private final ServerSideGetRowsRequest request;
     private final String serverSidePivotResultFieldSeparator;
+    private final Integer pivotMaxGeneratedColumns;
 
-    public PivotingContextHelper(Class<E> entityClass, EntityManager entityManager, CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, String serverSidePivotResultFieldSeparator) {
+    public PivotingContextHelper(Class<E> entityClass, EntityManager entityManager, CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, String serverSidePivotResultFieldSeparator, Integer pivotMaxGeneratedColumns) {
         this.entityClass = entityClass;
         this.entityManager = entityManager;
         this.cb = cb;
         this.root = root;
         this.request = request;
         this.serverSidePivotResultFieldSeparator = serverSidePivotResultFieldSeparator;
+        this.pivotMaxGeneratedColumns = pivotMaxGeneratedColumns;
     }
 
     /**
      * Creates pivoting context object to hold all the info about pivoting
      */
-    public PivotingContext createPivotingContext() {
+    public PivotingContext createPivotingContext() throws OnPivotMaxColumnsExceededException {
         
         PivotingContext pivotingContext = new PivotingContext();
         if (!this.request.isPivotMode() || this.request.getPivotCols().isEmpty()) {
@@ -44,6 +47,13 @@ public class PivotingContextHelper<E> {
 
             // distinct values for pivoting
             Map<String, List<Object>> pivotValues = this.getPivotValues();
+            // check max column limit
+            if (this.pivotMaxGeneratedColumns != null) {
+                int generatedColumns = this.countGeneratedColumns(pivotValues);
+                if (generatedColumns > this.pivotMaxGeneratedColumns) {
+                    throw new OnPivotMaxColumnsExceededException(this.pivotMaxGeneratedColumns, generatedColumns);
+                }
+            }
             // pair pivot columns with values
             List<Set<Pair<String, Object>>> pivotPairs = this.createPivotPairs(pivotValues);
             // cartesian product of pivot pairs
@@ -202,6 +212,10 @@ public class PivotingContextHelper<E> {
         }
 
         return pivotPairs;
+    }
+    
+    private int countGeneratedColumns(Map<String, List<Object>> pivotValues) {
+        return pivotValues.values().stream().map(List::size).reduce(1, (a, b) -> a * b);
     }
 
 

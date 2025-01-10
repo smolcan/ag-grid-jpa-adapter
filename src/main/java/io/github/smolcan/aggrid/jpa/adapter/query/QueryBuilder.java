@@ -1,5 +1,6 @@
 package io.github.smolcan.aggrid.jpa.adapter.query;
 
+import io.github.smolcan.aggrid.jpa.adapter.exceptions.OnPivotMaxColumnsExceededException;
 import io.github.smolcan.aggrid.jpa.adapter.filter.JoinOperator;
 import io.github.smolcan.aggrid.jpa.adapter.filter.advanced.JoinAdvancedFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.filter.advanced.column.*;
@@ -42,6 +43,7 @@ public class QueryBuilder<E> {
     
     private String serverSidePivotResultFieldSeparator = DEFAULT_SERVER_SIDE_PIVOT_RESULT_FIELD_SEPARATOR;
     private boolean groupAggFiltering;
+    private Integer pivotMaxGeneratedColumns;
 
     // List of custom filter recognizers for user-defined filters in AG Grid.
     // 
@@ -123,7 +125,11 @@ public class QueryBuilder<E> {
         this.groupAggFiltering = groupAggFiltering;
         return this;
     }
-
+    
+    public QueryBuilder<E> setPivotMaxGeneratedColumns(Integer pivotMaxGeneratedColumns) {
+        this.pivotMaxGeneratedColumns = pivotMaxGeneratedColumns;
+        return this;
+    }
 
     /**
      * Processes a server-side request to fetch rows and returns the result wrapped in a {@link LoadSuccessParams} object.
@@ -141,14 +147,14 @@ public class QueryBuilder<E> {
      *                This request defines the criteria for fetching rows.
      * @return A {@link LoadSuccessParams} object containing the retrieved row data mapped to a format suitable for AG Grid.
      */
-    public LoadSuccessParams getRows(ServerSideGetRowsRequest request) {
+    public LoadSuccessParams getRows(ServerSideGetRowsRequest request) throws OnPivotMaxColumnsExceededException {
         CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
 
         CriteriaQuery<Tuple> query = cb.createTupleQuery();
         Root<E> root = query.from(this.entityClass);
 
         // if pivoting, load all information needed for pivoting into pivoting context
-        PivotingContext pivotingContext = new PivotingContextHelper<>(this.entityClass, this.entityManager, cb, root, request, this.serverSidePivotResultFieldSeparator).createPivotingContext();
+        PivotingContext pivotingContext = new PivotingContextHelper<>(this.entityClass, this.entityManager, cb, root, request, this.serverSidePivotResultFieldSeparator, this.pivotMaxGeneratedColumns).createPivotingContext();
         
         this.select(cb, query, root, request, pivotingContext);
         this.where(cb, query, root, request, pivotingContext);
