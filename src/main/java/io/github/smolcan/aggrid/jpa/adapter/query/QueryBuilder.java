@@ -466,6 +466,9 @@ public class QueryBuilder<E> {
      * columnName: {filterModel}
      */
     private boolean isColumnFilter(Map<String, Object> filterModel) {
+        if (filterModel == null) {
+            return false;
+        }
         return filterModel.values().stream().allMatch(v -> v instanceof Map);
     }
 
