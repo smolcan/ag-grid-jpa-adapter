@@ -47,13 +47,6 @@ public class PivotingContextHelper<E> {
 
             // distinct values for pivoting
             Map<String, List<Object>> pivotValues = this.getPivotValues();
-            // check max column limit
-            if (this.pivotMaxGeneratedColumns != null) {
-                int generatedColumns = this.countGeneratedColumns(pivotValues);
-                if (generatedColumns > this.pivotMaxGeneratedColumns) {
-                    throw new OnPivotMaxColumnsExceededException(this.pivotMaxGeneratedColumns, generatedColumns);
-                }
-            }
             // pair pivot columns with values
             List<Set<Pair<String, Object>>> pivotPairs = this.createPivotPairs(pivotValues);
             // cartesian product of pivot pairs
@@ -149,28 +142,41 @@ public class PivotingContextHelper<E> {
         return pivotingExpressions;
     }
 
-
     /**
      * For each pivoting column fetch distinct values
      * @return map where key is column name and value is distinct column values
+     * @throws OnPivotMaxColumnsExceededException when number of columns to be generated from pivot values is bigger than limit
      */
-    private Map<String, List<Object>> getPivotValues() {
+    private Map<String, List<Object>> getPivotValues() throws OnPivotMaxColumnsExceededException {
         Map<String, List<Object>> pivotValues = new LinkedHashMap<>();
+        Integer numberOfPivotCols = null;
         for (ColumnVO column : this.request.getPivotCols()) {
             String field = column.getField();
 
-            CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
-            CriteriaQuery<Object> query = cb.createQuery(Object.class);
+            CriteriaQuery<Object> query = this.cb.createQuery(Object.class);
             Root<E> root = query.from(this.entityClass);
 
             // select
             query.multiselect(root.get(field)).distinct(true);
-            query.orderBy(cb.asc(root.get(field)));
+            query.orderBy(this.cb.asc(root.get(field)));
 
             // result
             List<Object> result = this.entityManager.createQuery(query).getResultList();
-
             pivotValues.put(field, result);
+
+            // check if number of generated columns did not exceed the limit
+            if (this.pivotMaxGeneratedColumns != null) {
+                int numberOfDistinctValues = result.size();
+                if (numberOfPivotCols == null) {
+                    numberOfPivotCols = numberOfDistinctValues;
+                } else {
+                    numberOfPivotCols *= numberOfDistinctValues;
+                }
+                if (numberOfPivotCols > this.pivotMaxGeneratedColumns) {
+                    throw new OnPivotMaxColumnsExceededException(this.pivotMaxGeneratedColumns, numberOfDistinctValues);
+                }
+            }
+            
         }
 
         return pivotValues;
@@ -214,11 +220,6 @@ public class PivotingContextHelper<E> {
         return pivotPairs;
     }
     
-    private int countGeneratedColumns(Map<String, List<Object>> pivotValues) {
-        return pivotValues.values().stream().map(List::size).reduce(1, (a, b) -> a * b);
-    }
-
-
     private static <T> List<List<T>> cartesianProduct(List<Set<T>> sets) {
         return _cartesianProduct(0, sets);
     }
