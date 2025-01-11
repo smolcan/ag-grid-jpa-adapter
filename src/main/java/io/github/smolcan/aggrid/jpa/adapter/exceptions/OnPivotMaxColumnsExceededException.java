@@ -2,9 +2,9 @@ package io.github.smolcan.aggrid.jpa.adapter.exceptions;
 
 public class OnPivotMaxColumnsExceededException extends Exception {
     private final int limit;
-    private final int actualColumns;
+    private final long actualColumns;
     
-    public OnPivotMaxColumnsExceededException(int limit, int actualColumns) {
+    public OnPivotMaxColumnsExceededException(int limit, long actualColumns) {
         super(String.format("Pivot max columns exceeded, limit: %d, actual columns: %d", limit, actualColumns));
         this.limit = limit;
         this.actualColumns = actualColumns;
@@ -14,7 +14,7 @@ public class OnPivotMaxColumnsExceededException extends Exception {
         return this.limit;
     }
 
-    public int getActualColumns() {
+    public long getActualColumns() {
         return this.actualColumns;
     }
 }

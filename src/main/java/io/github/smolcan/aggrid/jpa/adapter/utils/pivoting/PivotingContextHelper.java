@@ -35,6 +35,7 @@ public class PivotingContextHelper<E> {
 
     /**
      * Creates pivoting context object to hold all the info about pivoting
+     * @throws OnPivotMaxColumnsExceededException when number of columns to be generated from pivot values is bigger than limit  
      */
     public PivotingContext createPivotingContext() throws OnPivotMaxColumnsExceededException {
         
@@ -44,6 +45,14 @@ public class PivotingContextHelper<E> {
             pivotingContext.setPivoting(false);
         } else {
             pivotingContext.setPivoting(true);
+
+            // check if number of generated columns did not exceed the limit
+            if (this.pivotMaxGeneratedColumns != null) {
+                long numberOfPivotColumns = this.countPivotColumnsToBeGenerated();
+                if (numberOfPivotColumns > this.pivotMaxGeneratedColumns) {
+                    throw new OnPivotMaxColumnsExceededException(this.pivotMaxGeneratedColumns, numberOfPivotColumns);
+                }
+            }
 
             // distinct values for pivoting
             Map<String, List<Object>> pivotValues = this.getPivotValues();
@@ -143,13 +152,44 @@ public class PivotingContextHelper<E> {
     }
 
     /**
+     * Calculates the product of the distinct counts of all pivot columns in a single query using the Criteria API.
+     * <p>
+     * This method dynamically constructs a query that computes the product of distinct counts for all fields specified 
+     * as pivot columns in the current request. It uses subqueries to calculate the distinct count for each field and 
+     * combines them into a single product expression.
+     * </p>
+     *
+     * @return The product of distinct counts for all pivot columns.
+     *         Returns 0 if pivot mode is disabled or no pivot columns are defined in the request.
+     */
+    private long countPivotColumnsToBeGenerated() {
+        if (!this.request.isPivotMode() || this.request.getPivotCols().isEmpty()) {
+            return 0;
+        }
+
+        CriteriaQuery<Long> mainQuery = this.cb.createQuery(Long.class);
+
+        Expression<Long> productExpression = this.cb.literal(1L);
+        for (ColumnVO pivotCol : this.request.getPivotCols()) {
+            // Subquery for count(distinct <field>)
+            Subquery<Long> subquery = mainQuery.subquery(Long.class);
+            Root<E> subRoot = subquery.from(this.entityClass);
+            subquery.select(this.cb.countDistinct(subRoot.get(pivotCol.getField())));
+
+            productExpression = this.cb.prod(productExpression, subquery.getSelection());
+        }
+
+        mainQuery.select(productExpression);
+
+        return this.entityManager.createQuery(mainQuery).getSingleResult();
+    }
+
+    /**
      * For each pivoting column fetch distinct values
      * @return map where key is column name and value is distinct column values
-     * @throws OnPivotMaxColumnsExceededException when number of columns to be generated from pivot values is bigger than limit
      */
-    private Map<String, List<Object>> getPivotValues() throws OnPivotMaxColumnsExceededException {
+    private Map<String, List<Object>> getPivotValues() {
         Map<String, List<Object>> pivotValues = new LinkedHashMap<>();
-        Integer numberOfPivotCols = null;
         for (ColumnVO column : this.request.getPivotCols()) {
             String field = column.getField();
 
@@ -163,20 +203,6 @@ public class PivotingContextHelper<E> {
             // result
             List<Object> result = this.entityManager.createQuery(query).getResultList();
             pivotValues.put(field, result);
-
-            // check if number of generated columns did not exceed the limit
-            if (this.pivotMaxGeneratedColumns != null) {
-                int numberOfDistinctValues = result.size();
-                if (numberOfPivotCols == null) {
-                    numberOfPivotCols = numberOfDistinctValues;
-                } else {
-                    numberOfPivotCols *= numberOfDistinctValues;
-                }
-                if (numberOfPivotCols > this.pivotMaxGeneratedColumns) {
-                    throw new OnPivotMaxColumnsExceededException(this.pivotMaxGeneratedColumns, numberOfPivotCols);
-                }
-            }
-            
         }
 
         return pivotValues;
