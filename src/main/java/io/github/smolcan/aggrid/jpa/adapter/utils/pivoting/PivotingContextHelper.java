@@ -173,7 +173,7 @@ public class PivotingContextHelper<E> {
                     numberOfPivotCols *= numberOfDistinctValues;
                 }
                 if (numberOfPivotCols > this.pivotMaxGeneratedColumns) {
-                    throw new OnPivotMaxColumnsExceededException(this.pivotMaxGeneratedColumns, numberOfDistinctValues);
+                    throw new OnPivotMaxColumnsExceededException(this.pivotMaxGeneratedColumns, numberOfPivotCols);
                 }
             }
             
