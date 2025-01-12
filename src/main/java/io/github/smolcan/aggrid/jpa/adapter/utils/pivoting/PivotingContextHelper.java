@@ -189,7 +189,7 @@ public class PivotingContextHelper<E> {
      * @return map where key is column name and value is distinct column values
      */
     private Map<String, List<Object>> getPivotValues() {
-        Map<String, List<Object>> pivotValues = new LinkedHashMap<>();
+        Map<String, List<Object>> pivotValues = new LinkedHashMap<>(this.request.getPivotCols().size());
         for (ColumnVO column : this.request.getPivotCols()) {
             String field = column.getField();
 
@@ -229,12 +229,12 @@ public class PivotingContextHelper<E> {
      * @return              pivot pairs
      */
     private List<Set<Pair<String, Object>>> createPivotPairs(Map<String, List<Object>> pivotValues) {
-        List<Set<Pair<String, Object>>> pivotPairs = new ArrayList<>();
+        List<Set<Pair<String, Object>>> pivotPairs = new ArrayList<>(pivotValues.size());
         for (var entry : pivotValues.entrySet()) {
             String column = entry.getKey();
             List<Object> values = entry.getValue();
 
-            Set<Pair<String, Object>> pairs = new LinkedHashSet<>();
+            Set<Pair<String, Object>> pairs = new LinkedHashSet<>(values.size());
             for (Object value : values) {
                 pairs.add(Pair.of(column, value));
             }
