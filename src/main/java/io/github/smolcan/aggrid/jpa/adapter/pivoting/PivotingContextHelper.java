@@ -1,4 +1,4 @@
-package io.github.smolcan.aggrid.jpa.adapter.utils.pivoting;
+package io.github.smolcan.aggrid.jpa.adapter.pivoting;
 
 import io.github.smolcan.aggrid.jpa.adapter.exceptions.OnPivotMaxColumnsExceededException;
 import io.github.smolcan.aggrid.jpa.adapter.request.ColumnVO;
