@@ -40,10 +40,9 @@ public class QueryBuilder<E> {
     
     private final Class<E> entityClass;
     private final EntityManager entityManager;
-    
-    private String serverSidePivotResultFieldSeparator = DEFAULT_SERVER_SIDE_PIVOT_RESULT_FIELD_SEPARATOR;
-    private boolean groupAggFiltering;
-    private Integer pivotMaxGeneratedColumns;
+    private final String serverSidePivotResultFieldSeparator;
+    private final boolean groupAggFiltering;
+    private final Integer pivotMaxGeneratedColumns;
 
     // List of custom filter recognizers for user-defined filters in AG Grid.
     // 
@@ -56,80 +55,28 @@ public class QueryBuilder<E> {
     // The system first attempts to recognize the filter as a default column filter.
     // If not found, it iterates through all custom recognizers and applies the first one that returns a non-null result.
     // IMPORTANT: do not throw any exception from your recognizer, just return mapped filter or null
-    private final List<Function<Map<String, Object>, ColumnFilter>> customColumnFilterRecognizers = new ArrayList<>();
+    private final List<Function<Map<String, Object>, ColumnFilter>> customColumnFilterRecognizers;
     
+    public static <E> Builder<E> builder(Class<E> entityClass, EntityManager entityManager) {
+        return new Builder<>(entityClass, entityManager);
+    }
     
-    public QueryBuilder(Class<E> entityClass, EntityManager entityManager) {
+    private QueryBuilder(
+            Class<E> entityClass, 
+            EntityManager entityManager,
+            String serverSidePivotResultFieldSeparator,
+            boolean groupAggFiltering,
+            Integer pivotMaxGeneratedColumns,
+            List<Function<Map<String, Object>, ColumnFilter>> customColumnFilterRecognizers
+    ) {
         this.entityClass = entityClass;
         this.entityManager = entityManager;
-    }
-
-    /**
-     * Registers a single custom column filter recognizer.
-     * <p>
-     * A recognizer is a function that inspects a filter represented as a map and determines whether
-     * it matches a custom filter implementation. If recognized, the function should return a concrete
-     * implementation of {@link ColumnFilter}. Otherwise, it should return {@code null}.
-     *
-     * @param recognizerFunction A function that attempts to recognize and convert a map into a {@link ColumnFilter}.
-     *                           Must not be {@code null}.
-     * @return The current {@link QueryBuilder} instance for method chaining.
-     * @throws NullPointerException If the {@code recognizerFunction} is {@code null}.
-     */
-    public QueryBuilder<E> registerCustomColumnFilterRecognizer(Function<Map<String, Object>, ColumnFilter> recognizerFunction) {
-        this.customColumnFilterRecognizers.add(Objects.requireNonNull(recognizerFunction));
-        return this;
-    }
-
-    /**
-     * Registers multiple custom column filter recognizers as varargs.
-     * <p>
-     * Each recognizer function inspects a filter represented as a map and determines whether
-     * it matches a custom filter implementation. If recognized, the function should return a concrete
-     * implementation of {@link ColumnFilter}. Otherwise, it should return {@code null}.
-     *
-     * @param recognizerFunctions Varargs of functions that attempt to recognize and convert maps into {@link ColumnFilter} implementations.
-     *                            Must not be {@code null}.
-     * @return The current {@link QueryBuilder} instance for method chaining.
-     * @throws NullPointerException If the {@code recognizerFunctions} array or any of its elements is {@code null}.
-     */
-    public QueryBuilder<E> registerCustomColumnFilterRecognizers(Function<Map<String, Object>, ColumnFilter>... recognizerFunctions) {
-        this.customColumnFilterRecognizers.addAll(Objects.requireNonNull(Arrays.asList(recognizerFunctions)));
-        return this;
-    }
-
-    
-    /**
-     * Registers a list of custom column filter recognizers.
-     * <p>
-     * Each recognizer function inspects a filter represented as a map and determines whether
-     * it matches a custom filter implementation. If recognized, the function should return a concrete
-     * implementation of {@link ColumnFilter}. Otherwise, it should return {@code null}.
-     *
-     * @param recognizerFunctions A list of functions that attempt to recognize and convert maps into {@link ColumnFilter} implementations.
-     *                            Must not be {@code null}.
-     * @return The current {@link QueryBuilder} instance for method chaining.
-     * @throws NullPointerException If the {@code recognizerFunctions} list or any of its elements is {@code null}.
-     */
-    public QueryBuilder<E> registerCustomColumnFilterRecognizers(List<Function<Map<String, Object>, ColumnFilter>> recognizerFunctions) {
-        this.customColumnFilterRecognizers.addAll(Objects.requireNonNull(recognizerFunctions));
-        return this;
-    }
-    
-    public QueryBuilder<E> setServerSidePivotResultFieldSeparator(String serverSidePivotResultFieldSeparator) {
-        this.serverSidePivotResultFieldSeparator = Objects.requireNonNull(serverSidePivotResultFieldSeparator);
-        return this;
-    }
-    
-    public QueryBuilder<E> setGroupAggFiltering(boolean groupAggFiltering) {
+        this.serverSidePivotResultFieldSeparator = serverSidePivotResultFieldSeparator;
         this.groupAggFiltering = groupAggFiltering;
-        return this;
-    }
-    
-    public QueryBuilder<E> setPivotMaxGeneratedColumns(Integer pivotMaxGeneratedColumns) {
         this.pivotMaxGeneratedColumns = pivotMaxGeneratedColumns;
-        return this;
+        this.customColumnFilterRecognizers = customColumnFilterRecognizers;
     }
+
 
     /**
      * Processes a server-side request to fetch rows and returns the result wrapped in a {@link LoadSuccessParams} object.
@@ -694,6 +641,100 @@ public class QueryBuilder<E> {
                 }
                 default: throw new UnsupportedOperationException("Unsupported advanced filter type: " + filterType);
             }
+        }
+    }
+
+    
+    public static class Builder<E> {
+        private final Class<E> entityClass;
+        private final EntityManager entityManager;
+
+        private String serverSidePivotResultFieldSeparator = DEFAULT_SERVER_SIDE_PIVOT_RESULT_FIELD_SEPARATOR;
+        private boolean groupAggFiltering;
+        private Integer pivotMaxGeneratedColumns;
+
+        private final List<Function<Map<String, Object>, ColumnFilter>> customColumnFilterRecognizers = new ArrayList<>();
+
+        private Builder(Class<E> entityClass, EntityManager entityManager) {
+            this.entityClass = entityClass;
+            this.entityManager = entityManager;
+        }
+
+        public Builder<E> serverSidePivotResultFieldSeparator(String separator) {
+            this.serverSidePivotResultFieldSeparator = Objects.requireNonNull(separator);
+            return this;
+        }
+
+        public Builder<E> groupAggFiltering(boolean groupAggFiltering) {
+            this.groupAggFiltering = groupAggFiltering;
+            return this;
+        }
+
+        public Builder<E> pivotMaxGeneratedColumns(Integer pivotMaxGeneratedColumns) {
+            this.pivotMaxGeneratedColumns = pivotMaxGeneratedColumns;
+            return this;
+        }
+
+        /**
+         * Registers a single custom column filter recognizer.
+         * <p>
+         * A recognizer is a function that inspects a filter represented as a map and determines whether
+         * it matches a custom filter implementation. If recognized, the function should return a concrete
+         * implementation of {@link ColumnFilter}. Otherwise, it should return {@code null}.
+         *
+         * @param recognizerFunction A function that attempts to recognize and convert a map into a {@link ColumnFilter}.
+         *                           Must not be {@code null}.
+         * @return The current {@link QueryBuilder} instance for method chaining.
+         * @throws NullPointerException If the {@code recognizerFunction} is {@code null}.
+         */
+        public Builder<E> addCustomColumnFilterRecognizer(Function<Map<String, Object>, ColumnFilter> recognizerFunction) {
+            this.customColumnFilterRecognizers.add(Objects.requireNonNull(recognizerFunction));
+            return this;
+        }
+
+        /**
+         * Registers multiple custom column filter recognizers as varargs.
+         * <p>
+         * Each recognizer function inspects a filter represented as a map and determines whether
+         * it matches a custom filter implementation. If recognized, the function should return a concrete
+         * implementation of {@link ColumnFilter}. Otherwise, it should return {@code null}.
+         *
+         * @param recognizerFunctions Varargs of functions that attempt to recognize and convert maps into {@link ColumnFilter} implementations.
+         *                            Must not be {@code null}.
+         * @return The current {@link QueryBuilder} instance for method chaining.
+         * @throws NullPointerException If the {@code recognizerFunctions} array or any of its elements is {@code null}.
+         */
+        public Builder<E> addCustomColumnFilterRecognizers(Function<Map<String, Object>, ColumnFilter>... recognizerFunctions) {
+            this.customColumnFilterRecognizers.addAll(Objects.requireNonNull(Arrays.asList(recognizerFunctions)));
+            return this;
+        }
+
+        /**
+         * Registers a list of custom column filter recognizers.
+         * <p>
+         * Each recognizer function inspects a filter represented as a map and determines whether
+         * it matches a custom filter implementation. If recognized, the function should return a concrete
+         * implementation of {@link ColumnFilter}. Otherwise, it should return {@code null}.
+         *
+         * @param recognizerFunctions A list of functions that attempt to recognize and convert maps into {@link ColumnFilter} implementations.
+         *                            Must not be {@code null}.
+         * @return The current {@link QueryBuilder} instance for method chaining.
+         * @throws NullPointerException If the {@code recognizerFunctions} list or any of its elements is {@code null}.
+         */
+        public Builder<E> addCustomColumnFilterRecognizers(List<Function<Map<String, Object>, ColumnFilter>> recognizerFunctions) {
+            this.customColumnFilterRecognizers.addAll(Objects.requireNonNull(recognizerFunctions));
+            return this;
+        }
+
+        public QueryBuilder<E> build() {
+            return new QueryBuilder<>(
+                    this.entityClass,
+                    this.entityManager,
+                    this.serverSidePivotResultFieldSeparator,
+                    this.groupAggFiltering,
+                    this.pivotMaxGeneratedColumns,
+                    this.customColumnFilterRecognizers
+            );
         }
     }
 }
