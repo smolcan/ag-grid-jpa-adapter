@@ -1,6 +1,6 @@
 # **JPA Adapter for AG Grid Server-Side Mode**
 
-A lightweight Maven library for integrating **[AG Grid Server-Side Mode](https://ag-grid.com/angular-data-grid/server-side-model/)** with backend applications using **JPA**. This solution simplifies querying mapped entities for AG Grid and supports advanced server-side operations, including sorting, filtering, pagination, row grouping, and pivoting.
+A lightweight Maven library for integrating **[AG Grid Server-Side Mode](https://ag-grid.com/angular-data-grid/server-side-model/)** with backend applications using **Java Persistence API**. This solution simplifies querying mapped entities for AG Grid and supports advanced server-side operations, including sorting, filtering, pagination, row grouping, and pivoting.
 
 <p align="center">
    <a href="https://smolcan.github.io/ag-grid-jpa-adapter/"><strong>Explore Docs >></strong></a>
