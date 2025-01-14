@@ -661,7 +661,10 @@ public class QueryBuilder<E> {
         }
 
         public Builder<E> serverSidePivotResultFieldSeparator(String separator) {
-            this.serverSidePivotResultFieldSeparator = Objects.requireNonNull(separator);
+            if (separator == null || separator.isEmpty()) {
+                throw new IllegalArgumentException("Server side pivot result field separator cannot be null or empty");
+            }
+            this.serverSidePivotResultFieldSeparator = separator;
             return this;
         }
 
@@ -671,6 +674,9 @@ public class QueryBuilder<E> {
         }
 
         public Builder<E> pivotMaxGeneratedColumns(Integer pivotMaxGeneratedColumns) {
+            if (pivotMaxGeneratedColumns != null && pivotMaxGeneratedColumns <= 0) {
+                throw new IllegalArgumentException("pivot max generated columns must be greater than zero");
+            }
             this.pivotMaxGeneratedColumns = pivotMaxGeneratedColumns;
             return this;
         }
