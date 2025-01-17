@@ -20,7 +20,7 @@ Development will continue for the next 12 months, and significant changes or bre
 <dependency>
     <groupId>io.github.smolcan</groupId>
     <artifactId>ag-grid-jpa-adapter</artifactId>
-    <version>0.0.3</version>
+    <version>0.0.4</version>
 </dependency>
 ```
 **Requirements 🛠️**
@@ -64,7 +64,7 @@ builds the query using **JPA Criteria API**, executes it and returns [LoadSucces
 which you can directly return to the grid.
 ```java title="Java getRows method using QueryBuilder"
 public LoadSuccessParams getRows(ServerSideGetRowsRequest request) {
-    QueryBuilder<YouEntityClass> queryBuilder = new QueryBuilder<>(YouEntityClass.class, entityManager);
+    QueryBuilder<YouEntityClass> queryBuilder = QueryBuilder.builder(YouEntityClass.class, entityManager).build();
     return queryBuilder.getRows(request);
 }
 ```
