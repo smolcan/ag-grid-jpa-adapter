@@ -10,11 +10,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class MultiFilter extends ColumnFilter {
+public class MultiFilterModel extends ProvidedFilterModel {
     
-    private List<ColumnFilter> filterModels = null;
+    private List<ProvidedFilterModel> filterModels = null;
     
-    public MultiFilter() {
+    public MultiFilterModel() {
         super("multi");
     }
 
@@ -44,11 +44,11 @@ public class MultiFilter extends ColumnFilter {
         return cb.and(predicates.toArray(new Predicate[0]));
     }
 
-    public List<ColumnFilter> getFilterModels() {
+    public List<ProvidedFilterModel> getFilterModels() {
         return filterModels;
     }
 
-    public void setFilterModels(List<ColumnFilter> filterModels) {
+    public void setFilterModels(List<ProvidedFilterModel> filterModels) {
         this.filterModels = filterModels;
     }
 }

@@ -6,14 +6,13 @@ import jakarta.persistence.criteria.*;
 import java.math.BigDecimal;
 
 
-public class NumberFilter extends ColumnFilter {
+public class NumberFilterModel extends SimpleFilterModel {
 
-    private SimpleFilterModelType type;
     private BigDecimal filter;
     private BigDecimal filterTo;
     private NumberFilterParams filterParams = NumberFilterParams.builder().build();
     
-    public NumberFilter() {
+    public NumberFilterModel() {
         super("number");
     }
 
@@ -100,14 +99,6 @@ public class NumberFilter extends ColumnFilter {
         }
 
         return predicate;
-    }
-
-    public SimpleFilterModelType getType() {
-        return type;
-    }
-
-    public void setType(SimpleFilterModelType type) {
-        this.type = type;
     }
 
     public BigDecimal getFilter() {

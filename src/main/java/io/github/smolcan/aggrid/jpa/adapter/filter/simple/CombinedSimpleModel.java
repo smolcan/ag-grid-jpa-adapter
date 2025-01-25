@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class CombinedSimpleModel<E extends ColumnFilter> extends ColumnFilter {
+public class CombinedSimpleModel<E extends SimpleFilterModel> extends ProvidedFilterModel {
     
     private JoinOperator operator;
     private List<E> conditions = new ArrayList<>();

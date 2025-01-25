@@ -5,15 +5,14 @@ import jakarta.persistence.criteria.*;
 
 import java.time.LocalDateTime;
 
-public class DateFilter extends ColumnFilter {
+public class DateFilterModelModel extends SimpleFilterModel {
 
-    private SimpleFilterModelType type;
     // YYYY-MM-DD hh:mm:ss
     private LocalDateTime dateFrom;
     private LocalDateTime dateTo;
     private DateFilterParams filterParams = DateFilterParams.builder().build();
     
-    public DateFilter() {
+    public DateFilterModelModel() {
         super("date");
     }
 
@@ -95,14 +94,6 @@ public class DateFilter extends ColumnFilter {
         }
 
         return predicate;
-    }
-
-    public SimpleFilterModelType getType() {
-        return type;
-    }
-
-    public void setType(SimpleFilterModelType type) {
-        this.type = type;
     }
 
     public LocalDateTime getDateFrom() {

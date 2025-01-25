@@ -5,14 +5,13 @@ import jakarta.persistence.criteria.*;
 
 import java.util.Objects;
 
-public class TextFilter extends ColumnFilter {
+public class TextFilterModel extends SimpleFilterModel {
     
-    private SimpleFilterModelType type;
     private String filter;
     private String filterTo;
     private TextFilterParams filterParams = TextFilterParams.builder().build();
     
-    public TextFilter() {
+    public TextFilterModel() {
         super("text");
     }
 
@@ -130,14 +129,6 @@ public class TextFilter extends ColumnFilter {
         }
 
         return predicate;
-    }
-
-    public SimpleFilterModelType getType() {
-        return type;
-    }
-
-    public void setType(SimpleFilterModelType type) {
-        this.type = type;
     }
 
     public String getFilter() {

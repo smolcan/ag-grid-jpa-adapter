@@ -2,13 +2,13 @@ package io.github.smolcan.aggrid.jpa.adapter.filter.simple;
 
 import jakarta.persistence.criteria.*;
 
-public abstract class ColumnFilter {
+public abstract class ProvidedFilterModel {
     private String filterType;
 
-    public ColumnFilter(String filterType) {
+    public ProvidedFilterModel(String filterType) {
         this.filterType = filterType;
     }
-    public ColumnFilter() {
+    public ProvidedFilterModel() {
     }
 
     /**

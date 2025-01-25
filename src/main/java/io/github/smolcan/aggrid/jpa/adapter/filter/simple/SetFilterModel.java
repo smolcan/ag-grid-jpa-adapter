@@ -7,11 +7,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class SetFilter extends ColumnFilter {
+public class SetFilterModel extends ProvidedFilterModel {
     
     public List<String> values = new ArrayList<>();
     
-    public SetFilter() {
+    public SetFilterModel() {
         super("set");
     }
 

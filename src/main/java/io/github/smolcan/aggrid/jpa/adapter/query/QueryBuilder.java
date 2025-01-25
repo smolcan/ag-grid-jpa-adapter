@@ -55,7 +55,7 @@ public class QueryBuilder<E> {
     // The system first attempts to recognize the filter as a default column filter.
     // If not found, it iterates through all custom recognizers and applies the first one that returns a non-null result.
     // IMPORTANT: do not throw any exception from your recognizer, just return mapped filter or null
-    private final List<Function<Map<String, Object>, ColumnFilter>> customColumnFilterRecognizers;
+    private final List<Function<Map<String, Object>, ProvidedFilterModel>> customColumnFilterRecognizers;
     
     public static <E> Builder<E> builder(Class<E> entityClass, EntityManager entityManager) {
         return new Builder<>(entityClass, entityManager);
@@ -67,7 +67,7 @@ public class QueryBuilder<E> {
             String serverSidePivotResultFieldSeparator,
             boolean groupAggFiltering,
             Integer pivotMaxGeneratedColumns,
-            List<Function<Map<String, Object>, ColumnFilter>> customColumnFilterRecognizers
+            List<Function<Map<String, Object>, ProvidedFilterModel>> customColumnFilterRecognizers
     ) {
         this.entityClass = entityClass;
         this.entityManager = entityManager;
@@ -347,8 +347,8 @@ public class QueryBuilder<E> {
                         
                         Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();
 
-                        ColumnFilter columnFilter = this.recognizeColumnFilter(filterMap);
-                        havingPredicates.add(columnFilter.toPredicate(cb, columnExpression));
+                        ProvidedFilterModel providedFilterModel = this.recognizeColumnFilter(filterMap);
+                        havingPredicates.add(providedFilterModel.toPredicate(cb, columnExpression));
                     });
         }
         
@@ -392,8 +392,8 @@ public class QueryBuilder<E> {
                         String columnName = entry.getKey();
                         Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();
 
-                        ColumnFilter columnFilter = this.recognizeColumnFilter(filterMap);
-                        return columnFilter.toPredicate(cb, root, columnName);
+                        ProvidedFilterModel providedFilterModel = this.recognizeColumnFilter(filterMap);
+                        return providedFilterModel.toPredicate(cb, root, columnName);
                     })
                     .collect(Collectors.toList());
             
@@ -421,7 +421,7 @@ public class QueryBuilder<E> {
 
 
     /**
-     * Recognizes and converts a given filter map into a {@link ColumnFilter} implementation.
+     * Recognizes and converts a given filter map into a {@link ProvidedFilterModel} implementation.
      * <p>
      * This method processes the input map to identify and create either:
      * <ul>
@@ -436,14 +436,14 @@ public class QueryBuilder<E> {
      *
      * @param filter A map representing the filter to be recognized. Must not be {@code null}.
      *               The map should contain the "filterType" key for default AG Grid filters.
-     * @return A {@link ColumnFilter} implementation corresponding to the input filter.
+     * @return A {@link ProvidedFilterModel} implementation corresponding to the input filter.
      * @throws IllegalArgumentException If the filter type cannot be recognized as either a default
      *                                  or custom filter type.
      */
     @SuppressWarnings("unchecked")
-    private ColumnFilter recognizeColumnFilter(Map<String, Object> filter) {
+    private ProvidedFilterModel recognizeColumnFilter(Map<String, Object> filter) {
         Objects.requireNonNull(filter);
-        ColumnFilter columnFilter = null;
+        ProvidedFilterModel providedFilterModel = null;
         
         if (filter.containsKey("filterType") && filter.get("filterType") != null) {
             // try to recognize default provided ag-grid column filters
@@ -453,54 +453,54 @@ public class QueryBuilder<E> {
             switch (filterType) {
                 case "text": {
                     if (isCombinedFilter) {
-                        CombinedSimpleModel<TextFilter> combinedTextFilter = new CombinedSimpleModel<>();
+                        CombinedSimpleModel<TextFilterModel> combinedTextFilter = new CombinedSimpleModel<>();
                         combinedTextFilter.setFilterType("text");
                         combinedTextFilter.setOperator(JoinOperator.valueOf(filter.get("operator").toString()));
                         combinedTextFilter.setConditions(((List<Map<String, Object>>) filter.get("conditions")).stream().map(this::parseTextFilter).collect(Collectors.toList()));
-                        columnFilter = combinedTextFilter;
+                        providedFilterModel = combinedTextFilter;
                     } else {
-                        columnFilter = parseTextFilter(filter);
+                        providedFilterModel = parseTextFilter(filter);
                     }
                     break;
                 }
                 case "date": {
                     if (isCombinedFilter) {
-                        CombinedSimpleModel<DateFilter> combinedTextFilter = new CombinedSimpleModel<>();
+                        CombinedSimpleModel<DateFilterModelModel> combinedTextFilter = new CombinedSimpleModel<>();
                         combinedTextFilter.setFilterType("date");
                         combinedTextFilter.setOperator(JoinOperator.valueOf(filter.get("operator").toString()));
                         combinedTextFilter.setConditions(((List<Map<String, Object>>) filter.get("conditions")).stream().map(this::parseDateFilter).collect(Collectors.toList()));
-                        columnFilter = combinedTextFilter;
+                        providedFilterModel = combinedTextFilter;
                     } else {
-                        columnFilter = parseDateFilter(filter);
+                        providedFilterModel = parseDateFilter(filter);
                     }
                     break;
                 }
                 case "number": {
                     if (isCombinedFilter) {
-                        CombinedSimpleModel<NumberFilter> combinedNumberFilter = new CombinedSimpleModel<>();
+                        CombinedSimpleModel<NumberFilterModel> combinedNumberFilter = new CombinedSimpleModel<>();
                         combinedNumberFilter.setFilterType("number");
                         combinedNumberFilter.setOperator(JoinOperator.valueOf(filter.get("operator").toString()));
                         combinedNumberFilter.setConditions(((List<Map<String, Object>>) filter.get("conditions")).stream().map(this::parseNumberFilter).collect(Collectors.toList()));
-                        columnFilter = combinedNumberFilter;
+                        providedFilterModel = combinedNumberFilter;
                     } else {
-                        columnFilter = parseNumberFilter(filter);
+                        providedFilterModel = parseNumberFilter(filter);
                     }
                     break;
                 }
                 case "set": {
-                    columnFilter = parseSetFilter(filter);
+                    providedFilterModel = parseSetFilter(filter);
                     break;
                 }
                 case "multi": {
-                    columnFilter = parseMultiFilter(filter);
+                    providedFilterModel = parseMultiFilter(filter);
                     break;
                 }
             }
         }
         
-        if (columnFilter == null) {
+        if (providedFilterModel == null) {
             // not recognized in default provided ag-grid column filters, try to find in custom recognizers
-            columnFilter = this.customColumnFilterRecognizers
+            providedFilterModel = this.customColumnFilterRecognizers
                     .stream()
                     .map(recognizerFunction -> recognizerFunction.apply(filter))
                     .filter(Objects::nonNull)
@@ -508,12 +508,12 @@ public class QueryBuilder<E> {
                     .orElseThrow(() -> new IllegalArgumentException("Not recognized filter type for " + filter + " either in custom or default types"));
         }
         
-        return columnFilter;
+        return providedFilterModel;
     }
 
     @SuppressWarnings("unchecked")
-    private MultiFilter parseMultiFilter(Map<String, Object> filter) {
-        MultiFilter multiFilter = new MultiFilter();
+    private MultiFilterModel parseMultiFilter(Map<String, Object> filter) {
+        MultiFilterModel multiFilter = new MultiFilterModel();
         if (filter.containsKey("filterModels") && filter.get("filterModels") != null) {
             multiFilter.setFilterModels(((List<Map<String, Object>>) filter.get("filterModels"))
                     .stream()
@@ -525,8 +525,8 @@ public class QueryBuilder<E> {
         return multiFilter;
     }
 
-    private TextFilter parseTextFilter(Map<String, Object> filter) {
-        TextFilter textFilter = new TextFilter();
+    private TextFilterModel parseTextFilter(Map<String, Object> filter) {
+        TextFilterModel textFilter = new TextFilterModel();
         textFilter.setType(SimpleFilterModelType.valueOf(filter.get("type").toString()));
         textFilter.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).orElse(null));
         textFilter.setFilterTo(Optional.ofNullable(filter.get("filterTo")).map(Object::toString).orElse(null));
@@ -534,28 +534,28 @@ public class QueryBuilder<E> {
     }
 
     @SuppressWarnings("unchecked")
-    private SetFilter parseSetFilter(Map<String, Object> filter) {
-        SetFilter setFilter = new SetFilter();
+    private SetFilterModel parseSetFilter(Map<String, Object> filter) {
+        SetFilterModel setFilter = new SetFilterModel();
         setFilter.setValues((List<String>) filter.get("values"));
         return setFilter;
     }
 
-    private NumberFilter parseNumberFilter(Map<String, Object> filter) {
-        NumberFilter numberFilter = new NumberFilter();
+    private NumberFilterModel parseNumberFilter(Map<String, Object> filter) {
+        NumberFilterModel numberFilter = new NumberFilterModel();
         numberFilter.setType(SimpleFilterModelType.valueOf(filter.get("type").toString()));
         numberFilter.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).map(BigDecimal::new).orElse(null));
         numberFilter.setFilterTo(Optional.ofNullable(filter.get("filterTo")).map(Object::toString).map(BigDecimal::new).orElse(null));
         return numberFilter;
     }
 
-    private DateFilter parseDateFilter(Map<String, Object> filter) {
+    private DateFilterModelModel parseDateFilter(Map<String, Object> filter) {
 
-        DateFilter dateFilter = new DateFilter();
-        dateFilter.setType(SimpleFilterModelType.valueOf(filter.get("type").toString()));
-        dateFilter.setDateFrom(Optional.ofNullable(filter.get("dateFrom")).map(Object::toString).map(d -> LocalDateTime.parse(d, DATE_TIME_FORMATTER_FOR_DATE_FILTER)).orElse(null));
-        dateFilter.setDateTo(Optional.ofNullable(filter.get("dateTo")).map(Object::toString).map(d -> LocalDateTime.parse(d, DATE_TIME_FORMATTER_FOR_DATE_FILTER)).orElse(null));
+        DateFilterModelModel dateFilterModel = new DateFilterModelModel();
+        dateFilterModel.setType(SimpleFilterModelType.valueOf(filter.get("type").toString()));
+        dateFilterModel.setDateFrom(Optional.ofNullable(filter.get("dateFrom")).map(Object::toString).map(d -> LocalDateTime.parse(d, DATE_TIME_FORMATTER_FOR_DATE_FILTER)).orElse(null));
+        dateFilterModel.setDateTo(Optional.ofNullable(filter.get("dateTo")).map(Object::toString).map(d -> LocalDateTime.parse(d, DATE_TIME_FORMATTER_FOR_DATE_FILTER)).orElse(null));
 
-        return dateFilter;
+        return dateFilterModel;
     }
 
     /**
@@ -653,7 +653,7 @@ public class QueryBuilder<E> {
         private boolean groupAggFiltering;
         private Integer pivotMaxGeneratedColumns;
 
-        private final List<Function<Map<String, Object>, ColumnFilter>> customColumnFilterRecognizers = new ArrayList<>();
+        private final List<Function<Map<String, Object>, ProvidedFilterModel>> customColumnFilterRecognizers = new ArrayList<>();
 
         private Builder(Class<E> entityClass, EntityManager entityManager) {
             this.entityClass = entityClass;
@@ -686,14 +686,14 @@ public class QueryBuilder<E> {
          * <p>
          * A recognizer is a function that inspects a filter represented as a map and determines whether
          * it matches a custom filter implementation. If recognized, the function should return a concrete
-         * implementation of {@link ColumnFilter}. Otherwise, it should return {@code null}.
+         * implementation of {@link ProvidedFilterModel}. Otherwise, it should return {@code null}.
          *
-         * @param recognizerFunction A function that attempts to recognize and convert a map into a {@link ColumnFilter}.
+         * @param recognizerFunction A function that attempts to recognize and convert a map into a {@link ProvidedFilterModel}.
          *                           Must not be {@code null}.
          * @return The current {@link QueryBuilder} instance for method chaining.
          * @throws NullPointerException If the {@code recognizerFunction} is {@code null}.
          */
-        public Builder<E> addCustomColumnFilterRecognizer(Function<Map<String, Object>, ColumnFilter> recognizerFunction) {
+        public Builder<E> addCustomColumnFilterRecognizer(Function<Map<String, Object>, ProvidedFilterModel> recognizerFunction) {
             this.customColumnFilterRecognizers.add(Objects.requireNonNull(recognizerFunction));
             return this;
         }
@@ -703,14 +703,14 @@ public class QueryBuilder<E> {
          * <p>
          * Each recognizer function inspects a filter represented as a map and determines whether
          * it matches a custom filter implementation. If recognized, the function should return a concrete
-         * implementation of {@link ColumnFilter}. Otherwise, it should return {@code null}.
+         * implementation of {@link ProvidedFilterModel}. Otherwise, it should return {@code null}.
          *
-         * @param recognizerFunctions Varargs of functions that attempt to recognize and convert maps into {@link ColumnFilter} implementations.
+         * @param recognizerFunctions Varargs of functions that attempt to recognize and convert maps into {@link ProvidedFilterModel} implementations.
          *                            Must not be {@code null}.
          * @return The current {@link QueryBuilder} instance for method chaining.
          * @throws NullPointerException If the {@code recognizerFunctions} array or any of its elements is {@code null}.
          */
-        public Builder<E> addCustomColumnFilterRecognizers(Function<Map<String, Object>, ColumnFilter>... recognizerFunctions) {
+        public Builder<E> addCustomColumnFilterRecognizers(Function<Map<String, Object>, ProvidedFilterModel>... recognizerFunctions) {
             this.customColumnFilterRecognizers.addAll(Objects.requireNonNull(Arrays.asList(recognizerFunctions)));
             return this;
         }
@@ -720,14 +720,14 @@ public class QueryBuilder<E> {
          * <p>
          * Each recognizer function inspects a filter represented as a map and determines whether
          * it matches a custom filter implementation. If recognized, the function should return a concrete
-         * implementation of {@link ColumnFilter}. Otherwise, it should return {@code null}.
+         * implementation of {@link ProvidedFilterModel}. Otherwise, it should return {@code null}.
          *
-         * @param recognizerFunctions A list of functions that attempt to recognize and convert maps into {@link ColumnFilter} implementations.
+         * @param recognizerFunctions A list of functions that attempt to recognize and convert maps into {@link ProvidedFilterModel} implementations.
          *                            Must not be {@code null}.
          * @return The current {@link QueryBuilder} instance for method chaining.
          * @throws NullPointerException If the {@code recognizerFunctions} list or any of its elements is {@code null}.
          */
-        public Builder<E> addCustomColumnFilterRecognizers(List<Function<Map<String, Object>, ColumnFilter>> recognizerFunctions) {
+        public Builder<E> addCustomColumnFilterRecognizers(List<Function<Map<String, Object>, ProvidedFilterModel>> recognizerFunctions) {
             this.customColumnFilterRecognizers.addAll(Objects.requireNonNull(recognizerFunctions));
             return this;
         }
