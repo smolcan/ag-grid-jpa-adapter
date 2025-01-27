@@ -1,14 +1,14 @@
 package io.github.smolcan.aggrid.jpa.adapter.query;
 
 import io.github.smolcan.aggrid.jpa.adapter.exceptions.OnPivotMaxColumnsExceededException;
-import io.github.smolcan.aggrid.jpa.adapter.filter.JoinOperator;
-import io.github.smolcan.aggrid.jpa.adapter.filter.advanced.JoinAdvancedFilterModel;
-import io.github.smolcan.aggrid.jpa.adapter.filter.advanced.column.*;
-import io.github.smolcan.aggrid.jpa.adapter.filter.simple.*;
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.JoinOperator;
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.JoinAdvancedFilterModel;
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.column.*;
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.*;
 import io.github.smolcan.aggrid.jpa.adapter.request.ColumnVO;
 import io.github.smolcan.aggrid.jpa.adapter.request.ServerSideGetRowsRequest;
 import io.github.smolcan.aggrid.jpa.adapter.request.SortType;
-import io.github.smolcan.aggrid.jpa.adapter.filter.advanced.AdvancedFilterModel;
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.AdvancedFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.response.LoadSuccessParams;
 import io.github.smolcan.aggrid.jpa.adapter.pivoting.PivotingContext;
 import io.github.smolcan.aggrid.jpa.adapter.utils.TypeValueSynchronizer;
@@ -465,7 +465,7 @@ public class QueryBuilder<E> {
                 }
                 case "date": {
                     if (isCombinedFilter) {
-                        CombinedSimpleModel<DateFilterModelModel> combinedTextFilter = new CombinedSimpleModel<>();
+                        CombinedSimpleModel<DateFilterModel> combinedTextFilter = new CombinedSimpleModel<>();
                         combinedTextFilter.setFilterType("date");
                         combinedTextFilter.setOperator(JoinOperator.valueOf(filter.get("operator").toString()));
                         combinedTextFilter.setConditions(((List<Map<String, Object>>) filter.get("conditions")).stream().map(this::parseDateFilter).collect(Collectors.toList()));
@@ -548,9 +548,9 @@ public class QueryBuilder<E> {
         return numberFilter;
     }
 
-    private DateFilterModelModel parseDateFilter(Map<String, Object> filter) {
+    private DateFilterModel parseDateFilter(Map<String, Object> filter) {
 
-        DateFilterModelModel dateFilterModel = new DateFilterModelModel();
+        DateFilterModel dateFilterModel = new DateFilterModel();
         dateFilterModel.setType(SimpleFilterModelType.valueOf(filter.get("type").toString()));
         dateFilterModel.setDateFrom(Optional.ofNullable(filter.get("dateFrom")).map(Object::toString).map(d -> LocalDateTime.parse(d, DATE_TIME_FORMATTER_FOR_DATE_FILTER)).orElse(null));
         dateFilterModel.setDateTo(Optional.ofNullable(filter.get("dateTo")).map(Object::toString).map(d -> LocalDateTime.parse(d, DATE_TIME_FORMATTER_FOR_DATE_FILTER)).orElse(null));
