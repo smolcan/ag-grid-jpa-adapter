@@ -43,6 +43,10 @@ public class ColDef {
         }
 
         public ColDef build() {
+            if (this.field == null) {
+                throw new IllegalArgumentException("field cannot be null");
+            }
+            
             return new ColDef(this);
         }
     }

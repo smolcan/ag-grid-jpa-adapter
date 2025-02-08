@@ -8,6 +8,7 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.JoinAdvancedFi
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.column.*;
 import io.github.smolcan.aggrid.jpa.adapter.request.ColumnVO;
 import io.github.smolcan.aggrid.jpa.adapter.request.ServerSideGetRowsRequest;
+import io.github.smolcan.aggrid.jpa.adapter.request.SortModelItem;
 import io.github.smolcan.aggrid.jpa.adapter.request.SortType;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.AdvancedFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.response.LoadSuccessParams;
@@ -43,20 +44,13 @@ public class QueryBuilder<E> {
         return new Builder<>(entityClass, entityManager);
     }
     
-    private QueryBuilder(
-            Class<E> entityClass, 
-            EntityManager entityManager,
-            String serverSidePivotResultFieldSeparator,
-            boolean groupAggFiltering,
-            Integer pivotMaxGeneratedColumns,
-            Map<String, ColDef> colDefs
-    ) {
-        this.entityClass = entityClass;
-        this.entityManager = entityManager;
-        this.serverSidePivotResultFieldSeparator = serverSidePivotResultFieldSeparator;
-        this.groupAggFiltering = groupAggFiltering;
-        this.pivotMaxGeneratedColumns = pivotMaxGeneratedColumns;
-        this.colDefs = colDefs;
+    private QueryBuilder(Builder<E> builder) {
+        this.entityClass = builder.entityClass;
+        this.entityManager = builder.entityManager;
+        this.serverSidePivotResultFieldSeparator = builder.serverSidePivotResultFieldSeparator;
+        this.groupAggFiltering = builder.groupAggFiltering;
+        this.pivotMaxGeneratedColumns = builder.pivotMaxGeneratedColumns;
+        this.colDefs = builder.colDefs;
     }
 
 
@@ -77,6 +71,8 @@ public class QueryBuilder<E> {
      * @return A {@link LoadSuccessParams} object containing the retrieved row data mapped to a format suitable for AG Grid.
      */
     public LoadSuccessParams getRows(ServerSideGetRowsRequest request) throws OnPivotMaxColumnsExceededException {
+        this.validateRequest(request);
+        
         CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
 
         CriteriaQuery<Tuple> query = cb.createTupleQuery();
@@ -100,6 +96,46 @@ public class QueryBuilder<E> {
         loadSuccessParams.setRowData(tupleToMap(data));
         loadSuccessParams.setPivotResultFields(pivotingContext.getPivotingResultFields());
         return loadSuccessParams;
+    }
+    
+    protected void validateRequest(ServerSideGetRowsRequest request) {
+        StringBuilder errors = new StringBuilder();
+        
+        // validate groups cols
+        if (request.getRowGroupCols() != null) {
+            List<ColumnVO> rowGroupColsNotInColDefs = request.getRowGroupCols().stream().filter(c -> !this.colDefs.containsKey(c.getField())).collect(Collectors.toList());
+            if (!rowGroupColsNotInColDefs.isEmpty()) {
+                errors.append(String.format("These row group cols not found in col defs: %s\n", rowGroupColsNotInColDefs.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
+            }
+        }
+        
+        // validate value cols
+        if (request.getValueCols() != null) {
+            List<ColumnVO> valueColsNotInColDefs = request.getValueCols().stream().filter(c -> !this.colDefs.containsKey(c.getField())).collect(Collectors.toList());
+            if (!valueColsNotInColDefs.isEmpty()) {
+                errors.append(String.format("These value cols not found in col defs: %s\n", valueColsNotInColDefs.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
+            }
+        }
+        
+        // validate pivot cols
+        if (request.getPivotCols() != null) {
+            List<ColumnVO> pivotColsNotInColDefs = request.getPivotCols().stream().filter(c -> !this.colDefs.containsKey(c.getField())).collect(Collectors.toList());
+            if (!pivotColsNotInColDefs.isEmpty()) {
+                errors.append(String.format("These pivot cols not found in col defs: %s\n", pivotColsNotInColDefs.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
+            }
+        }
+        
+        // sort cols
+        if (request.getSortModel() != null) {
+            List<SortModelItem> sortModelItemsNotInColDefs = request.getSortModel().stream().filter(c -> !this.colDefs.containsKey(c.getColId())).collect(Collectors.toList());
+            if (!sortModelItemsNotInColDefs.isEmpty()) {
+                errors.append(String.format("These sort model cols not found in col defs: %s\n", sortModelItemsNotInColDefs.stream().map(SortModelItem::getColId).collect(Collectors.joining(", "))));
+            }
+        }
+        
+        if (errors.length() > 0) {
+            throw new IllegalArgumentException(errors.toString());
+        }
     }
     
     protected void select(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request, PivotingContext pivotingContext) {
@@ -327,7 +363,7 @@ public class QueryBuilder<E> {
 
 
                         String columnName = pivotingColumnName.substring(pivotingColumnName.lastIndexOf(this.serverSidePivotResultFieldSeparator) + 1);
-                        IFilter<?, ?> filter = this.colDefs.get(columnName).getFilter();
+                        IFilter<?, ?> filter = Optional.ofNullable(this.colDefs.get(columnName)).map(ColDef::getFilter).orElseThrow(() -> new IllegalArgumentException("Column " + columnName + " not found in col defs"));
                         Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();
 
                         havingPredicates.add(filter.toPredicate(cb, pivotingColumnExpression, filterMap));
@@ -378,7 +414,7 @@ public class QueryBuilder<E> {
                         String columnName = entry.getKey();
                         Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();
                         
-                        IFilter<?, ?> filter = this.colDefs.get(columnName).getFilter();
+                        IFilter<?, ?> filter = Optional.ofNullable(this.colDefs.get(columnName)).map(ColDef::getFilter).orElseThrow(() -> new IllegalArgumentException("Column " + columnName + " not found in col defs"));
                         return filter.toPredicate(cb, root.get(columnName), filterMap);
                     })
                     .collect(Collectors.toList());
@@ -537,14 +573,11 @@ public class QueryBuilder<E> {
         }
 
         public QueryBuilder<E> build() {
-            return new QueryBuilder<>(
-                    this.entityClass,
-                    this.entityManager,
-                    this.serverSidePivotResultFieldSeparator,
-                    this.groupAggFiltering,
-                    this.pivotMaxGeneratedColumns,
-                    this.colDefs
-            );
+            if (this.colDefs == null || this.colDefs.isEmpty()) {
+                throw new IllegalArgumentException("colDefs cannot be null or empty");
+            }
+            
+            return new QueryBuilder<>(this);
         }
     }
 }
