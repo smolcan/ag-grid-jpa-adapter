@@ -1,35 +1,49 @@
 package io.github.smolcan.aggrid.jpa.adapter.column;
 
 import io.github.smolcan.aggrid.jpa.adapter.filter.IFilter;
-import io.github.smolcan.aggrid.jpa.adapter.filter.model.IFilterModel;
-import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.IFilterParams;
+import io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple.AgTextColumnFilter;
 
-
-public class ColDef<F extends IFilter<FM, FP>, FM extends IFilterModel, FP extends IFilterParams> {
+/**
+ * Column definition, tries to be same as in frontend
+ */
+public class ColDef {
     
     private final String field;
-    private final F filter;
-    private final FP filterParams;
+    private final IFilter<?, ?> filter;
 
-    public ColDef(String field, F filter, FP filterParams) {
-        this.field = field;
-        this.filter = filter;
-        this.filterParams = filterParams;
+    private ColDef(Builder builder) {
+        this.field = builder.field;
+        this.filter = builder.filter;
     }
 
     public String getField() {
         return field;
     }
 
-    public F getFilter() {
+    public IFilter<?, ?> getFilter() {
         return filter;
     }
 
-    public FP getFilterParams() {
-        return filterParams;
+    public static Builder builder() {
+        return new Builder();
     }
 
-    public static void main(String[] args) {
-        
+    public static class Builder {
+        private String field;
+        private IFilter<?, ?> filter = new AgTextColumnFilter();
+
+        public Builder field(String field) {
+            this.field = field;
+            return this;
+        }
+
+        public Builder filter(IFilter<?, ?> filter) {
+            this.filter = filter;
+            return this;
+        }
+
+        public ColDef build() {
+            return new ColDef(this);
+        }
     }
 }

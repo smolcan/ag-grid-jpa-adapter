@@ -27,7 +27,12 @@ public class AgDateColumnFilter extends SimpleFilter<DateFilterModel, DateFilter
     }
 
     @Override
-    public Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, DateFilterModel filterModel, DateFilterParams filterParams) {
+    public DateFilterParams getDefaultFilterParams() {
+        return DateFilterParams.builder().build();
+    }
+
+    @Override
+    protected Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, DateFilterModel filterModel) {
         Predicate predicate;
         Expression<LocalDateTime> dateExpression = expression.as(LocalDateTime.class);
         switch (filterModel.getType()) {

@@ -2,7 +2,6 @@ package io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params;
 
 import jakarta.persistence.criteria.Expression;
 
-import java.util.Objects;
 import java.util.function.Function;
 
 public class TextFilterParams implements ISimpleFilterParams {
@@ -18,7 +17,7 @@ public class TextFilterParams implements ISimpleFilterParams {
 
     private TextFilterParams(boolean caseSensitive, Function<Expression<String>, Expression<String>> textFormatter, boolean trimInput) {
         this.caseSensitive = caseSensitive;
-        this.textFormatter = Objects.requireNonNull(textFormatter);
+        this.textFormatter = textFormatter;
         this.trimInput = trimInput;
     }
 

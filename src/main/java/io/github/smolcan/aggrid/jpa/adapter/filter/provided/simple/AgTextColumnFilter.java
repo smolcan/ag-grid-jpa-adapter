@@ -22,7 +22,12 @@ public class AgTextColumnFilter extends SimpleFilter<TextFilterModel, TextFilter
     }
 
     @Override
-    public Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, TextFilterModel filterModel, TextFilterParams filterParams) {
+    public TextFilterParams getDefaultFilterParams() {
+        return TextFilterParams.builder().build();
+    }
+
+    @Override
+    protected Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, TextFilterModel filterModel) {
         Predicate predicate;
 
         boolean hasTextFormatter = filterParams.getTextFormatter() != null;

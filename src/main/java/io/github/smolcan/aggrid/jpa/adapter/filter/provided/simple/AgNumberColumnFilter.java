@@ -21,10 +21,15 @@ public class AgNumberColumnFilter extends SimpleFilter<NumberFilterModel, Number
         numberFilter.setFilterTo(Optional.ofNullable(model.get("filterTo")).map(Object::toString).map(BigDecimal::new).orElse(null));
         return numberFilter;
     }
-    
-    
+
     @Override
-    public Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, NumberFilterModel filterModel, NumberFilterParams filterParams) {
+    public NumberFilterParams getDefaultFilterParams() {
+        return NumberFilterParams.builder().build();
+    }
+
+
+    @Override
+    protected Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, NumberFilterModel filterModel) {
         Predicate predicate;
 
         // ensuring number compatibility
