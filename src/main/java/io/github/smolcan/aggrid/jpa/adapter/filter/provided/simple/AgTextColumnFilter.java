@@ -28,104 +28,54 @@ public class AgTextColumnFilter extends SimpleFilter<TextFilterModel, TextFilter
 
     @Override
     protected Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, TextFilterModel filterModel) {
+        
+        Expression<String> filterExpression = this.generateExpressionFromFilterParams(cb, cb.literal(filterModel.getFilter()));
+        Expression<String> valueExpression = this.generateExpressionFromFilterParams(cb, expression.as(String.class));
+        
+        // check if provided custom text matcher
+        if (this.filterParams.getTextMatcher() != null) {
+            var textMatcherParams = TextFilterParams.TextMatcherParams.builder()
+                    .filterOption(filterModel.getType())
+                    .value(valueExpression)
+                    .filterText(filterExpression)
+                    .build();
+            
+            return this.filterParams.getTextMatcher().apply(cb, textMatcherParams);
+        }
+        
+        
         Predicate predicate;
-
-        boolean hasTextFormatter = filterParams.getTextFormatter() != null;
-        boolean isCaseSensitive = filterParams.isCaseSensitive();
-        String filter = filterModel.getFilter() != null && filterParams.isTrimInput() && !filterModel.getFilter().equals(" ")
-                ? filterModel.getFilter().trim()
-                : filterModel.getFilter();
-
-        Expression<String> stringExpression = expression.as(String.class);
-        Expression<String> textFormatterExpression = hasTextFormatter ? filterParams.getTextFormatter().apply(stringExpression) : null;
-        Expression<String> lowercaseExpression = cb.lower(stringExpression);
         switch (filterModel.getType()) {
             case empty: case blank: {
-                if (hasTextFormatter) {
-                    Predicate isNullPredicate = cb.isNull(textFormatterExpression);
-                    Predicate isEmptyPredicate = cb.equal(textFormatterExpression, filterParams.getTextFormatter().apply(cb.literal("")));
-                    predicate = cb.or(isNullPredicate, isEmptyPredicate);
-                } else {
-                    predicate = cb.or(cb.isNull(stringExpression), cb.equal(stringExpression, ""));
-                }
+                predicate = cb.or(cb.isNull(valueExpression), cb.equal(valueExpression, ""));
                 break;
             }
             case notBlank: {
-                if (hasTextFormatter) {
-                    Predicate isNotNullPredicate = cb.isNotNull(textFormatterExpression);
-                    Predicate isNotEmptyPredicate = cb.notEqual(textFormatterExpression, filterParams.getTextFormatter().apply(cb.literal("")));
-                    predicate = cb.or(isNotNullPredicate, isNotEmptyPredicate);
-                } else {
-                    predicate = cb.and(cb.isNotNull(stringExpression), cb.notEqual(stringExpression, ""));
-                }
+                predicate = cb.and(cb.isNotNull(valueExpression), cb.notEqual(valueExpression, ""));
                 break;
             }
             case equals: {
-                if (hasTextFormatter) {
-                    predicate = cb.equal(textFormatterExpression, filterParams.getTextFormatter().apply(cb.literal(filter)));
-                } else if (!isCaseSensitive) {
-                    predicate = cb.equal(lowercaseExpression, cb.lower(cb.literal(filter)));
-                } else {
-                    predicate = cb.equal(stringExpression, filter);
-                }
+                predicate = cb.equal(valueExpression, filterExpression);
                 break;
             }
             case notEqual: {
-                if (hasTextFormatter) {
-                    predicate = cb.notEqual(textFormatterExpression, filterParams.getTextFormatter().apply(cb.literal(filter)));
-                } else if (!isCaseSensitive) {
-                    predicate = cb.notEqual(lowercaseExpression, cb.lower(cb.literal(filter)));
-                } else {
-                    predicate = cb.notEqual(stringExpression, filter);
-                }
+                predicate = cb.notEqual(valueExpression, filterExpression);
                 break;
             }
             case contains: {
-                if (hasTextFormatter) {
-                    Expression<String> likeExpression = cb.concat(cb.concat("%", filterParams.getTextFormatter().apply(cb.literal(filter))), "%");
-                    predicate = cb.like(textFormatterExpression, likeExpression);
-                } else if (!isCaseSensitive) {
-                    Expression<String> likeExpression = cb.concat(cb.concat("%", cb.lower(cb.literal(filter))), "%");
-                    predicate = cb.like(lowercaseExpression, likeExpression);
-                } else {
-                    predicate = cb.like(stringExpression, "%" + filter + "%");
-                }
+                predicate = cb.like(valueExpression, cb.concat(cb.concat("%", filterExpression), "%"));
                 break;
             }
             case notContains: {
-                if (hasTextFormatter) {
-                    Expression<String> likeExpression = cb.concat(cb.concat("%", filterParams.getTextFormatter().apply(cb.literal(filter))), "%");
-                    predicate = cb.notLike(textFormatterExpression, likeExpression);
-                } else if (!isCaseSensitive) {
-                    Expression<String> likeExpression = cb.concat(cb.concat("%", cb.lower(cb.literal(filter))), "%");
-                    predicate = cb.notLike(lowercaseExpression, likeExpression);
-                } else {
-                    predicate = cb.notLike(stringExpression, "%" + filter + "%");
-                }
+                predicate = cb.notLike(valueExpression, cb.concat(cb.concat("%", filterExpression), "%"));
                 break;
             }
             case startsWith: {
-                if (hasTextFormatter) {
-                    Expression<String> likeExpression = cb.concat(filterParams.getTextFormatter().apply(cb.literal(filter)), "%");
-                    predicate = cb.like(textFormatterExpression, likeExpression);
-                } else if (!isCaseSensitive) {
-                    Expression<String> likeExpression = cb.concat(cb.lower(cb.literal(filter)), "%");
-                    predicate = cb.like(lowercaseExpression, likeExpression);
-                } else {
-                    predicate = cb.like(stringExpression, filter + "%");
-                }
+                predicate = cb.like(valueExpression, cb.concat(filterExpression, "%"));
                 break;
             }
             case endsWith: {
-                if (hasTextFormatter) {
-                    Expression<String> likeExpression = cb.concat("%", filterParams.getTextFormatter().apply(cb.literal(filter)));
-                    predicate = cb.like(textFormatterExpression, likeExpression);
-                } else if (!isCaseSensitive) {
-                    Expression<String> likeExpression = cb.concat("%", cb.lower(cb.literal(filter)));
-                    predicate = cb.like(lowercaseExpression, likeExpression);
-                } else {
-                    predicate = cb.like(stringExpression, "%" + filter);
-                }
+                predicate = cb.like(valueExpression, cb.concat("%", filterExpression));
                 break;
             }
             default: {
@@ -134,5 +84,28 @@ public class AgTextColumnFilter extends SimpleFilter<TextFilterModel, TextFilter
         }
 
         return predicate;
+    }
+
+    /**
+     * With given expression, generate new expression according to filter params
+     * 
+     * @param cb            criteria builder
+     * @param expression    expression
+     * @return              new expression generated from filter params
+     */
+    private Expression<String> generateExpressionFromFilterParams(CriteriaBuilder cb, Expression<String> expression) {
+        if (this.filterParams.isTrimInput()) {
+            expression = cb.trim(expression);
+        }
+        
+        if (this.filterParams.getTextFormatter() != null) {
+            // apply custom text formatter
+            expression = this.filterParams.getTextFormatter().apply(cb, expression);
+        } else if (!this.filterParams.isCaseSensitive()) {
+            // custom text formatter not present, apply case-insensitive
+            expression = cb.lower(expression);
+        }
+        
+        return expression;
     }
 }

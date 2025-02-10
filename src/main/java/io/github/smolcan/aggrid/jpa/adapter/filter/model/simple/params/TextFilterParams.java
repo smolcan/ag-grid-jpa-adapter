@@ -1,35 +1,44 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params;
 
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.SimpleFilterModelType;
+import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Predicate;
 
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 public class TextFilterParams implements ISimpleFilterParams {
-
+    // Used to override how to filter based on the user input. Returns true if the value passes the filter, otherwise false.
+    private final BiFunction<CriteriaBuilder, TextMatcherParams, Predicate> textMatcher;
     // By default, text filtering is case-insensitive. Set this to true to make text filtering case-sensitive.
     private final boolean caseSensitive;
     // Formats the text before applying the filter compare logic. 
     // Useful if you want to substitute accented characters, for example.
-    private final Function<Expression<String>, Expression<String>> textFormatter;
+    private final BiFunction<CriteriaBuilder, Expression<String>, Expression<String>> textFormatter;
     // If true, the input that the user enters will be trimmed when the filter is applied, so any leading or trailing whitespace will be removed. 
     // If only whitespace is entered, it will be left as-is. 
     private final boolean trimInput;
 
-    private TextFilterParams(boolean caseSensitive, Function<Expression<String>, Expression<String>> textFormatter, boolean trimInput) {
-        this.caseSensitive = caseSensitive;
-        this.textFormatter = textFormatter;
-        this.trimInput = trimInput;
+    private TextFilterParams(Builder builder) {
+        this.textMatcher = builder.textMatcher;
+        this.caseSensitive = builder.caseSensitive;
+        this.textFormatter = builder.textFormatter;
+        this.trimInput = builder.trimInput;
     }
 
     public static Builder builder() {
         return new Builder();
     }
 
+    public BiFunction<CriteriaBuilder, TextMatcherParams, Predicate> getTextMatcher() {
+        return textMatcher;
+    }
+
     public boolean isCaseSensitive() {
         return caseSensitive;
     }
 
-    public Function<Expression<String>, Expression<String>> getTextFormatter() {
+    public  BiFunction<CriteriaBuilder, Expression<String>, Expression<String>> getTextFormatter() {
         return textFormatter;
     }
 
@@ -38,16 +47,22 @@ public class TextFilterParams implements ISimpleFilterParams {
     }
 
     public static class Builder {
+        private BiFunction<CriteriaBuilder, TextMatcherParams, Predicate> textMatcher;
         private boolean caseSensitive = false;
-        private Function<Expression<String>, Expression<String>> textFormatter;
+        private BiFunction<CriteriaBuilder, Expression<String>, Expression<String>> textFormatter;
         private boolean trimInput = false;
 
+        public Builder textMatcher(BiFunction<CriteriaBuilder, TextMatcherParams, Predicate> textMatcher) {
+            this.textMatcher = textMatcher;
+            return this;
+        }
+        
         public Builder caseSensitive(boolean caseSensitive) {
             this.caseSensitive = caseSensitive;
             return this;
         }
 
-        public Builder textFormatter(Function<Expression<String>, Expression<String>> textFormatter) {
+        public Builder textFormatter( BiFunction<CriteriaBuilder, Expression<String>, Expression<String>> textFormatter) {
             this.textFormatter = textFormatter;
             return this;
         }
@@ -58,7 +73,81 @@ public class TextFilterParams implements ISimpleFilterParams {
         }
 
         public TextFilterParams build() {
-            return new TextFilterParams(this.caseSensitive, this.textFormatter, this.trimInput);
+            return new TextFilterParams(this);
+        }
+    }
+    
+    
+    public static class TextMatcherParams {
+
+        /**
+         * The applicable filter option being tested.
+         */
+        private final SimpleFilterModelType filterOption;
+        
+        /**
+         * The expression about to be filtered.
+         * If a `textFormatter` is provided, this value will have been formatted.
+         * If no `textFormatter` is provided and `caseSensitive` is not provided or is `false`,
+         * the value will have been converted to lower case.
+         */
+        private final Expression<String> value;
+
+        /**
+         * The value to filter by.
+         * If a `textFormatter` is provided, this value will have been formatted.
+         * If no `textFormatter` is provided and `caseSensitive` is not provided or is `false`,
+         * the value will have been converted to lower case.
+         */
+        private final Expression<String> filterText;
+        
+        
+        private TextMatcherParams(Builder builder) {
+            this.filterOption = builder.filterOption;
+            this.value = builder.value;
+            this.filterText = builder.filterText;
+        }
+
+        
+        public SimpleFilterModelType getFilterOption() {
+            return filterOption;
+        }
+
+        public Expression<String> getValue() {
+            return value;
+        }
+
+        public Expression<String> getFilterText() {
+            return filterText;
+        }
+
+        public static Builder builder() {
+            return new Builder();
+        }
+        
+        public static class Builder {
+            private SimpleFilterModelType filterOption;
+            private Expression<String> value;
+            private Expression<String> filterText;
+
+            public Builder filterOption(SimpleFilterModelType filterOption) {
+                this.filterOption = filterOption;
+                return this;
+            }
+
+            public Builder value(Expression<String> value) {
+                this.value = value;
+                return this;
+            }
+
+            public Builder filterText(Expression<String> filterText) {
+                this.filterText = filterText;
+                return this;
+            }
+
+            public TextMatcherParams build() {
+                return new TextMatcherParams(this);
+            }
         }
     }
 
