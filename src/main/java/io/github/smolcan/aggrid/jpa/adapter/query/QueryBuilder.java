@@ -571,6 +571,14 @@ public class QueryBuilder<E> {
             }
             return this;
         }
+        
+        public Builder<E> colDefs(List<ColDef> colDefs) {
+            this.colDefs = new HashMap<>(colDefs.size());
+            for (ColDef colDef : colDefs) {
+                this.colDefs.put(colDef.getField(), colDef);
+            }
+            return this;
+        }
 
         public QueryBuilder<E> build() {
             if (this.colDefs == null || this.colDefs.isEmpty()) {
