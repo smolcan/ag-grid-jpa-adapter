@@ -9,15 +9,21 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple.AgTextColumnF
 public class ColDef {
     
     private final String field;
+    private final boolean sortable;
     private final IFilter<?, ?> filter;
 
     private ColDef(Builder builder) {
         this.field = builder.field;
+        this.sortable = builder.sortable;
         this.filter = builder.filter;
     }
 
     public String getField() {
         return field;
+    }
+
+    public boolean isSortable() {
+        return sortable;
     }
 
     public IFilter<?, ?> getFilter() {
@@ -30,6 +36,8 @@ public class ColDef {
 
     public static class Builder {
         private String field;
+        // Set false to disable sorting which is enabled by default.
+        private boolean sortable = true;
         private IFilter<?, ?> filter = new AgTextColumnFilter();
 
         public Builder field(String field) {
@@ -39,6 +47,11 @@ public class ColDef {
 
         public Builder filter(IFilter<?, ?> filter) {
             this.filter = filter;
+            return this;
+        }
+        
+        public Builder sortable(boolean sortable) {
+            this.sortable = sortable;
             return this;
         }
 

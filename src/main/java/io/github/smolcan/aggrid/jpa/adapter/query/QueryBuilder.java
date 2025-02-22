@@ -108,7 +108,6 @@ public class QueryBuilder<E> {
                 errors.append(String.format("These row group cols not found in col defs: %s\n", rowGroupColsNotInColDefs.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
             }
         }
-        
         // validate value cols
         if (request.getValueCols() != null) {
             List<ColumnVO> valueColsNotInColDefs = request.getValueCols().stream().filter(c -> !this.colDefs.containsKey(c.getField())).collect(Collectors.toList());
@@ -116,7 +115,6 @@ public class QueryBuilder<E> {
                 errors.append(String.format("These value cols not found in col defs: %s\n", valueColsNotInColDefs.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
             }
         }
-        
         // validate pivot cols
         if (request.getPivotCols() != null) {
             List<ColumnVO> pivotColsNotInColDefs = request.getPivotCols().stream().filter(c -> !this.colDefs.containsKey(c.getField())).collect(Collectors.toList());
@@ -124,12 +122,17 @@ public class QueryBuilder<E> {
                 errors.append(String.format("These pivot cols not found in col defs: %s\n", pivotColsNotInColDefs.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
             }
         }
-        
         // sort cols
         if (request.getSortModel() != null) {
             List<SortModelItem> sortModelItemsNotInColDefs = request.getSortModel().stream().filter(c -> !this.colDefs.containsKey(c.getColId())).collect(Collectors.toList());
             if (!sortModelItemsNotInColDefs.isEmpty()) {
                 errors.append(String.format("These sort model cols not found in col defs: %s\n", sortModelItemsNotInColDefs.stream().map(SortModelItem::getColId).collect(Collectors.joining(", "))));
+            }
+            
+            Set<String> notSortableColDefs = this.colDefs.keySet().stream().filter(field -> !this.colDefs.get(field).isSortable()).collect(Collectors.toSet());
+            List<SortModelItem> sortModelItemsIllegalSort = request.getSortModel().stream().filter(sm -> notSortableColDefs.contains(sm.getColId())).collect(Collectors.toList());
+            if (!sortModelItemsIllegalSort.isEmpty()) {
+                errors.append(String.format("These sort model cols can not be sorted by (disabled in col defs): %s\n", sortModelItemsIllegalSort.stream().map(SortModelItem::getColId).collect(Collectors.joining(", "))));
             }
         }
         
