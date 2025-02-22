@@ -5,6 +5,7 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple.AgTextColumnF
 import io.github.smolcan.aggrid.jpa.adapter.request.AggregationFunction;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -68,8 +69,7 @@ public class ColDef {
         }
         
         public Builder allowedAggFuncs(AggregationFunction ...functions) {
-            this.allowedAggFuncs.clear();
-            this.allowedAggFuncs.addAll(Arrays.asList(functions));
+            this.allowedAggFuncs = new HashSet<>(Arrays.asList(functions));
             return this;
         }
 
