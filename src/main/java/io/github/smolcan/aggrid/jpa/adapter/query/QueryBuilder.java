@@ -102,28 +102,37 @@ public class QueryBuilder<E> {
         StringBuilder errors = new StringBuilder();
         
         // validate groups cols
-        if (request.getRowGroupCols() != null) {
+        if (request.getRowGroupCols() != null && !request.getRowGroupCols().isEmpty()) {
             List<ColumnVO> rowGroupColsNotInColDefs = request.getRowGroupCols().stream().filter(c -> !this.colDefs.containsKey(c.getField())).collect(Collectors.toList());
             if (!rowGroupColsNotInColDefs.isEmpty()) {
                 errors.append(String.format("These row group cols not found in col defs: %s\n", rowGroupColsNotInColDefs.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
             }
+            
+            // validate agg functions
+            List<ColumnVO> rowGroupsNotAllowedAggregations = request.getRowGroupCols().stream().filter(rg -> {
+                ColDef colDef = this.colDefs.get(rg.getField());
+                return !colDef.getAllowedAggFuncs().contains(rg.getAggFunc());
+            }).collect(Collectors.toList());
+            if (!rowGroupsNotAllowedAggregations.isEmpty()) {
+                errors.append(String.format("These row group cols do not have allowed received aggregation: %s\n", rowGroupsNotAllowedAggregations.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
+            }
         }
         // validate value cols
-        if (request.getValueCols() != null) {
+        if (request.getValueCols() != null && !request.getValueCols().isEmpty()) {
             List<ColumnVO> valueColsNotInColDefs = request.getValueCols().stream().filter(c -> !this.colDefs.containsKey(c.getField())).collect(Collectors.toList());
             if (!valueColsNotInColDefs.isEmpty()) {
                 errors.append(String.format("These value cols not found in col defs: %s\n", valueColsNotInColDefs.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
             }
         }
         // validate pivot cols
-        if (request.getPivotCols() != null) {
+        if (request.getPivotCols() != null && !request.getPivotCols().isEmpty()) {
             List<ColumnVO> pivotColsNotInColDefs = request.getPivotCols().stream().filter(c -> !this.colDefs.containsKey(c.getField())).collect(Collectors.toList());
             if (!pivotColsNotInColDefs.isEmpty()) {
                 errors.append(String.format("These pivot cols not found in col defs: %s\n", pivotColsNotInColDefs.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
             }
         }
         // sort cols
-        if (request.getSortModel() != null) {
+        if (request.getSortModel() != null && !request.getSortModel().isEmpty()) {
             List<SortModelItem> sortModelItemsNotInColDefs = request.getSortModel().stream().filter(c -> !this.colDefs.containsKey(c.getColId())).collect(Collectors.toList());
             if (!sortModelItemsNotInColDefs.isEmpty()) {
                 errors.append(String.format("These sort model cols not found in col defs: %s\n", sortModelItemsNotInColDefs.stream().map(SortModelItem::getColId).collect(Collectors.joining(", "))));
