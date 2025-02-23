@@ -63,6 +63,15 @@ public class ColDef {
             return this;
         }
         
+        public Builder filter(boolean filter) {
+            if (filter) {
+                this.filter = new AgTextColumnFilter();
+            } else {
+                this.filter = null;
+            }
+            return this;
+        }
+        
         public Builder sortable(boolean sortable) {
             this.sortable = sortable;
             return this;

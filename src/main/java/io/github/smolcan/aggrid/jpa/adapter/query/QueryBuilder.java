@@ -426,7 +426,12 @@ public class QueryBuilder<E> {
                         String columnName = entry.getKey();
                         Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();
                         
-                        IFilter<?, ?> filter = Optional.ofNullable(this.colDefs.get(columnName)).map(ColDef::getFilter).orElseThrow(() -> new IllegalArgumentException("Column " + columnName + " not found in col defs"));
+                        ColDef colDef = Optional.ofNullable(this.colDefs.get(columnName)).orElseThrow(() -> new IllegalArgumentException("Column " + columnName + " not found in col defs"));
+                        IFilter<?, ?> filter = colDef.getFilter();
+                        if (filter == null) {
+                            throw new IllegalArgumentException("Column " + columnName + " is not filterable field!");
+                        }
+                        
                         return filter.toPredicate(cb, root.get(columnName), filterMap);
                     })
                     .collect(Collectors.toList());
