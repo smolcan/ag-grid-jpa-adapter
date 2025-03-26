@@ -107,21 +107,20 @@ public class QueryBuilder<E> {
             if (!rowGroupColsNotInColDefs.isEmpty()) {
                 errors.append(String.format("These row group cols not found in col defs: %s\n", rowGroupColsNotInColDefs.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
             }
-            
-            // validate agg functions
-            List<ColumnVO> rowGroupsNotAllowedAggregations = request.getRowGroupCols().stream().filter(rg -> {
-                ColDef colDef = this.colDefs.get(rg.getField());
-                return !colDef.getAllowedAggFuncs().contains(rg.getAggFunc());
-            }).collect(Collectors.toList());
-            if (!rowGroupsNotAllowedAggregations.isEmpty()) {
-                errors.append(String.format("These row group cols do not have allowed received aggregation: %s\n", rowGroupsNotAllowedAggregations.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
-            }
         }
         // validate value cols
         if (request.getValueCols() != null && !request.getValueCols().isEmpty()) {
             List<ColumnVO> valueColsNotInColDefs = request.getValueCols().stream().filter(c -> !this.colDefs.containsKey(c.getField())).collect(Collectors.toList());
             if (!valueColsNotInColDefs.isEmpty()) {
                 errors.append(String.format("These value cols not found in col defs: %s\n", valueColsNotInColDefs.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
+            }
+            // validate agg functions
+            List<ColumnVO> valueColsNotAllowedAggregations = request.getValueCols().stream().filter(valueCol -> {
+                ColDef colDef = this.colDefs.get(valueCol.getField());
+                return !colDef.getAllowedAggFuncs().contains(valueCol.getAggFunc());
+            }).collect(Collectors.toList());
+            if (!valueColsNotAllowedAggregations.isEmpty()) {
+                errors.append(String.format("These row value cols do not have allowed received aggregation: %s\n", valueColsNotAllowedAggregations.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
             }
         }
         // validate pivot cols
@@ -133,13 +132,34 @@ public class QueryBuilder<E> {
         }
         // sort cols
         if (request.getSortModel() != null && !request.getSortModel().isEmpty()) {
-            List<SortModelItem> sortModelItemsNotInColDefs = request.getSortModel().stream().filter(c -> !this.colDefs.containsKey(c.getColId())).collect(Collectors.toList());
+            List<SortModelItem> sortModelItemsNotInColDefs = request.getSortModel()
+                    .stream()
+                    .filter(c -> {
+                        // check col defs
+                        boolean isInColDefs = this.colDefs.containsKey(c.getColId());
+                        if (!isInColDefs && request.isPivotMode()) {
+                            // check pivoted cols
+                            String pivotedColumnOriginalName = PivotingContextHelper.originalColNameFromPivoted(c.getColId(), this.serverSidePivotResultFieldSeparator);
+                            isInColDefs = this.colDefs.containsKey(pivotedColumnOriginalName);
+                        }
+                        return !isInColDefs;
+                    }).collect(Collectors.toList());
             if (!sortModelItemsNotInColDefs.isEmpty()) {
                 errors.append(String.format("These sort model cols not found in col defs: %s\n", sortModelItemsNotInColDefs.stream().map(SortModelItem::getColId).collect(Collectors.joining(", "))));
             }
             
             Set<String> notSortableColDefs = this.colDefs.keySet().stream().filter(field -> !this.colDefs.get(field).isSortable()).collect(Collectors.toSet());
-            List<SortModelItem> sortModelItemsIllegalSort = request.getSortModel().stream().filter(sm -> notSortableColDefs.contains(sm.getColId())).collect(Collectors.toList());
+            List<SortModelItem> sortModelItemsIllegalSort = request.getSortModel()
+                    .stream()
+                    .filter(sm -> {
+                        boolean isNotSortable = notSortableColDefs.contains(sm.getColId());
+                        if (!isNotSortable && request.isPivotMode()) {
+                            // check pivoted cols
+                            String pivotedColumnOriginalName = PivotingContextHelper.originalColNameFromPivoted(sm.getColId(), this.serverSidePivotResultFieldSeparator);
+                            isNotSortable = notSortableColDefs.contains(pivotedColumnOriginalName);
+                        }
+                        return isNotSortable;
+                    }).collect(Collectors.toList());
             if (!sortModelItemsIllegalSort.isEmpty()) {
                 errors.append(String.format("These sort model cols can not be sorted by (disabled in col defs): %s\n", sortModelItemsIllegalSort.stream().map(SortModelItem::getColId).collect(Collectors.joining(", "))));
             }

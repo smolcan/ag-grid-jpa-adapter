@@ -79,6 +79,18 @@ public class PivotingContextHelper<E> {
 
         return pivotingContext;
     }
+
+    /**
+     * Extracts original column name from pivoted name <br/>
+     * For example: Piv1_Piv2_Piv3_originalCol -> originalCol
+     * @param pivotedName                           pivoted column name
+     * @param serverSidePivotResultFieldSeparator   separator
+     * @return                                      original name of the column
+     */
+    public static String originalColNameFromPivoted(String pivotedName, String serverSidePivotResultFieldSeparator) {
+        Objects.requireNonNull(pivotedName);
+        return pivotedName.substring(pivotedName.lastIndexOf(serverSidePivotResultFieldSeparator) + 1);
+    }
     
     private Map<String, Expression<?>> createPivotingExpressions(List<List<Pair<String, Object>>> cartesianProduct) {
         Map<String, Expression<?>> pivotingExpressions = new LinkedHashMap<>();
