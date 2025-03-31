@@ -28,6 +28,9 @@ public class AgTextColumnFilter extends SimpleFilter<TextFilterModel, TextFilter
 
     @Override
     protected Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, TextFilterModel filterModel) {
+        if (!this.filterParams.getFilterOptions().contains(filterModel.getType())) {
+            throw new IllegalArgumentException("Filter type " + filterModel.getType() + " not allowed for this column");
+        }
         
         Expression<String> filterExpression = this.filterParams.generateExpressionFromFilterParams(cb, cb.literal(filterModel.getFilter()));
         Expression<String> valueExpression = this.filterParams.generateExpressionFromFilterParams(cb, expression.as(String.class));

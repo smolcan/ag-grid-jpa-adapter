@@ -5,6 +5,7 @@ import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 
+import java.util.Set;
 import java.util.function.BiFunction;
 
 public class TextFilterParams implements ISimpleFilterParams {
@@ -18,12 +19,14 @@ public class TextFilterParams implements ISimpleFilterParams {
     // If true, the input that the user enters will be trimmed when the filter is applied, so any leading or trailing whitespace will be removed. 
     // If only whitespace is entered, it will be left as-is. 
     private final boolean trimInput;
+    private final Set<SimpleFilterModelType> filterOptions;
 
     private TextFilterParams(Builder builder) {
         this.textMatcher = builder.textMatcher;
         this.caseSensitive = builder.caseSensitive;
         this.textFormatter = builder.textFormatter;
         this.trimInput = builder.trimInput;
+        this.filterOptions = builder.filterOptions;
     }
 
     public static Builder builder() {
@@ -46,6 +49,9 @@ public class TextFilterParams implements ISimpleFilterParams {
         return trimInput;
     }
 
+    public Set<SimpleFilterModelType> getFilterOptions() {
+        return filterOptions;
+    }
 
     /**
      * With given expression, generate new expression according to filter params
@@ -75,6 +81,7 @@ public class TextFilterParams implements ISimpleFilterParams {
         private boolean caseSensitive = false;
         private BiFunction<CriteriaBuilder, Expression<String>, Expression<String>> textFormatter;
         private boolean trimInput = false;
+        private Set<SimpleFilterModelType> filterOptions = Set.of(SimpleFilterModelType.values());
 
         public Builder textMatcher(BiFunction<CriteriaBuilder, TextMatcherParams, Predicate> textMatcher) {
             this.textMatcher = textMatcher;
@@ -93,6 +100,11 @@ public class TextFilterParams implements ISimpleFilterParams {
 
         public Builder trimInput(boolean trimInput) {
             this.trimInput = trimInput;
+            return this;
+        }
+        
+        public Builder filterOptions(SimpleFilterModelType ...values) {
+            this.filterOptions = Set.of(values);
             return this;
         }
 
