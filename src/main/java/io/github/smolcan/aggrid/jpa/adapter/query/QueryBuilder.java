@@ -37,6 +37,7 @@ public class QueryBuilder<E> {
     private final EntityManager entityManager;
     private final String serverSidePivotResultFieldSeparator;
     private final boolean groupAggFiltering;
+    private final boolean enableAdvancedFilter;
     private final Integer pivotMaxGeneratedColumns;
     private final Map<String, ColDef> colDefs;
     
@@ -49,6 +50,7 @@ public class QueryBuilder<E> {
         this.entityManager = builder.entityManager;
         this.serverSidePivotResultFieldSeparator = builder.serverSidePivotResultFieldSeparator;
         this.groupAggFiltering = builder.groupAggFiltering;
+        this.enableAdvancedFilter = builder.enableAdvancedFilter;
         this.pivotMaxGeneratedColumns = builder.pivotMaxGeneratedColumns;
         this.colDefs = builder.colDefs;
     }
@@ -501,6 +503,10 @@ public class QueryBuilder<E> {
     @SuppressWarnings("unchecked")
     private AdvancedFilterModel recognizeAdvancedFilter(Map<String, Object> filter) {
         Objects.requireNonNull(filter);
+        if (!this.enableAdvancedFilter) {
+            throw new IllegalArgumentException("Can not perform advanced filtering, enableAdvancedFilter is set to false!");
+        }
+        
         String filterType = filter.get("filterType").toString();
         if (filterType.equals("join")) {
             // join
@@ -571,6 +577,7 @@ public class QueryBuilder<E> {
         private String serverSidePivotResultFieldSeparator = DEFAULT_SERVER_SIDE_PIVOT_RESULT_FIELD_SEPARATOR;
         private boolean groupAggFiltering;
         private Integer pivotMaxGeneratedColumns;
+        private boolean enableAdvancedFilter;
         
         private Map<String, ColDef> colDefs;
 
@@ -609,11 +616,16 @@ public class QueryBuilder<E> {
             return this;
         }
         
-        public Builder<E> colDefs(List<ColDef> colDefs) {
+        public Builder<E> colDefs(Collection<ColDef> colDefs) {
             this.colDefs = new HashMap<>(colDefs.size());
             for (ColDef colDef : colDefs) {
                 this.colDefs.put(colDef.getField(), colDef);
             }
+            return this;
+        }
+        
+        public Builder<E> enableAdvancedFilter(boolean enableAdvancedFilter) {
+            this.enableAdvancedFilter = enableAdvancedFilter;
             return this;
         }
 
