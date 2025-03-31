@@ -1,6 +1,7 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.column;
 
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.ColumnAdvancedFilterModel;
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.NumberFilterParams;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
@@ -12,6 +13,7 @@ public class NumberAdvancedFilterModel extends ColumnAdvancedFilterModel {
     
     private ScalarAdvancedFilterModelType type;
     private BigDecimal filter;
+    private NumberFilterParams filterParams = NumberFilterParams.builder().build();
     
     public NumberAdvancedFilterModel(String colId) {
         super("number", colId);
@@ -35,26 +37,44 @@ public class NumberAdvancedFilterModel extends ColumnAdvancedFilterModel {
             }
             case equals: {
                 predicate = cb.equal(path, this.filter);
+                if (filterParams.isIncludeBlanksInEquals()) {
+                    predicate = cb.or(predicate, cb.isNull(path));
+                }
                 break;
             }
             case notEqual: {
                 predicate = cb.notEqual(path, this.filter);
+                if (filterParams.isIncludeBlanksInNotEqual()) {
+                    predicate = cb.or(predicate, cb.isNull(path));
+                }
                 break;
             }
             case lessThan: {
                 predicate = cb.lt(path, this.filter);
+                if (filterParams.isIncludeBlanksInLessThan()) {
+                    predicate = cb.or(predicate, cb.isNull(path));
+                }
                 break;
             }
             case lessThanOrEqual: {
                 predicate = cb.le(path, this.filter);
+                if (filterParams.isIncludeBlanksInLessThan()) {
+                    predicate = cb.or(predicate, cb.isNull(path));
+                }
                 break;
             }
             case greaterThan: {
                 predicate = cb.gt(path, this.filter);
+                if (filterParams.isIncludeBlanksInGreaterThan()) {
+                    predicate = cb.or(predicate, cb.isNull(path));
+                }
                 break;
             }
             case greaterThanOrEqual: {
                 predicate = cb.ge(path, this.filter);
+                if (filterParams.isIncludeBlanksInGreaterThan()) {
+                    predicate = cb.or(predicate, cb.isNull(path));
+                }
                 break;
             }
             default: {
@@ -80,5 +100,13 @@ public class NumberAdvancedFilterModel extends ColumnAdvancedFilterModel {
 
     public void setFilter(BigDecimal filter) {
         this.filter = filter;
+    }
+
+    public NumberFilterParams getFilterParams() {
+        return filterParams;
+    }
+
+    public void setFilterParams(NumberFilterParams filterParams) {
+        this.filterParams = filterParams;
     }
 }

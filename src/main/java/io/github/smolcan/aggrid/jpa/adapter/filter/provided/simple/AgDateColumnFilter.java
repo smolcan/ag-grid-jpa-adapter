@@ -47,7 +47,7 @@ public class AgDateColumnFilter extends SimpleFilter<DateFilterModel, DateFilter
             case equals: {
                 predicate = cb.equal(dateExpression, filterModel.getDateFrom());
                 if (filterParams.isIncludeBlanksInEquals()) {
-                    predicate = cb.or(predicate, cb.isNull(predicate));
+                    predicate = cb.or(predicate, cb.isNull(dateExpression));
                 }
                 break;
             }

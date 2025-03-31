@@ -1,6 +1,7 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.column;
 
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.ColumnAdvancedFilterModel;
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.DateFilterParams;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
@@ -12,6 +13,7 @@ public class DateAdvancedFilterModel extends ColumnAdvancedFilterModel {
     
     private ScalarAdvancedFilterModelType type;
     private LocalDate filter;
+    private DateFilterParams filterParams = DateFilterParams.builder().build();
     
     public DateAdvancedFilterModel(String colId) {
         super("date", colId);
@@ -33,26 +35,44 @@ public class DateAdvancedFilterModel extends ColumnAdvancedFilterModel {
             }
             case equals: {
                 predicate = cb.equal(path, this.filter);
+                if (filterParams.isIncludeBlanksInEquals()) {
+                    predicate = cb.or(predicate, cb.isNull(path));
+                }
                 break;
             }
             case notEqual: {
                 predicate = cb.notEqual(path, this.filter);
+                if (filterParams.isIncludeBlanksInNotEqual()) {
+                    predicate = cb.or(predicate, cb.isNull(path));
+                }
                 break;
             }
             case lessThan: {
                 predicate = cb.lessThan(path, this.filter);
+                if (filterParams.isIncludeBlanksInLessThan()) {
+                    predicate = cb.or(predicate, cb.isNull(path));
+                }
                 break;
             }
             case lessThanOrEqual: {
                 predicate = cb.lessThanOrEqualTo(path, this.filter);
+                if (filterParams.isIncludeBlanksInLessThan()) {
+                    predicate = cb.or(predicate, cb.isNull(path));
+                }
                 break;
             }
             case greaterThan: {
                 predicate = cb.greaterThan(path, this.filter);
+                if (filterParams.isIncludeBlanksInGreaterThan()) {
+                    predicate = cb.or(predicate, cb.isNull(path));
+                }
                 break;
             }
             case greaterThanOrEqual: {
                 predicate = cb.greaterThanOrEqualTo(path, this.filter);
+                if (filterParams.isIncludeBlanksInGreaterThan()) {
+                    predicate = cb.or(predicate, cb.isNull(path));
+                }
                 break;
             }
             default: {
@@ -77,5 +97,13 @@ public class DateAdvancedFilterModel extends ColumnAdvancedFilterModel {
 
     public void setFilter(LocalDate filter) {
         this.filter = filter;
+    }
+
+    public DateFilterParams getFilterParams() {
+        return filterParams;
+    }
+
+    public void setFilterParams(DateFilterParams filterParams) {
+        this.filterParams = filterParams;
     }
 }

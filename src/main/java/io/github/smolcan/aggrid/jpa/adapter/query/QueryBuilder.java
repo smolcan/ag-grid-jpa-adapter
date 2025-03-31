@@ -6,6 +6,9 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.IFilter;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.JoinOperator;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.JoinAdvancedFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.column.*;
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.DateFilterParams;
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.NumberFilterParams;
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextFilterParams;
 import io.github.smolcan.aggrid.jpa.adapter.request.ColumnVO;
 import io.github.smolcan.aggrid.jpa.adapter.request.ServerSideGetRowsRequest;
 import io.github.smolcan.aggrid.jpa.adapter.request.SortModelItem;
@@ -524,35 +527,38 @@ public class QueryBuilder<E> {
             }
             
             switch (filterType) {
-                case "text": {
+                case "text": case "object": {
                     TextAdvancedFilterModel textAdvancedFilterModel = new TextAdvancedFilterModel(colId);
                     textAdvancedFilterModel.setType(TextAdvancedFilterModelType.valueOf(filter.get("type").toString()));
                     textAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).orElse(null));
+                    Optional.ofNullable(this.colDefs.get(colId).getFilter())
+                            .map(IFilter::getFilterParams)
+                            .filter(fp -> fp instanceof TextFilterParams)
+                            .map(fp -> (TextFilterParams) fp)
+                            .ifPresent(textAdvancedFilterModel::setFilterParams);
                     return textAdvancedFilterModel;
                 }
-                case "date": {
+                case "date": case "dateString": {
                     DateAdvancedFilterModel dateAdvancedFilterModel = new DateAdvancedFilterModel(colId);
                     dateAdvancedFilterModel.setType(ScalarAdvancedFilterModelType.valueOf(filter.get("type").toString()));
                     dateAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).map(f -> LocalDate.parse(f, DATE_FORMATTER_FOR_DATE_ADVANCED_FILTER)).orElse(null));
-                    return dateAdvancedFilterModel;
-                }
-                case "dateString": {
-                    DateStringAdvancedFilterModel dateAdvancedFilterModel = new DateStringAdvancedFilterModel(colId);
-                    dateAdvancedFilterModel.setType(ScalarAdvancedFilterModelType.valueOf(filter.get("type").toString()));
-                    dateAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).map(f -> LocalDate.parse(f, DATE_FORMATTER_FOR_DATE_ADVANCED_FILTER)).orElse(null));
+                    Optional.ofNullable(this.colDefs.get(colId).getFilter())
+                            .map(IFilter::getFilterParams)
+                            .filter(fp -> fp instanceof DateFilterParams)
+                            .map(fp -> (DateFilterParams) fp)
+                            .ifPresent(dateAdvancedFilterModel::setFilterParams);
                     return dateAdvancedFilterModel;
                 }
                 case "number": {
                     NumberAdvancedFilterModel numberAdvancedFilterModel = new NumberAdvancedFilterModel(colId);
                     numberAdvancedFilterModel.setType(ScalarAdvancedFilterModelType.valueOf(filter.get("type").toString()));
                     numberAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).map(BigDecimal::new).orElse(null));
+                    Optional.ofNullable(this.colDefs.get(colId).getFilter())
+                            .map(IFilter::getFilterParams)
+                            .filter(fp -> fp instanceof NumberFilterParams)
+                            .map(fp -> (NumberFilterParams) fp)
+                            .ifPresent(numberAdvancedFilterModel::setFilterParams);
                     return numberAdvancedFilterModel;
-                }
-                case "object": {
-                    ObjectAdvancedFilterModel objectAdvancedFilterModel = new ObjectAdvancedFilterModel(colId);
-                    objectAdvancedFilterModel.setType(TextAdvancedFilterModelType.valueOf(filter.get("type").toString()));
-                    objectAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).orElse(null));
-                    return objectAdvancedFilterModel;
                 }
                 case "boolean": {
                     BooleanAdvancedFilterModel booleanAdvancedFilterModel = new BooleanAdvancedFilterModel(colId);

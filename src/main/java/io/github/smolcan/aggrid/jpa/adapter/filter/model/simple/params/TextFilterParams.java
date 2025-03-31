@@ -46,6 +46,30 @@ public class TextFilterParams implements ISimpleFilterParams {
         return trimInput;
     }
 
+
+    /**
+     * With given expression, generate new expression according to filter params
+     *
+     * @param cb            criteria builder
+     * @param expression    expression
+     * @return              new expression generated from filter params
+     */
+    public Expression<String> generateExpressionFromFilterParams(CriteriaBuilder cb, Expression<String> expression) {
+        if (this.trimInput) {
+            expression = cb.trim(expression);
+        }
+
+        if (this.textFormatter != null) {
+            // apply custom text formatter
+            expression = this.textFormatter.apply(cb, expression);
+        } else if (!this.caseSensitive) {
+            // custom text formatter not present, apply case-insensitive
+            expression = cb.lower(expression);
+        }
+
+        return expression;
+    }
+    
     public static class Builder {
         private BiFunction<CriteriaBuilder, TextMatcherParams, Predicate> textMatcher;
         private boolean caseSensitive = false;

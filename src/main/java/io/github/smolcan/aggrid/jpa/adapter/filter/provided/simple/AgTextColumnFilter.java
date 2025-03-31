@@ -29,8 +29,8 @@ public class AgTextColumnFilter extends SimpleFilter<TextFilterModel, TextFilter
     @Override
     protected Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, TextFilterModel filterModel) {
         
-        Expression<String> filterExpression = this.generateExpressionFromFilterParams(cb, cb.literal(filterModel.getFilter()));
-        Expression<String> valueExpression = this.generateExpressionFromFilterParams(cb, expression.as(String.class));
+        Expression<String> filterExpression = this.filterParams.generateExpressionFromFilterParams(cb, cb.literal(filterModel.getFilter()));
+        Expression<String> valueExpression = this.filterParams.generateExpressionFromFilterParams(cb, expression.as(String.class));
         
         // check if provided custom text matcher
         if (this.filterParams.getTextMatcher() != null) {
@@ -84,28 +84,5 @@ public class AgTextColumnFilter extends SimpleFilter<TextFilterModel, TextFilter
         }
 
         return predicate;
-    }
-
-    /**
-     * With given expression, generate new expression according to filter params
-     * 
-     * @param cb            criteria builder
-     * @param expression    expression
-     * @return              new expression generated from filter params
-     */
-    private Expression<String> generateExpressionFromFilterParams(CriteriaBuilder cb, Expression<String> expression) {
-        if (this.filterParams.isTrimInput()) {
-            expression = cb.trim(expression);
-        }
-        
-        if (this.filterParams.getTextFormatter() != null) {
-            // apply custom text formatter
-            expression = this.filterParams.getTextFormatter().apply(cb, expression);
-        } else if (!this.filterParams.isCaseSensitive()) {
-            // custom text formatter not present, apply case-insensitive
-            expression = cb.lower(expression);
-        }
-        
-        return expression;
     }
 }

@@ -1,15 +1,15 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.column;
 
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.ColumnAdvancedFilterModel;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.Path;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.SimpleFilterModelType;
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextFilterParams;
+import jakarta.persistence.criteria.*;
 
 public class TextAdvancedFilterModel extends ColumnAdvancedFilterModel {
     
     private TextAdvancedFilterModelType type;
     private String filter;
+    private TextFilterParams filterParams = TextFilterParams.builder().build();
     
     public TextAdvancedFilterModel(String colId) {
         super("text", colId);
@@ -17,40 +17,53 @@ public class TextAdvancedFilterModel extends ColumnAdvancedFilterModel {
     
     @Override
     public Predicate toPredicate(CriteriaBuilder cb, Root<?> root) {
-        Predicate predicate;
 
-        Path<String> path = root.get(this.getColId());
+        Expression<String> filterExpression = this.filterParams.generateExpressionFromFilterParams(cb, cb.literal(this.filter));
+        Expression<String> valueExpression = this.filterParams.generateExpressionFromFilterParams(cb, root.get(this.getColId()));
+
+        // check if provided custom text matcher
+        if (this.filterParams.getTextMatcher() != null) {
+            var textMatcherParams = TextFilterParams.TextMatcherParams.builder()
+                    .filterOption(SimpleFilterModelType.valueOf(this.type.name()))
+                    .value(valueExpression)
+                    .filterText(filterExpression)
+                    .build();
+
+            return this.filterParams.getTextMatcher().apply(cb, textMatcherParams);
+        }
+        
+        Predicate predicate;
         switch (this.type) {
             case blank: {
-                predicate = cb.or(cb.isNull(path), cb.equal(path, ""));
+                predicate = cb.or(cb.isNull(valueExpression), cb.equal(valueExpression, ""));
                 break;
             }
             case notBlank: {
-                predicate = cb.and(cb.isNotNull(path), cb.notEqual(path, ""));
+                predicate = cb.and(cb.isNotNull(valueExpression), cb.notEqual(valueExpression, ""));
                 break;
             }
             case equals: {
-                predicate = cb.equal(path, this.filter);
+                predicate = cb.equal(valueExpression, filterExpression);
                 break;
             }
             case notEqual: {
-                predicate = cb.notEqual(path, filter);
+                predicate = cb.notEqual(valueExpression, filterExpression);
                 break;
             }
             case contains: {
-                predicate = cb.like(path, "%" + filter + "%");
+                predicate = cb.like(valueExpression, cb.concat(cb.concat("%", filterExpression), "%"));
                 break;
             }
             case notContains: {
-                predicate = cb.notLike(path, "%" + filter + "%");
+                predicate = cb.notLike(valueExpression, cb.concat(cb.concat("%", filterExpression), "%"));
                 break;
             }
             case startsWith: {
-                predicate = cb.like(path, filter + "%");
+                predicate = cb.like(valueExpression, cb.concat(filterExpression, "%"));
                 break;
             }
             case endsWith: {
-                predicate = cb.like(path, "%" + filter);
+                predicate = cb.like(valueExpression, cb.concat("%", filterExpression));
                 break;
             }
             default: {
@@ -77,4 +90,11 @@ public class TextAdvancedFilterModel extends ColumnAdvancedFilterModel {
         this.filter = filter;
     }
 
+    public TextFilterParams getFilterParams() {
+        return filterParams;
+    }
+
+    public void setFilterParams(TextFilterParams filterParams) {
+        this.filterParams = filterParams;
+    }
 }
