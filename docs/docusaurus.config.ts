@@ -6,8 +6,8 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'AG Grid JPA Adapter',
-  tagline: 'Dinosaurs are cool',
-  favicon: 'img/favicon.ico',
+  // tagline: 'Dinosaurs are cool',
+  // favicon: 'img/favicon.ico',
 
   // Set the production url of your site here
   url: 'https://github.com/',
