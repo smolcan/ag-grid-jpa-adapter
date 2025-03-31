@@ -9,53 +9,14 @@ Each column that we want to include in the AG Grid response must be explicitly d
 
 ## Defining Columns
 
-Each column is represented by a [ColDefs](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/column/ColDef.java) object, 
-which specifies various properties of the column. Below are the available fields for defining a column:
+Each column is defined using a [`ColDef`](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/column/ColDef.java) object.
 
----
-
-### `field` (required)
-:::info Type
-`String`
-:::
-The name of the entity field that this column represents.
-
----
-
-### `sortable`
-:::info Type
-`Boolean`
-:::
-Determines whether the column can be sorted.
-
-**Default:** `true`
-
----
-
-### `filter`
-:::info Type
-[IFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/IFilter.java)
-:::
-Specifies the filter type for the column.
-
-**Default:** [AgTextColumnFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/provided/simple/AgTextColumnFilter.java)
-
-**Options:**
-- A specific filter type (e.g., [AgNumberColumnFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/provided/simple/AgNumberColumnFilter.java), [AgSetColumnFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/provided/AgSetColumnFilter.java)...)
-- `false` (if the column should not be filterable)
-- Any implementation of the [IFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/IFilter.java) interface
-
----
-
-### `allowedAggFuncs`
-:::info Type
-Set\<[AggregationFunction](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/request/AggregationFunction.java)\>
-:::
-Defines which aggregation functions are allowed for this column.
-
-**Default:** All available aggregation functions
-
----
+| Property        | Type  | Default | Description                                                                                                                                                                                                                                                                                                                                    |
+|----------------|-------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **`field`** *(required)* | `string` | — | The name of the entity field.                                                                                                                                                                                                                                                                                                                  |
+| **`sortable`** | `boolean` | `true` | Enables or disables sorting.                                                                                                                                                                                                                                                                                                                   |
+| **`filter`** | [`IFilter`](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/IFilter.java) | [`AgTextColumnFilter`](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/provided/simple/AgTextColumnFilter.java) | Defines the filter type. <br/> Supports: <br/> ✅ Custom `IFilter` implementations <br/> ✅ Built-in filters (e.g., [`AgNumberColumnFilter`](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/provided/simple/AgNumberColumnFilter.java)) <br/> ❌ `false` (disables filtering) |
+| **`allowedAggFuncs`** | `Set<AggregationFunction>` | All available | Defines allowed aggregation functions.                                                                                                                                                                                                                                                                                                         |
 
 ## Example Usage
 
