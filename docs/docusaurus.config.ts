@@ -68,6 +68,11 @@ const config: Config = {
           label: 'Tutorial',
         },
         {
+          href: 'https://github.com/smolcan/ag-grid-jpa-adapter-showcase',
+          label: 'Showcase',
+          position: 'right',
+        },
+        {
           href: 'https://github.com/smolcan/ag-grid-jpa-adapter',
           label: 'GitHub',
           position: 'right',
