@@ -518,6 +518,11 @@ public class QueryBuilder<E> {
         } else {
             // column
             String colId = filter.get("colId").toString();
+            // assert the filter has enabled filtering
+            if (this.colDefs.get(colId).getFilter() == null) {
+                throw new IllegalArgumentException("Can not filter on column which has filtering turned-off");
+            }
+            
             switch (filterType) {
                 case "text": {
                     TextAdvancedFilterModel textAdvancedFilterModel = new TextAdvancedFilterModel(colId);
