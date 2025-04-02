@@ -140,6 +140,7 @@ public class QueryBuilder<E> {
         if (request.getSortModel() != null && !request.getSortModel().isEmpty()) {
             List<SortModelItem> sortModelItemsNotInColDefs = request.getSortModel()
                     .stream()
+                    .filter(c -> !AUTO_GROUP_COLUMN_NAME.equals(c.getColId()))
                     .filter(c -> {
                         // check col defs
                         boolean isInColDefs = this.colDefs.containsKey(c.getColId());

@@ -39,3 +39,4 @@ build/
 .DS_Store
 
 pom.xml.asc
+deployment-notes.md
