@@ -36,6 +36,7 @@ public class PivotingContextHelper<E> {
     /**
      * Creates pivoting context object to hold all the info about pivoting
      * @throws OnPivotMaxColumnsExceededException when number of columns to be generated from pivot values is bigger than limit  
+     * @return pivoting context
      */
     public PivotingContext createPivotingContext() throws OnPivotMaxColumnsExceededException {
         
@@ -81,8 +82,8 @@ public class PivotingContextHelper<E> {
     }
 
     /**
-     * Extracts original column name from pivoted name <br/>
-     * For example: Piv1_Piv2_Piv3_originalCol -> originalCol
+     * Extracts original column name from pivoted name <br>
+     * For example: Piv1_Piv2_Piv3_originalCol will be originalCol
      * @param pivotedName                           pivoted column name
      * @param serverSidePivotResultFieldSeparator   separator
      * @return                                      original name of the column

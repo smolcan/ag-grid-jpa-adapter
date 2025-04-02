@@ -18,11 +18,14 @@ public abstract class IFilter<FM extends IFilterModel, FP extends IFilterParams>
 
     /**
      * From map creates specific filter model
+     * @param filterModel   filter model as Map
+     * @return              mapped filter model
      */
     public abstract FM recognizeFilterModel(Map<String, Object> filterModel);
 
     /**
      * Provide filter params with default values
+     * @return default filter params
      */
     public abstract FP getDefaultFilterParams();
 

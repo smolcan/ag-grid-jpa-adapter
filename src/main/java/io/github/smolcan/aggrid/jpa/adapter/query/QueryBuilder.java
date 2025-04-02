@@ -74,6 +74,7 @@ public class QueryBuilder<E> {
      * @param request The {@link ServerSideGetRowsRequest} containing filtering, sorting, grouping, and pagination information.
      *                This request defines the criteria for fetching rows.
      * @return A {@link LoadSuccessParams} object containing the retrieved row data mapped to a format suitable for AG Grid.
+     * @throws OnPivotMaxColumnsExceededException - when number of pivot columns exceeded limit
      */
     public LoadSuccessParams getRows(ServerSideGetRowsRequest request) throws OnPivotMaxColumnsExceededException {
         this.validateRequest(request);
