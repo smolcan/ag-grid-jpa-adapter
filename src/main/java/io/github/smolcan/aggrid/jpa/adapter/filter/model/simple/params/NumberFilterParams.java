@@ -2,8 +2,8 @@ package io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params;
 
 public class NumberFilterParams extends ScalarFilterParams {
     
-    public NumberFilterParams(boolean inRangeInclusive, boolean includeBlanksInEquals, boolean includeBlanksInNotEqual, boolean includeBlanksInLessThan, boolean includeBlanksInGreaterThan, boolean includeBlanksInRange) {
-        super(inRangeInclusive, includeBlanksInEquals, includeBlanksInNotEqual, includeBlanksInLessThan, includeBlanksInGreaterThan, includeBlanksInRange);
+    public NumberFilterParams(Builder builder) {
+        super(builder);
     }
     
     public static Builder builder() {
@@ -13,14 +13,7 @@ public class NumberFilterParams extends ScalarFilterParams {
     public static class Builder extends ScalarFilterParams.Builder {
         
         public NumberFilterParams build() {
-            return new NumberFilterParams(
-                    inRangeInclusive,
-                    includeBlanksInEquals,
-                    includeBlanksInNotEqual,
-                    includeBlanksInLessThan,
-                    includeBlanksInGreaterThan,
-                    includeBlanksInRange
-            );
+            return new NumberFilterParams(this);
         }
         
     }

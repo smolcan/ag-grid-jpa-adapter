@@ -14,13 +14,13 @@ public class ScalarFilterParams implements ISimpleFilterParams {
     // If `true`, blank (`null` or `undefined`) values will pass the `'inRange'` filter option.
     private final boolean includeBlanksInRange;
 
-    public ScalarFilterParams(boolean inRangeInclusive, boolean includeBlanksInEquals, boolean includeBlanksInNotEqual, boolean includeBlanksInLessThan, boolean includeBlanksInGreaterThan, boolean includeBlanksInRange) {
-        this.inRangeInclusive = inRangeInclusive;
-        this.includeBlanksInEquals = includeBlanksInEquals;
-        this.includeBlanksInNotEqual = includeBlanksInNotEqual;
-        this.includeBlanksInLessThan = includeBlanksInLessThan;
-        this.includeBlanksInGreaterThan = includeBlanksInGreaterThan;
-        this.includeBlanksInRange = includeBlanksInRange;
+    public ScalarFilterParams(Builder builder) {
+        this.inRangeInclusive = builder.inRangeInclusive;
+        this.includeBlanksInEquals = builder.includeBlanksInEquals;
+        this.includeBlanksInNotEqual = builder.includeBlanksInNotEqual;
+        this.includeBlanksInLessThan = builder.includeBlanksInLessThan;
+        this.includeBlanksInGreaterThan = builder.includeBlanksInGreaterThan;
+        this.includeBlanksInRange = builder.includeBlanksInRange;
     }
     
     public static Builder builder() {
@@ -90,14 +90,7 @@ public class ScalarFilterParams implements ISimpleFilterParams {
         }
 
         public ScalarFilterParams build() {
-            return new ScalarFilterParams(
-                    inRangeInclusive,
-                    includeBlanksInEquals,
-                    includeBlanksInNotEqual,
-                    includeBlanksInLessThan,
-                    includeBlanksInGreaterThan,
-                    includeBlanksInRange
-            );
+            return new ScalarFilterParams(this);
         }
     }
 }
