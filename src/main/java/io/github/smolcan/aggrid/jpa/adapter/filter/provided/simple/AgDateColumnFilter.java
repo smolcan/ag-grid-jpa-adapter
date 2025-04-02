@@ -124,26 +124,24 @@ public class AgDateColumnFilter extends SimpleFilter<DateFilterModel, DateFilter
         }
         
         int year = dateTime.getYear();
-        if (this.filterParams.getMaxValidYear() != null) {
-            if (year > this.filterParams.getMaxValidYear()) {
-                throw new IllegalArgumentException("Max valid year exceeded!");
-            }
-        }
-        if (this.filterParams.getMinValidYear() != null) {
-            if (year < this.filterParams.getMinValidYear()) {
-                throw new IllegalArgumentException("Min valid year exceeded!");
-            }
-        }
-        
         LocalDate date = dateTime.toLocalDate();
         if (this.filterParams.getMaxValidDate() != null) {
             if (date.isAfter(this.filterParams.getMaxValidDate())) {
                 throw new IllegalArgumentException("Max valid date exceeded");
             }
+        } else if (this.filterParams.getMaxValidYear() != null) {
+            if (year > this.filterParams.getMaxValidYear()) {
+                throw new IllegalArgumentException("Max valid year exceeded!");
+            }
         }
+
         if (this.filterParams.getMinValidDate() != null) {
             if (date.isBefore(this.filterParams.getMinValidDate())) {
                 throw new IllegalArgumentException("Min valid date exceeded");
+            }
+        } else if (this.filterParams.getMinValidYear() != null) {
+            if (year < this.filterParams.getMinValidYear()) {
+                throw new IllegalArgumentException("Min valid year exceeded!");
             }
         }
     }
