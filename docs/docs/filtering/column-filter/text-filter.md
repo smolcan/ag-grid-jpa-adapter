@@ -79,5 +79,30 @@ Note that when providing a Text Formatter, the `caseSensitive` parameter is igno
 In this situation, if you want to do a case-insensitive comparison, you will need to perform case conversion inside the `textFormatter` function.
 
 ## Text Custom Matcher
+In most cases, you can customise the Text Filter matching logic by providing your own `Text Formatter`, 
+e.g. to remove or replace characters in the filter text and values. 
+The Text Formatter is applied to both the filter text and values before the filter comparison is performed.
+
+For more advanced use cases, you can provide your own `textMatcher` to decide when to include a row in the filtered results.
+`textMatcher` is a function that takes as argument `CriteriaBuilder` object and [TextMatcherParams](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/model/simple/params/TextMatcherParams.java) and returns `Predicate`,
+which is a boolean expression that determines if matches.
+
+```java
+ColDef colDef = ColDef.builder()
+    .field("portfolio")
+    .filter(new AgTextColumnFilter()
+        .filterParams(
+            TextFilterParams.builder()
+                .textMatcher((cb, params) => {
+                    // ...your own matching logic
+                    return predicate;
+                })
+                .build()
+        )
+    )
+    .build()
+```
+
 
 ## Text Filter Model
+Text filter model is represented by [TextFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/model/simple/TextFilterModel.java) class.
