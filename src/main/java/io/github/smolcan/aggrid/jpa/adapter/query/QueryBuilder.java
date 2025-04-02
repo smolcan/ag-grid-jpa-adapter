@@ -158,6 +158,7 @@ public class QueryBuilder<E> {
             Set<String> notSortableColDefs = this.colDefs.keySet().stream().filter(field -> !this.colDefs.get(field).isSortable()).collect(Collectors.toSet());
             List<SortModelItem> sortModelItemsIllegalSort = request.getSortModel()
                     .stream()
+                    .filter(c -> !AUTO_GROUP_COLUMN_NAME.equals(c.getColId()))
                     .filter(sm -> {
                         boolean isNotSortable = notSortableColDefs.contains(sm.getColId());
                         if (!isNotSortable && request.isPivotMode()) {
