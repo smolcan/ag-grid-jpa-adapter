@@ -3,6 +3,7 @@ package io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.SimpleFilterModelType;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.TextFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextFilterParams;
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextMatcherParams;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
@@ -37,7 +38,7 @@ public class AgTextColumnFilter extends SimpleFilter<TextFilterModel, TextFilter
         
         // check if provided custom text matcher
         if (this.filterParams.getTextMatcher() != null) {
-            var textMatcherParams = TextFilterParams.TextMatcherParams.builder()
+            var textMatcherParams = TextMatcherParams.builder()
                     .filterOption(filterModel.getType())
                     .value(valueExpression)
                     .filterText(filterExpression)

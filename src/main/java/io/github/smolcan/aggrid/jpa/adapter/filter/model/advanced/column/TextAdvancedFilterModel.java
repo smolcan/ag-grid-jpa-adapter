@@ -3,6 +3,7 @@ package io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.column;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.ColumnAdvancedFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.SimpleFilterModelType;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextFilterParams;
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextMatcherParams;
 import jakarta.persistence.criteria.*;
 
 public class TextAdvancedFilterModel extends ColumnAdvancedFilterModel {
@@ -23,7 +24,7 @@ public class TextAdvancedFilterModel extends ColumnAdvancedFilterModel {
 
         // check if provided custom text matcher
         if (this.filterParams.getTextMatcher() != null) {
-            var textMatcherParams = TextFilterParams.TextMatcherParams.builder()
+            var textMatcherParams = TextMatcherParams.builder()
                     .filterOption(SimpleFilterModelType.valueOf(this.type.name()))
                     .value(valueExpression)
                     .filterText(filterExpression)
