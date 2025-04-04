@@ -58,4 +58,4 @@ ColDef colDef = ColDef.builder()
 ```
 
 ## Multi Filter Model
-Date filter model is represented by [MultiFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/model/simple/MultiFilterModel.java) class.
+Multi filter model is represented by [MultiFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/model/simple/MultiFilterModel.java) class.
