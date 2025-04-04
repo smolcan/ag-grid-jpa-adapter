@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/"
+                       xmlns:moz="http://www.mozilla.org/2006/browser/search/">
+  <ShortName>AG Grid JPA Adapter</ShortName>
+  <Description>Search AG Grid JPA Adapter</Description>
+  <InputEncoding>UTF-8</InputEncoding>
+  <Url type="text/html" method="get" template="https://github.com/ag-grid-jpa-adapter/search?q={searchTerms}"/>
+  <Url type="application/opensearchdescription+xml" rel="self" template="https://github.com/ag-grid-jpa-adapter/opensearch.xml" />
+  <moz:SearchForm>https://github.com/ag-grid-jpa-adapter/</moz:SearchForm>
+</OpenSearchDescription>
