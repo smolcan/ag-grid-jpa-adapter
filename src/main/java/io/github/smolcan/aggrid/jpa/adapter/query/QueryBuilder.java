@@ -113,18 +113,41 @@ public class QueryBuilder<E> {
             if (!rowGroupColsNotInColDefs.isEmpty()) {
                 errors.append(String.format("These row group cols not found in col defs: %s\n", rowGroupColsNotInColDefs.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
             }
+            
+            List<ColumnVO> rowGroupColsDisabledGrouping = request.getRowGroupCols()
+                    .stream()
+                    .filter(c -> this.colDefs.containsKey(c.getField()))
+                    .filter(c -> !this.colDefs.get(c.getField()).isEnableRowGroup())
+                    .collect(Collectors.toList());
+            if (!rowGroupColsDisabledGrouping.isEmpty()) {
+                errors.append(String.format("These row group cols do not have enabled grouping: %s\n", rowGroupColsDisabledGrouping.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
+            }
         }
+        
         // validate value cols
         if (request.getValueCols() != null && !request.getValueCols().isEmpty()) {
             List<ColumnVO> valueColsNotInColDefs = request.getValueCols().stream().filter(c -> !this.colDefs.containsKey(c.getField())).collect(Collectors.toList());
             if (!valueColsNotInColDefs.isEmpty()) {
                 errors.append(String.format("These value cols not found in col defs: %s\n", valueColsNotInColDefs.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
             }
+            
+            // turned off aggregations
+            List<ColumnVO> valueColsTurnedOffAggregations = request.getValueCols()
+                    .stream()
+                    .filter(valueCol -> this.colDefs.containsKey(valueCol.getField()))
+                    .filter(valueCol -> !this.colDefs.get(valueCol.getField()).isEnableValue())
+                    .collect(Collectors.toList());
+            if (!valueColsTurnedOffAggregations.isEmpty()) {
+                errors.append(String.format("These row value cols have aggregations turned off, modify the enableValue=true property in col def to be aggregated: %s\n", valueColsTurnedOffAggregations.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
+            }
+
             // validate agg functions
-            List<ColumnVO> valueColsNotAllowedAggregations = request.getValueCols().stream().filter(valueCol -> {
-                ColDef colDef = this.colDefs.get(valueCol.getField());
-                return !colDef.getAllowedAggFuncs().contains(valueCol.getAggFunc());
-            }).collect(Collectors.toList());
+            List<ColumnVO> valueColsNotAllowedAggregations = request.getValueCols()
+                    .stream()
+                    .filter(valueCol -> this.colDefs.containsKey(valueCol.getField()))
+                    .filter(valueCol -> this.colDefs.get(valueCol.getField()).isEnableValue())
+                    .filter(valueCol -> !this.colDefs.get(valueCol.getField()).getAllowedAggFuncs().contains(valueCol.getAggFunc()))
+                    .collect(Collectors.toList());
             if (!valueColsNotAllowedAggregations.isEmpty()) {
                 errors.append(String.format("These row value cols do not have allowed received aggregation: %s\n", valueColsNotAllowedAggregations.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
             }
