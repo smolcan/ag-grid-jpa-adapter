@@ -17,6 +17,7 @@ public class ColDef {
     private final boolean sortable;
     private final boolean enableRowGroup;
     private final boolean enableValue;
+    private final boolean enablePivot;
     private final Set<AggregationFunction> allowedAggFuncs;
     private final IFilter<?, ?> filter;
 
@@ -25,6 +26,7 @@ public class ColDef {
         this.sortable = builder.sortable;
         this.enableRowGroup = builder.enableRowGroup;
         this.enableValue = builder.enableValue;
+        this.enablePivot = builder.enablePivot;
         this.allowedAggFuncs = builder.allowedAggFuncs;
         this.filter = builder.filter;
     }
@@ -49,6 +51,10 @@ public class ColDef {
         return enableValue;
     }
 
+    public boolean isEnablePivot() {
+        return enablePivot;
+    }
+
     public IFilter<?, ?> getFilter() {
         return filter;
     }
@@ -65,6 +71,7 @@ public class ColDef {
         private boolean enableRowGroup = false;
         // Set to `true` if you want to be able to aggregate by this column
         private boolean enableValue = false;
+        private boolean enablePivot = false;
         private Set<AggregationFunction> allowedAggFuncs = Set.of(AggregationFunction.values());
         
         private IFilter<?, ?> filter = new AgTextColumnFilter();
@@ -100,6 +107,11 @@ public class ColDef {
         
         public Builder enableValue(boolean enableValue) {
             this.enableValue = enableValue;
+            return this;
+        }
+        
+        public Builder enablePivot(boolean enablePivot) {
+            this.enablePivot = enablePivot;
             return this;
         }
         
