@@ -39,7 +39,6 @@ public class QueryBuilder<E> {
     private final Class<E> entityClass;
     private final EntityManager entityManager;
     private final String serverSidePivotResultFieldSeparator;
-    private final boolean groupAggFiltering;
     private final boolean enableAdvancedFilter;
     private final Integer pivotMaxGeneratedColumns;
     private final Map<String, ColDef> colDefs;
@@ -52,7 +51,6 @@ public class QueryBuilder<E> {
         this.entityClass = builder.entityClass;
         this.entityManager = builder.entityManager;
         this.serverSidePivotResultFieldSeparator = builder.serverSidePivotResultFieldSeparator;
-        this.groupAggFiltering = builder.groupAggFiltering;
         this.enableAdvancedFilter = builder.enableAdvancedFilter;
         this.pivotMaxGeneratedColumns = builder.pivotMaxGeneratedColumns;
         this.colDefs = builder.colDefs;
@@ -625,7 +623,6 @@ public class QueryBuilder<E> {
         private final EntityManager entityManager;
 
         private String serverSidePivotResultFieldSeparator = DEFAULT_SERVER_SIDE_PIVOT_RESULT_FIELD_SEPARATOR;
-        private boolean groupAggFiltering;
         private Integer pivotMaxGeneratedColumns;
         private boolean enableAdvancedFilter;
         
@@ -642,11 +639,6 @@ public class QueryBuilder<E> {
                 throw new IllegalArgumentException("Server side pivot result field separator cannot be null or empty");
             }
             this.serverSidePivotResultFieldSeparator = separator;
-            return this;
-        }
-
-        public Builder<E> groupAggFiltering(boolean groupAggFiltering) {
-            this.groupAggFiltering = groupAggFiltering;
             return this;
         }
 
