@@ -289,7 +289,7 @@ public class QueryBuilder<E> {
                     .filter(model -> request.getValueCols().stream().anyMatch(aggCol -> aggCol.getField().equals(model.getColId())))
                     .map(model -> {
                         ColumnVO aggregatedColumn = request.getValueCols().stream().filter(aggCol -> aggCol.getField().equals(model.getColId())).findFirst().orElseThrow();
-                        Expression<? extends Number> aggregatedField;
+                        Expression<?> aggregatedField;
                         switch (aggregatedColumn.getAggFunc()) {
                             case avg: {
                                 aggregatedField = cb.avg(root.get(model.getColId()));
