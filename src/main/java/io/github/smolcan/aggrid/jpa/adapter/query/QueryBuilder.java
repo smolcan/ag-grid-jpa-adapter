@@ -87,7 +87,7 @@ public class QueryBuilder<E> {
         
         this.select(cb, query, root, request, pivotingContext);
         this.where(cb, query, root, request, pivotingContext);
-        this.groupBy(cb, query, root, request);
+        this.groupBy(cb, query, root, request, pivotingContext);
         this.having(cb, query, root, request, pivotingContext);
         this.orderBy(cb, query, root, request, pivotingContext);
 
@@ -197,7 +197,7 @@ public class QueryBuilder<E> {
         query.where(predicates.toArray(new Predicate[0]));
     }
     
-    protected void groupBy(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request) {
+    protected void groupBy(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request, PivotingContext pivotingContext) {
         // we know data are still grouped if request contains more group columns than group keys
         boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
         if (isGrouping) {
