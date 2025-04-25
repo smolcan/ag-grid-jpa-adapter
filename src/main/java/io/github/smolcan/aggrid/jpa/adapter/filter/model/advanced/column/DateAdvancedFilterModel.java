@@ -21,6 +21,7 @@ public class DateAdvancedFilterModel extends ColumnAdvancedFilterModel {
     
     @Override
     public Predicate toPredicate(CriteriaBuilder cb, Root<?> root) {
+        this.filterParams.validateDate(this.filter);
         Predicate predicate;
 
         Expression<LocalDate> path = root.get(this.getColId()).as(LocalDate.class);

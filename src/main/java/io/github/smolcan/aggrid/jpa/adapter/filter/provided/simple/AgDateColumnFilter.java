@@ -35,8 +35,8 @@ public class AgDateColumnFilter extends SimpleFilter<DateFilterModel, DateFilter
 
     @Override
     protected Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, DateFilterModel filterModel) {
-        this.validateDate(filterModel.getDateFrom());
-        this.validateDate(filterModel.getDateTo());
+        this.filterParams.validateDate(filterModel.getDateFrom());
+        this.filterParams.validateDate(filterModel.getDateTo());
         Predicate predicate;
         Expression<LocalDateTime> dateExpression = expression.as(LocalDateTime.class);
         switch (filterModel.getType()) {
@@ -117,32 +117,4 @@ public class AgDateColumnFilter extends SimpleFilter<DateFilterModel, DateFilter
         return predicate;
     }
     
-    
-    private void validateDate(LocalDateTime dateTime) {
-        if (dateTime == null) {
-            return;
-        }
-        
-        int year = dateTime.getYear();
-        LocalDate date = dateTime.toLocalDate();
-        if (this.filterParams.getMaxValidDate() != null) {
-            if (date.isAfter(this.filterParams.getMaxValidDate())) {
-                throw new IllegalArgumentException("Max valid date exceeded");
-            }
-        } else if (this.filterParams.getMaxValidYear() != null) {
-            if (year > this.filterParams.getMaxValidYear()) {
-                throw new IllegalArgumentException("Max valid year exceeded!");
-            }
-        }
-
-        if (this.filterParams.getMinValidDate() != null) {
-            if (date.isBefore(this.filterParams.getMinValidDate())) {
-                throw new IllegalArgumentException("Min valid date exceeded");
-            }
-        } else if (this.filterParams.getMinValidYear() != null) {
-            if (year < this.filterParams.getMinValidYear()) {
-                throw new IllegalArgumentException("Min valid year exceeded!");
-            }
-        }
-    }
 }

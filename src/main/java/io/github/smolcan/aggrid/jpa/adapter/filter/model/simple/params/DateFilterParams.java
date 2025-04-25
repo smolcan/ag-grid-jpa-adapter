@@ -1,6 +1,7 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public class DateFilterParams extends ScalarFilterParams {
 
@@ -41,6 +42,42 @@ public class DateFilterParams extends ScalarFilterParams {
 
     public Integer getMinValidYear() {
         return minValidYear;
+    }
+
+    public void validateDate(LocalDateTime dateTime) {
+        if (dateTime == null) {
+            return;
+        }
+        
+        LocalDate date = dateTime.toLocalDate();
+        this.validateDate(date);
+    }
+    
+    public void validateDate(LocalDate date) {
+        if (date == null) {
+            return;
+        }
+
+        int year = date.getYear();
+        if (this.maxValidDate != null) {
+            if (date.isAfter(this.maxValidDate)) {
+                throw new IllegalArgumentException("Max valid date exceeded");
+            }
+        } else if (this.maxValidYear != null) {
+            if (year > this.maxValidYear) {
+                throw new IllegalArgumentException("Max valid year exceeded!");
+            }
+        }
+
+        if (this.minValidDate != null) {
+            if (date.isBefore(this.minValidDate)) {
+                throw new IllegalArgumentException("Min valid date exceeded");
+            }
+        } else if (this.minValidYear != null) {
+            if (year < this.minValidYear) {
+                throw new IllegalArgumentException("Min valid year exceeded!");
+            }
+        }
     }
 
     public static class Builder extends ScalarFilterParams.Builder {
