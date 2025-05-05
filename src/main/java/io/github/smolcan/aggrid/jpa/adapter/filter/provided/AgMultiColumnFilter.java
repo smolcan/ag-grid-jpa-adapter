@@ -1,7 +1,6 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.provided;
 
 import io.github.smolcan.aggrid.jpa.adapter.filter.IFilter;
-import io.github.smolcan.aggrid.jpa.adapter.filter.model.IFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.MultiFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.MultiFilterParams;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -9,7 +8,6 @@ import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class AgMultiColumnFilter extends IProvidedFilter<MultiFilterModel, MultiFilterParams> {
     
