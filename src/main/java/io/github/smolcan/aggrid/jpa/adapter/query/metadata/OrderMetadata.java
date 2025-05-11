@@ -4,6 +4,9 @@ import jakarta.persistence.criteria.Order;
 
 import java.util.Objects;
 
+/**
+ * Metadata for a query {@link Order}, including the associated column ID.
+ */
 public class OrderMetadata {
     private final Order order;
     private final String colId;

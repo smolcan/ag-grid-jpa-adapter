@@ -4,6 +4,16 @@ import jakarta.persistence.criteria.Selection;
 
 import java.util.Objects;
 
+
+/**
+ * Metadata wrapper for a JPA {@link Selection}, used during dynamic query construction and analysis.
+ * <p>
+ * This class captures the role of a selection within a query — for example, whether it is part of 
+ * grouping, pivoting, or aggregation. It also enables reuse of previously defined selection expressions 
+ * for operations like filtering and ordering, avoiding redundant creation and ensuring consistency 
+ * across the query lifecycle.
+ * </p>
+ */
 public class SelectionMetadata {
     
     private final Selection<?> selection;

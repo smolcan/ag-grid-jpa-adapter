@@ -5,6 +5,9 @@ import jakarta.persistence.criteria.Expression;
 
 import java.util.Objects;
 
+/**
+ * Metadata for a grouping expression, including the associated column name.
+ */
 public class GroupingMetadata {
     
     private final Expression<?> gropingExpression;

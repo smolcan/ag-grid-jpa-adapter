@@ -6,6 +6,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * QueryContext is a metadata container used to inspect 
+ * JPA query components at runtime.
+ * <p>
+ * It wraps various elements of a JPA query (like selections, filters, grouping, etc.)
+ * using custom metadata classes to provide extended insight and processing capabilities
+ * during dynamic query generation or analysis.
+ * </p>
+ */
 public class QueryContext {
     
     private Map<String, SelectionMetadata> selections = new HashMap<>();

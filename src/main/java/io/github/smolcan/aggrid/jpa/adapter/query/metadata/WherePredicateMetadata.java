@@ -6,6 +6,10 @@ import jakarta.persistence.criteria.Predicate;
 
 import java.util.Objects;
 
+
+/**
+ * Metadata wrapper for a {@link Predicate} used in the {@code WHERE} clause of a dynamic JPA query.
+ */
 public class WherePredicateMetadata {
     
     private final Predicate predicate;

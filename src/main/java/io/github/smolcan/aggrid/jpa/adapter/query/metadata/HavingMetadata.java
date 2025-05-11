@@ -4,6 +4,9 @@ import jakarta.persistence.criteria.Predicate;
 
 import java.util.Objects;
 
+/**
+ * Metadata for a {@code HAVING} clause predicate, including pivoting context.
+ */
 public class HavingMetadata {
     
     private final Predicate predicate;
