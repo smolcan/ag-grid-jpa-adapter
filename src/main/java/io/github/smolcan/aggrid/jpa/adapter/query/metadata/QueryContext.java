@@ -1,6 +1,5 @@
 package io.github.smolcan.aggrid.jpa.adapter.query.metadata;
 
-import jakarta.persistence.criteria.Order;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -13,7 +12,7 @@ public class QueryContext {
     private List<WherePredicateMetadata> wherePredicates = new ArrayList<>();
     private Map<String, GroupingMetadata> grouping = new HashMap<>();
     private List<HavingMetadata> having = new ArrayList<>();
-    private List<Order> orders = new ArrayList<>();
+    private List<OrderMetadata> orders = new ArrayList<>();
     private int firstResult;
     private int maxResults;
     private PivotingContext pivotingContext;
@@ -51,11 +50,11 @@ public class QueryContext {
         this.having = having;
     }
 
-    public List<Order> getOrders() {
+    public List<OrderMetadata> getOrders() {
         return orders;
     }
 
-    public void setOrders(List<Order> orders) {
+    public void setOrders(List<OrderMetadata> orders) {
         this.orders = orders;
     }
 

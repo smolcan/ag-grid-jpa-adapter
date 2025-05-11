@@ -120,7 +120,7 @@ public class QueryBuilder<E> {
         }
         // order by
         if (!queryContext.getOrders().isEmpty()) {
-            query.orderBy(queryContext.getOrders());
+            query.orderBy(queryContext.getOrders().stream().map(OrderMetadata::getOrder).collect(Collectors.toList()));
         }
 
         TypedQuery<Tuple> typedQuery = this.entityManager.createQuery(query);
@@ -389,7 +389,11 @@ public class QueryBuilder<E> {
             }
         }
 
-        queryContext.setOrders(orders);
+        queryContext.setOrders(
+                orders.stream()
+                        .map(o -> OrderMetadata.builder(o).colId(o.getExpression().getAlias()).build())
+                        .collect(Collectors.toList())
+        );
     }
     
     @SuppressWarnings("unchecked")
