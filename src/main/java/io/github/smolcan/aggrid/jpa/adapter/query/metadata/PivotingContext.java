@@ -1,4 +1,4 @@
-package io.github.smolcan.aggrid.jpa.adapter.pivoting;
+package io.github.smolcan.aggrid.jpa.adapter.query.metadata;
 
 import io.github.smolcan.aggrid.jpa.adapter.utils.Pair;
 import jakarta.persistence.criteria.Expression;

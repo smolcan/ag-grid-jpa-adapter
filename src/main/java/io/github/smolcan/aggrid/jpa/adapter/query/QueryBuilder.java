@@ -9,15 +9,16 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.column.*;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.DateFilterParams;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.NumberFilterParams;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextFilterParams;
+import io.github.smolcan.aggrid.jpa.adapter.query.metadata.*;
 import io.github.smolcan.aggrid.jpa.adapter.request.ColumnVO;
 import io.github.smolcan.aggrid.jpa.adapter.request.ServerSideGetRowsRequest;
 import io.github.smolcan.aggrid.jpa.adapter.request.SortModelItem;
 import io.github.smolcan.aggrid.jpa.adapter.request.SortType;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.AdvancedFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.response.LoadSuccessParams;
-import io.github.smolcan.aggrid.jpa.adapter.pivoting.PivotingContext;
+import io.github.smolcan.aggrid.jpa.adapter.query.metadata.PivotingContext;
+import io.github.smolcan.aggrid.jpa.adapter.utils.Pair;
 import io.github.smolcan.aggrid.jpa.adapter.utils.TypeValueSynchronizer;
-import io.github.smolcan.aggrid.jpa.adapter.pivoting.PivotingContextHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Tuple;
 import jakarta.persistence.TypedQuery;
@@ -25,9 +26,12 @@ import jakarta.persistence.criteria.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static io.github.smolcan.aggrid.jpa.adapter.utils.CartesianProduct.cartesianProduct;
 
 public class QueryBuilder<E> {
     private static final DateTimeFormatter DATE_FORMATTER_FOR_DATE_ADVANCED_FILTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -75,157 +79,222 @@ public class QueryBuilder<E> {
         this.validateRequest(request);
         
         CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
-
         CriteriaQuery<Tuple> query = cb.createTupleQuery();
         Root<E> root = query.from(this.entityClass);
-
+        
+        // record all the context we put into query
+        QueryContext queryContext = new QueryContext();
         // if pivoting, load all information needed for pivoting into pivoting context
-        PivotingContext pivotingContext = new PivotingContextHelper<>(this.entityClass, this.entityManager, cb, root, request, this.serverSidePivotResultFieldSeparator, this.pivotMaxGeneratedColumns).createPivotingContext();
+        queryContext.setPivotingContext(this.createPivotingContext(cb, root, request));
         
-        this.select(cb, query, root, request, pivotingContext);
-        this.where(cb, query, root, request, pivotingContext);
-        this.groupBy(cb, query, root, request, pivotingContext);
-        this.having(cb, query, root, request, pivotingContext);
-        this.orderBy(cb, query, root, request, pivotingContext);
-
-        TypedQuery<Tuple> typedQuery = this.entityManager.createQuery(query);
-        this.limitOffset(typedQuery, request);
-
-        List<Tuple> data = typedQuery.getResultList();
+        this.select(cb, root, request, queryContext);
+        this.where(cb, root, request, queryContext);
+        this.groupBy(cb, root, request, queryContext);
+        this.having(cb, request, queryContext);
+        this.orderBy(cb, request, queryContext);
+        this.limitOffset(request, queryContext);
         
+        List<Tuple> data = this.apply(query, queryContext);
         LoadSuccessParams loadSuccessParams = new LoadSuccessParams();
         loadSuccessParams.setRowData(tupleToMap(data));
-        loadSuccessParams.setPivotResultFields(pivotingContext.getPivotingResultFields());
+        loadSuccessParams.setPivotResultFields(queryContext.getPivotingContext().getPivotingResultFields());
         return loadSuccessParams;
     }
-    
-    protected void select(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request, PivotingContext pivotingContext) {
+
+    protected List<Tuple> apply(CriteriaQuery<Tuple> query, QueryContext queryContext) {
         // select
+        query.multiselect(queryContext.getSelections().values().stream().map(SelectionMetadata::getSelection).collect(Collectors.toList()));
+        // where
+        if (!queryContext.getWherePredicates().isEmpty()) {
+            Predicate[] predicates = queryContext.getWherePredicates().stream().map(WherePredicateMetadata::getPredicate).toArray(Predicate[]::new);
+            query.where(predicates);
+        }
+        // group by
+        if (!queryContext.getGrouping().isEmpty()) {
+            query.groupBy(queryContext.getGrouping().values().stream().map(GroupingMetadata::getGropingExpression).collect(Collectors.toList()));
+        }
+        // having
+        if (!queryContext.getHaving().isEmpty()) {
+            Predicate[] having = queryContext.getHaving().stream().map(HavingMetadata::getPredicate).toArray(Predicate[]::new);
+            query.having(having);
+        }
+        // order by
+        if (!queryContext.getOrders().isEmpty()) {
+            query.orderBy(queryContext.getOrders());
+        }
+
+        TypedQuery<Tuple> typedQuery = this.entityManager.createQuery(query);
+        typedQuery.setFirstResult(queryContext.getFirstResult());
+        typedQuery.setMaxResults(queryContext.getMaxResults());
+        
+        return typedQuery.getResultList();
+    }
+    
+    protected void select(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
+        // select
+        List<SelectionMetadata> selections;
+        
         // we know data are still grouped if request contains more group columns than group keys
         boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
         if (!isGrouping) {
             // SELECT * from root if not grouping
-            this.selectAll(query, root);
-            return;
-        }
-
-        List<Selection<?>> selections = new ArrayList<>();
-        // group columns
-        for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size() + 1; i++) {
-            ColumnVO groupCol = request.getRowGroupCols().get(i);
-            selections.add(root.get(groupCol.getField()).alias(groupCol.getField()));
-        }
-        
-        if (pivotingContext.isPivoting()) {
-            // pivoting
-            List<Selection<?>> pivotingSelections = pivotingContext.getPivotingSelections();
-            selections.addAll(pivotingSelections);
+            selections = this.colDefs.values()
+                    .stream()
+                    .map(colDef -> {
+                        Path<?> field = root.get(colDef.getField());
+                        Selection<?> selection = field.alias(colDef.getField());
+                        
+                        return SelectionMetadata.builder(selection)
+                                .selection(selection)
+                                .build();
+                    })
+                    .collect(Collectors.toList());
         } else {
-            // aggregated columns
-            for (ColumnVO columnVO : request.getValueCols()) {
-                Expression<?> aggregatedField;
-                switch (columnVO.getAggFunc()) {
-                    case avg: {
-                        aggregatedField = cb.avg(root.get(columnVO.getField()));
-                        break;
+            selections = new ArrayList<>();
+            // group columns
+            for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size() + 1; i++) {
+                ColumnVO groupCol = request.getRowGroupCols().get(i);
+                Selection<?> groupSelection = root.get(groupCol.getField()).alias(groupCol.getField());
+                
+                SelectionMetadata groupSelectionMetadata = SelectionMetadata
+                        .builder(groupSelection)
+                        .isGroupingSelection(true)
+                        .build();
+                selections.add(groupSelectionMetadata);
+            }
+
+            if (queryContext.getPivotingContext().isPivoting()) {
+                // pivoting
+                List<SelectionMetadata> pivotingSelections = queryContext.getPivotingContext().getPivotingSelections()
+                        .stream()
+                        .map(s -> SelectionMetadata
+                                .builder(s)
+                                .isPivotingSelection(true)
+                                .isAggregationSelection(true)
+                                .build()
+                        )
+                        .collect(Collectors.toList());
+                selections.addAll(pivotingSelections);
+            } else {
+                // aggregated columns
+                for (ColumnVO columnVO : request.getValueCols()) {
+                    Expression<?> aggregatedField;
+                    switch (columnVO.getAggFunc()) {
+                        case avg: {
+                            aggregatedField = cb.avg(root.get(columnVO.getField()));
+                            break;
+                        }
+                        case sum: {
+                            aggregatedField = cb.sum(root.get(columnVO.getField()));
+                            break;
+                        }
+                        case min: {
+                            aggregatedField = cb.least((Expression) root.get(columnVO.getField()));
+                            break;
+                        }
+                        case max: {
+                            aggregatedField = cb.greatest((Expression) root.get(columnVO.getField()));
+                            break;
+                        }
+                        case count: {
+                            aggregatedField = cb.count(root.get(columnVO.getField()));
+                            break;
+                        }
+                        default: {
+                            throw new IllegalArgumentException("unsupported aggregation function: " + columnVO.getAggFunc());
+                        }
                     }
-                    case sum: {
-                        aggregatedField = cb.sum(root.get(columnVO.getField()));
-                        break;
-                    }
-                    case min: {
-                        aggregatedField = cb.least((Expression) root.get(columnVO.getField()));
-                        break;
-                    }
-                    case max: {
-                        aggregatedField = cb.greatest((Expression) root.get(columnVO.getField()));
-                        break;
-                    }
-                    case count: {
-                        aggregatedField = cb.count(root.get(columnVO.getField()));
-                        break;
-                    }
-                    default: {
-                        throw new IllegalArgumentException("unsupported aggregation function: " + columnVO.getAggFunc());
-                    }
+                    Selection<?> aggregatedFieldSelection = aggregatedField.alias(columnVO.getField());
+                    
+                    selections.add(
+                            SelectionMetadata
+                                    .builder(aggregatedFieldSelection)
+                                    .isAggregationSelection(true)
+                                    .build()
+                    );
                 }
-                selections.add(aggregatedField.alias(columnVO.getField()));
             }
         }
-
-        query.multiselect(selections);
-    }
-    
-    private void selectAll(CriteriaQuery<Tuple> query, Root<E> root) {
-        List<Selection<?>> selections = this.colDefs.values()
+        
+        // set selections to query context
+        Map<String, SelectionMetadata> selectionsWithAliases = selections
                 .stream()
-                .map(colDef -> {
-                    Path<?> field = root.get(colDef.getField());
-                    return field.alias(colDef.getField());
-                })
-                .collect(Collectors.toList());
+                .collect(Collectors.toMap(s -> s.getSelection().getAlias(), selection -> selection));
         
-        query.multiselect(selections);
+        queryContext.setSelections(selectionsWithAliases);
     }
     
     
-    protected void where(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request, PivotingContext pivotingContext) {
-        // where
-        List<Predicate> predicates = new ArrayList<>();
-        
+    protected void where(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
+        List<WherePredicateMetadata> wherePredicateMetadata = new ArrayList<>();
+
         // must add where statement for every group column that also has a key (was expanded)
         for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size(); i++) {
             String groupKey = request.getGroupKeys().get(i);
             String groupCol = request.getRowGroupCols().get(i).getField();
-            
+
             // try to synchronize col and key to same data type to prevent errors
             // for example, group key is date as string, but field is date, need to parse to date and then compare
             TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(root.get(groupCol), groupKey);
             Predicate groupPredicate = cb.equal(synchronizedValueType.getSynchronizedPath(), synchronizedValueType.getSynchronizedValue());
-            predicates.add(groupPredicate);
+            
+            // wrap in predicate info object
+            WherePredicateMetadata groupPredicateInfo = WherePredicateMetadata
+                    .builder(groupPredicate)
+                    .isGroupPredicate(true)
+                    .groupKey(synchronizedValueType.getSynchronizedValue())
+                    .groupCol(groupCol)
+                    .build();
+            wherePredicateMetadata.add(groupPredicateInfo);
         }
         
         // filter where
         if (request.getFilterModel() != null && !request.getFilterModel().isEmpty()) {
-            Predicate filterPredicate = this.filterToWherePredicate(cb, root, request.getFilterModel(), pivotingContext);
-            predicates.add(filterPredicate);
+            WherePredicateMetadata filterPredicate = this.filterToWherePredicate(cb, root, request.getFilterModel(), queryContext);
+            wherePredicateMetadata.add(filterPredicate);
         }
         
-        query.where(predicates.toArray(new Predicate[0]));
+        queryContext.setWherePredicates(wherePredicateMetadata);
     }
     
-    protected void groupBy(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request, PivotingContext pivotingContext) {
+
+    protected void groupBy(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
         // we know data are still grouped if request contains more group columns than group keys
         boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
         if (isGrouping) {
-            List<Expression<?>> groupByExpressions = new ArrayList<>();
+            Map<String, GroupingMetadata> groupingInfo = new HashMap<>();
             for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size() + 1; i++) {
                 String groupCol = request.getRowGroupCols().get(i).getField();
-                groupByExpressions.add(root.get(groupCol));
+                GroupingMetadata groupingMetadata = GroupingMetadata
+                        .builder(root.get(groupCol))
+                        .column(groupCol)
+                        .build();
+                
+                groupingInfo.put(groupCol, groupingMetadata);
             }
-            query.groupBy(groupByExpressions);
+            
+            queryContext.setGrouping(groupingInfo);
         }
     }
     
-    protected void orderBy(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request, PivotingContext pivotingContext) {
+    protected void orderBy(CriteriaBuilder cb, ServerSideGetRowsRequest request, QueryContext queryContext) {
         
         List<Order> orders = new ArrayList<>();
         
         // grid is in pivot mode
-        if (pivotingContext.isPivoting()) {
+        if (queryContext.getPivotingContext().isPivoting()) {
             // when pivoting, only groups or aggregated values can be sorted
             List<Order> pivotingGroupsOrders = request.getSortModel()
                     .stream()
                     .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))
-                    .filter(model -> this.colDefs.containsKey(model.getColId()))
-                    .filter(model -> request.getRowGroupCols().stream().anyMatch(rgc -> rgc.getField().equals(model.getColId())))
+                    .filter(model -> queryContext.getGrouping().containsKey(model.getColId()))
                     .limit(request.getGroupKeys().size() + 1)
                     .map(sortModel -> {
-                        Path<?> field = root.get(sortModel.getColId());
+                        Expression<?> groupingExpression = queryContext.getGrouping().get(sortModel.getColId()).getGropingExpression();
                         if (sortModel.getSort() == SortType.asc) {
-                            return cb.asc(field);
+                            return cb.asc(groupingExpression);
                         } else if (sortModel.getSort() == SortType.desc) {
-                            return cb.desc(field);
+                            return cb.desc(groupingExpression);
                         } else {
                             throw new RuntimeException();
                         }
@@ -235,9 +304,10 @@ public class QueryBuilder<E> {
             List<Order> pivotingAggregationOrders = request.getSortModel()
                     .stream()
                     .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))
-                    .filter(model -> pivotingContext.getColumnNamesToExpression().containsKey(model.getColId()))
+                    .filter(model -> queryContext.getSelections().containsKey(model.getColId()))
+                    .filter(model -> queryContext.getSelections().get(model.getColId()).isPivotingSelection())
                     .map(sortModel -> {
-                        Expression<?> pivotingAggregationExpression = pivotingContext.getColumnNamesToExpression().get(sortModel.getColId());
+                        Expression<?> pivotingAggregationExpression = (Expression<?>) queryContext.getSelections().get(sortModel.getColId()).getSelection();
                         if (sortModel.getSort() == SortType.asc) {
                             return cb.asc(pivotingAggregationExpression);
                         } else if (sortModel.getSort() == SortType.desc) {
@@ -250,137 +320,112 @@ public class QueryBuilder<E> {
             
             orders.addAll(pivotingGroupsOrders);
             orders.addAll(pivotingAggregationOrders);
-            
-            query.orderBy(orders);
-            return;
-        }
-        
-        // we know data are still grouped if request contains more group columns than group keys
-        boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
-        if (isGrouping) {
-            // grid is in grouping mode
-            
-            // ordering by grouped columns
-            List<Order> groupOrders = request.getSortModel().stream()
-                    .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))    // ignore auto-generated column
-                    .filter(model -> this.colDefs.containsKey(model.getColId()))
-                    .filter(model -> request.getRowGroupCols().stream().anyMatch(rgc -> rgc.getField().equals(model.getColId())))
-                    .map(sortModel -> {
-                        Path<?> field = root.get(sortModel.getColId());
-                        if (sortModel.getSort() == SortType.asc) {
-                            return cb.asc(field);
-                        } else if (sortModel.getSort() == SortType.desc) {
-                            return cb.desc(field);
-                        } else {
-                            return null;
-                        }
-                    })
-                    .filter(Objects::nonNull)
-                    .limit(request.getGroupKeys().size() + 1)
-                    .collect(Collectors.toList());
-            
-            // ordering by aggregated columns
-            List<Order> aggregationOrders = request.getSortModel().stream()
-                    .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))
-                    // in aggregation cols
-                    .filter(model -> request.getValueCols().stream().anyMatch(aggCol -> aggCol.getField().equals(model.getColId())))
-                    .map(model -> {
-                        ColumnVO aggregatedColumn = request.getValueCols().stream().filter(aggCol -> aggCol.getField().equals(model.getColId())).findFirst().orElseThrow();
-                        Expression<?> aggregatedField;
-                        switch (aggregatedColumn.getAggFunc()) {
-                            case avg: {
-                                aggregatedField = cb.avg(root.get(model.getColId()));
-                                break;
-                            }
-                            case sum: {
-                                aggregatedField = cb.sum(root.get(model.getColId()));
-                                break;
-                            }
-                            case min: {
-                                aggregatedField = cb.least((Expression) root.get(model.getColId()));
-                                break;
-                            }
-                            case max: {
-                                aggregatedField = cb.greatest((Expression) root.get(model.getColId()));
-                                break;
-                            }
-                            case count: {
-                                aggregatedField = cb.count(root.get(model.getColId()));
-                                break;
-                            }
-                            default: {
-                                throw new IllegalArgumentException("unsupported aggregation function: " + aggregatedColumn.getAggFunc());
-                            }
-                        }
-
-                        if (model.getSort() == SortType.asc) {
-                            return cb.asc(aggregatedField);
-                        } else if (model.getSort() == SortType.desc) {
-                            return cb.desc(aggregatedField);
-                        } else {
-                            return null;
-                        }
-                    })
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
-            
-            orders.addAll(groupOrders);
-            orders.addAll(aggregationOrders);
-            
         } else {
-            // grid is in basic mode :)
-            List<Order> columnOrders = request.getSortModel().stream()
-                    .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))
-                    .filter(model -> this.colDefs.containsKey(model.getColId()))
-                    .map(sortModel -> {
-                        Path<?> field = root.get(sortModel.getColId());
-                        if (sortModel.getSort() == SortType.asc) {
-                            return cb.asc(field);
-                        } else if (sortModel.getSort() == SortType.desc) {
-                            return cb.desc(field);
-                        } else {
-                            return null;
-                        }
-                    })
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
-            
-            orders.addAll(columnOrders);
+            // we know data are still grouped if request contains more group columns than group keys
+            boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
+            if (isGrouping) {
+                // grid is in grouping mode
+
+                // ordering by grouped columns
+                List<Order> groupOrders = request.getSortModel().stream()
+                        .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))    // ignore auto-generated column
+                        .filter(model -> queryContext.getGrouping().containsKey(model.getColId()))
+                        .map(sortModel -> {
+                            Expression<?> gropingExpression = queryContext.getGrouping().get(sortModel.getColId()).getGropingExpression();
+                            if (sortModel.getSort() == SortType.asc) {
+                                return cb.asc(gropingExpression);
+                            } else if (sortModel.getSort() == SortType.desc) {
+                                return cb.desc(gropingExpression);
+                            } else {
+                                return null;
+                            }
+                        })
+                        .filter(Objects::nonNull)
+                        .limit(request.getGroupKeys().size() + 1)
+                        .collect(Collectors.toList());
+
+                // ordering by aggregated columns
+                List<Order> aggregationOrders = request.getSortModel().stream()
+                        .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))
+                        // in aggregation cols
+                        .filter(model -> queryContext.getSelections().containsKey(model.getColId()))
+                        .filter(model -> queryContext.getSelections().get(model.getColId()).isAggregationSelection())
+                        .map(model -> {
+                            Expression<?> aggregatedField = (Expression<?>) queryContext.getSelections().get(model.getColId()).getSelection();
+                            if (model.getSort() == SortType.asc) {
+                                return cb.asc(aggregatedField);
+                            } else if (model.getSort() == SortType.desc) {
+                                return cb.desc(aggregatedField);
+                            } else {
+                                return null;
+                            }
+                        })
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList());
+
+                orders.addAll(groupOrders);
+                orders.addAll(aggregationOrders);
+
+            } else {
+                // grid is in basic mode :)
+                List<Order> columnOrders = request.getSortModel().stream()
+                        .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))
+                        .filter(model -> this.colDefs.containsKey(model.getColId()))
+                        .filter(model -> queryContext.getSelections().containsKey(model.getColId()))
+                        .map(sortModel -> {
+                            Expression<?> field = (Expression<?>) queryContext.getSelections().get(sortModel.getColId()).getSelection();
+                            if (sortModel.getSort() == SortType.asc) {
+                                return cb.asc(field);
+                            } else if (sortModel.getSort() == SortType.desc) {
+                                return cb.desc(field);
+                            } else {
+                                return null;
+                            }
+                        })
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList());
+
+                orders.addAll(columnOrders);
+            }
         }
 
-        query.orderBy(orders);
-    }
-
-    @SuppressWarnings("unchecked")
-    protected void having(CriteriaBuilder cb, CriteriaQuery<Tuple> query, Root<E> root, ServerSideGetRowsRequest request, PivotingContext pivotingContext) {
-        List<Predicate> havingPredicates = new ArrayList<>();
-        
-        if (pivotingContext.isPivoting() && this.isColumnFilter(request.getFilterModel())) {
-            // pivoting filters
-            request.getFilterModel().entrySet()
-                    .stream()
-                    .filter(entry -> pivotingContext.getColumnNamesToExpression().containsKey(entry.getKey()))
-                    .forEach(entry -> {
-                        String pivotingColumnName = entry.getKey();
-                        Expression<?> pivotingColumnExpression = pivotingContext.getColumnNamesToExpression().get(pivotingColumnName);
-
-
-                        String columnName = pivotingColumnName.substring(pivotingColumnName.lastIndexOf(this.serverSidePivotResultFieldSeparator) + 1);
-                        IFilter<?, ?> filter = Optional.ofNullable(this.colDefs.get(columnName)).map(ColDef::getFilter).orElseThrow(() -> new IllegalArgumentException("Column " + columnName + " not found in col defs"));
-                        Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();
-
-                        havingPredicates.add(filter.toPredicate(cb, pivotingColumnExpression, filterMap));
-                    });
-        }
-        
-        if (!havingPredicates.isEmpty()) {
-            query.having(havingPredicates.toArray(new Predicate[0]));
-        }
+        queryContext.setOrders(orders);
     }
     
-    protected void limitOffset(TypedQuery<Tuple> typedQuery, ServerSideGetRowsRequest request) {
-        typedQuery.setFirstResult(request.getStartRow());
-        typedQuery.setMaxResults(request.getEndRow() - request.getStartRow() + 1);
+    @SuppressWarnings("unchecked")
+    protected void having(CriteriaBuilder cb, ServerSideGetRowsRequest request, QueryContext queryContext) {
+        List<HavingMetadata> havingMetadata = request.getFilterModel().entrySet()
+                .stream()
+                .filter(entry -> queryContext.getSelections().containsKey(entry.getKey()))
+                .filter(entry -> queryContext.getSelections().get(entry.getKey()).isAggregationSelection())
+                .map(entry -> {
+                    String selectionAlias = entry.getKey();
+                    SelectionMetadata selectionMetadata = queryContext.getSelections().get(selectionAlias);
+                    
+                    String columnName;
+                    if (selectionMetadata.isPivotingSelection()) {
+                        columnName = selectionAlias.substring(selectionAlias.lastIndexOf(this.serverSidePivotResultFieldSeparator) + 1);
+                    } else {
+                        columnName = selectionAlias;
+                    }
+
+                    IFilter<?, ?> filter = Optional.ofNullable(this.colDefs.get(columnName)).map(ColDef::getFilter).orElseThrow(() -> new IllegalArgumentException("Column " + columnName + " not found in col defs"));
+                    Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();
+                    
+                    Predicate predicate = filter.toPredicate(cb, (Expression<?>) selectionMetadata.getSelection(), filterMap);
+                    
+                    return HavingMetadata.builder(predicate)
+                            .isPivoting(selectionMetadata.isPivotingSelection())
+                            .build();
+                })
+                .collect(Collectors.toList());
+        
+        queryContext.setHaving(havingMetadata);
+    }
+    
+    protected void limitOffset(ServerSideGetRowsRequest request, QueryContext queryContext) {
+        queryContext.setFirstResult(request.getStartRow());
+        queryContext.setMaxResults(request.getEndRow() - request.getStartRow() + 1);
     }
 
     private static List<Map<String, Object>> tupleToMap(List<Tuple> tuples) {
@@ -399,23 +444,29 @@ public class QueryBuilder<E> {
     }
 
     @SuppressWarnings("unchecked")
-    private Predicate filterToWherePredicate(CriteriaBuilder cb, Root<E> root, Map<String, Object> filterModel, PivotingContext pivotingContext) {
-        
-        Predicate predicate;
+    private WherePredicateMetadata filterToWherePredicate(CriteriaBuilder cb, Root<E> root, Map<String, Object> filterModel, QueryContext queryContext) {
         if (!this.isColumnFilter(filterModel)) {
             // advanced filter
             AdvancedFilterModel advancedFilterModel = this.recognizeAdvancedFilter(filterModel);
-            predicate = advancedFilterModel.toPredicate(cb, root);
+            Predicate predicate = advancedFilterModel.toPredicate(cb, root);
+            
+            return WherePredicateMetadata
+                    .builder(predicate)
+                    .isFilterPredicate(true)
+                    .isAdvancedFilterPredicate(true)
+                    .advancedFilterModel(advancedFilterModel)
+                    .build();
         } else {
             // column filter
             // columnName: filter
             List<Predicate> predicates = filterModel.entrySet()
                     .stream()
-                    // filter out pivot filtering (should be in having clause since it's filtering of aggregated fields)
-                    .filter(entry -> !pivotingContext.isPivoting() || !pivotingContext.getColumnNamesToExpression().containsKey(entry.getKey()))
+                    // filter out aggregated selections (should be in having clause since it's filtering of aggregated fields)
+                    .filter(entry -> !queryContext.getSelections().get(entry.getKey()).isAggregationSelection())
                     .map(entry -> {
                         String columnName = entry.getKey();
                         Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();
+                        Selection<?> selection = queryContext.getSelections().get(entry.getKey()).getSelection();
                         
                         ColDef colDef = Optional.ofNullable(this.colDefs.get(columnName)).orElseThrow(() -> new IllegalArgumentException("Column " + columnName + " not found in col defs"));
                         IFilter<?, ?> filter = colDef.getFilter();
@@ -423,14 +474,18 @@ public class QueryBuilder<E> {
                             throw new IllegalArgumentException("Column " + columnName + " is not filterable field!");
                         }
                         
-                        return filter.toPredicate(cb, root.get(columnName), filterMap);
+                        return filter.toPredicate(cb, (Expression<?>) selection, filterMap);
                     })
                     .collect(Collectors.toList());
 
-            predicate = cb.and(predicates.toArray(new Predicate[0]));
+            Predicate predicate = cb.and(predicates.toArray(new Predicate[0]));
+            
+            return WherePredicateMetadata
+                    .builder(predicate)
+                    .isFilterPredicate(true)
+                    .isColumnFilterPredicate(true)
+                    .build();
         }
-        
-        return predicate;
     }
 
     /**
@@ -623,7 +678,7 @@ public class QueryBuilder<E> {
                         boolean isInColDefs = this.colDefs.containsKey(c.getColId());
                         if (!isInColDefs && request.isPivotMode()) {
                             // check pivoted cols
-                            String pivotedColumnOriginalName = PivotingContextHelper.originalColNameFromPivoted(c.getColId(), this.serverSidePivotResultFieldSeparator);
+                            String pivotedColumnOriginalName = this.originalColNameFromPivoted(c.getColId());
                             isInColDefs = this.colDefs.containsKey(pivotedColumnOriginalName);
                         }
                         return !isInColDefs;
@@ -640,7 +695,7 @@ public class QueryBuilder<E> {
                         boolean isNotSortable = notSortableColDefs.contains(sm.getColId());
                         if (!isNotSortable && request.isPivotMode()) {
                             // check pivoted cols
-                            String pivotedColumnOriginalName = PivotingContextHelper.originalColNameFromPivoted(sm.getColId(), this.serverSidePivotResultFieldSeparator);
+                            String pivotedColumnOriginalName = this.originalColNameFromPivoted(sm.getColId());
                             isNotSortable = notSortableColDefs.contains(pivotedColumnOriginalName);
                         }
                         return isNotSortable;
@@ -653,6 +708,230 @@ public class QueryBuilder<E> {
         if (errors.length() > 0) {
             throw new IllegalArgumentException(errors.toString());
         }
+    }
+
+    /**
+     * Creates pivoting context object to hold all the info about pivoting
+     * @throws OnPivotMaxColumnsExceededException when number of columns to be generated from pivot values is bigger than limit  
+     * @return pivoting context
+     */
+    public PivotingContext createPivotingContext(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request) throws OnPivotMaxColumnsExceededException {
+
+        PivotingContext pivotingContext = new PivotingContext();
+        if (!request.isPivotMode() || request.getPivotCols().isEmpty()) {
+            // no pivoting
+            pivotingContext.setPivoting(false);
+        } else {
+            pivotingContext.setPivoting(true);
+
+            // check if number of generated columns did not exceed the limit
+            if (this.pivotMaxGeneratedColumns != null) {
+                long numberOfPivotColumns = this.countPivotColumnsToBeGenerated(cb, request);
+                if (numberOfPivotColumns > this.pivotMaxGeneratedColumns) {
+                    throw new OnPivotMaxColumnsExceededException(this.pivotMaxGeneratedColumns, numberOfPivotColumns);
+                }
+            }
+
+            // distinct values for pivoting
+            Map<String, List<Object>> pivotValues = this.getPivotValues(cb ,request);
+            // pair pivot columns with values
+            List<Set<Pair<String, Object>>> pivotPairs = this.createPivotPairs(pivotValues);
+            // cartesian product of pivot pairs
+            List<List<Pair<String, Object>>> cartesianProduct = cartesianProduct(pivotPairs);
+            // for each column name its expression
+            Map<String, Expression<?>> columnNamesToExpression = this.createPivotingExpressions(cb, root, request, cartesianProduct);
+            // expressions with selections
+            List<Selection<?>> pivotingSelections = columnNamesToExpression.entrySet().stream()
+                    .map(entry -> entry.getValue().alias(entry.getKey()))
+                    .collect(Collectors.toList());
+            // result fields are column names
+            List<String> pivotingResultFields = new ArrayList<>(columnNamesToExpression.keySet());
+
+            pivotingContext.setPivotValues(pivotValues);
+            pivotingContext.setPivotPairs(pivotPairs);
+            pivotingContext.setCartesianProduct(cartesianProduct);
+            pivotingContext.setColumnNamesToExpression(columnNamesToExpression);
+            pivotingContext.setPivotingSelections(pivotingSelections);
+            pivotingContext.setPivotingResultFields(pivotingResultFields);
+        }
+
+        return pivotingContext;
+    }
+
+    /**
+     * For each pivoting column fetch distinct values
+     * @return map where key is column name and value is distinct column values
+     */
+    private Map<String, List<Object>> getPivotValues(CriteriaBuilder cb, ServerSideGetRowsRequest request) {
+        Map<String, List<Object>> pivotValues = new LinkedHashMap<>(request.getPivotCols().size());
+        for (ColumnVO column : request.getPivotCols()) {
+            String field = column.getField();
+
+            CriteriaQuery<Object> query = cb.createQuery(Object.class);
+            Root<E> root = query.from(this.entityClass);
+
+            // select
+            query.multiselect(root.get(field)).distinct(true);
+            query.orderBy(cb.asc(root.get(field)));
+
+            // result
+            List<Object> result = this.entityManager.createQuery(query).getResultList();
+            pivotValues.put(field, result);
+        }
+
+        return pivotValues;
+    }
+
+    /**
+     * Creates pivot pairs from pivot values <br/>
+     * For example, for input: <br/>
+     * <code>
+     *     {
+     *         book: [Book1, Book2],
+     *         product: [Product1, Product2]
+     *     }
+     * </code> <br/>
+     * Output will be: <br/>
+     * <code>
+     *     [
+     *       [(book, Book1), (book, Book2)], 
+     *       [(product, Product1), (product, Product2)]
+     *     ]
+     * </code>
+     *
+     * @param pivotValues   pivot values
+     * @return              pivot pairs
+     */
+    private List<Set<Pair<String, Object>>> createPivotPairs(Map<String, List<Object>> pivotValues) {
+        List<Set<Pair<String, Object>>> pivotPairs = new ArrayList<>(pivotValues.size());
+        for (var entry : pivotValues.entrySet()) {
+            String column = entry.getKey();
+            List<Object> values = entry.getValue();
+
+            Set<Pair<String, Object>> pairs = new LinkedHashSet<>(values.size());
+            for (Object value : values) {
+                pairs.add(Pair.of(column, value));
+            }
+
+            // Add the set of pairs to the list
+            pivotPairs.add(pairs);
+        }
+
+        return pivotPairs;
+    }
+
+    /**
+     * Extracts original column name from pivoted name <br>
+     * For example: Piv1_Piv2_Piv3_originalCol will be originalCol
+     * @param pivotedName                           pivoted column name
+     * @return                                      original name of the column
+     */
+    private String originalColNameFromPivoted(String pivotedName) {
+        return pivotedName.substring(pivotedName.lastIndexOf(this.serverSidePivotResultFieldSeparator) + 1);
+    }
+
+    /**
+     * Calculates the product of the distinct counts of all pivot columns in a single query using the Criteria API.
+     * <p>
+     * This method dynamically constructs a query that computes the product of distinct counts for all fields specified 
+     * as pivot columns in the current request. It uses subqueries to calculate the distinct count for each field and 
+     * combines them into a single product expression.
+     * </p>
+     *
+     * @return The product of distinct counts for all pivot columns.
+     *         Returns 0 if pivot mode is disabled or no pivot columns are defined in the request.
+     */
+    private long countPivotColumnsToBeGenerated(CriteriaBuilder cb, ServerSideGetRowsRequest request) {
+        if (!request.isPivotMode() || request.getPivotCols().isEmpty()) {
+            return 0;
+        }
+
+        CriteriaQuery<Long> mainQuery = cb.createQuery(Long.class);
+
+        Expression<Long> productExpression = cb.literal(1L);
+        for (ColumnVO pivotCol : request.getPivotCols()) {
+            // Subquery for count(distinct <field>)
+            Subquery<Long> subquery = mainQuery.subquery(Long.class);
+            Root<E> subRoot = subquery.from(this.entityClass);
+            subquery.select(cb.countDistinct(subRoot.get(pivotCol.getField())));
+
+            productExpression = cb.prod(productExpression, subquery.getSelection());
+        }
+
+        mainQuery.select(productExpression);
+
+        return this.entityManager.createQuery(mainQuery).getSingleResult();
+    }
+
+    private Map<String, Expression<?>> createPivotingExpressions(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, List<List<Pair<String, Object>>> cartesianProduct) {
+        Map<String, Expression<?>> pivotingExpressions = new LinkedHashMap<>();
+
+        cartesianProduct.forEach(pairs -> {
+
+            String alias = pairs.stream()
+                    .map(Pair::getValue)
+                    .map(value -> {
+                        if (value instanceof LocalDate) {
+                            return ((LocalDate) value).format(DateTimeFormatter.ISO_LOCAL_DATE);
+                        } else if (value instanceof LocalDateTime) {
+                            return ((LocalDateTime) value).format(DateTimeFormatter.ISO_LOCAL_DATE);
+                        } else {
+                            return String.valueOf(value);
+                        }
+                    })
+                    .collect(Collectors.joining(this.serverSidePivotResultFieldSeparator));
+
+            request.getValueCols()
+                    .forEach(columnVO -> {
+
+                        Path<?> field = root.get(columnVO.getField());
+
+                        CriteriaBuilder.Case<?> caseExpression = null;
+                        for (Pair<String, Object> pair : pairs) {
+                            if (caseExpression == null) {
+                                caseExpression = cb.selectCase()
+                                        .when(cb.equal(root.get(pair.getKey()), pair.getValue()), field);
+                            } else {
+                                caseExpression = cb.selectCase()
+                                        .when(cb.equal(root.get(pair.getKey()), pair.getValue()), caseExpression);
+                            }
+                        }
+                        Objects.requireNonNull(caseExpression);
+
+                        // wrap case expression onto aggregation
+                        Expression<?> aggregatedField;
+                        switch (columnVO.getAggFunc()) {
+                            case avg: {
+                                aggregatedField = cb.avg((Expression<? extends Number>) caseExpression);
+                                break;
+                            }
+                            case sum: {
+                                aggregatedField = cb.sum((Expression<? extends Number>) caseExpression);
+                                break;
+                            }
+                            case min: {
+                                aggregatedField = cb.least((Expression) caseExpression);
+                                break;
+                            }
+                            case max: {
+                                aggregatedField = cb.greatest((Expression) caseExpression);
+                                break;
+                            }
+                            case count: {
+                                aggregatedField = cb.count(caseExpression);
+                                break;
+                            }
+                            default: {
+                                throw new IllegalArgumentException("unsupported aggregation function: " + columnVO.getAggFunc());
+                            }
+                        }
+
+                        String columnName = alias + this.serverSidePivotResultFieldSeparator + columnVO.getField();
+                        pivotingExpressions.put(columnName, aggregatedField);
+                    });
+        });
+
+        return pivotingExpressions;
     }
     
     public static class Builder<E> {
