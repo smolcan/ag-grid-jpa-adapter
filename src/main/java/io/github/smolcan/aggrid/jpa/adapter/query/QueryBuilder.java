@@ -100,6 +100,68 @@ public class QueryBuilder<E> {
         loadSuccessParams.setPivotResultFields(queryContext.getPivotingContext().getPivotingResultFields());
         return loadSuccessParams;
     }
+    
+    public long countRows(ServerSideGetRowsRequest request) throws OnPivotMaxColumnsExceededException {
+        this.validateRequest(request);
+
+        CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
+        CriteriaQuery<Long> query = cb.createQuery(Long.class);
+        Root<E> root = query.from(this.entityClass);
+        
+        // record all the context we put into query
+        QueryContext queryContext = new QueryContext();
+        
+        boolean countingGroups = !request.getRowGroupCols().isEmpty();
+        if (countingGroups) {
+            // name of the root group column
+            String rootGroupCol = request.getRowGroupCols().get(0).getId();
+
+            // subquery will only select the root column 
+            Subquery<?> subquery = query.subquery(root.get(rootGroupCol).getJavaType());
+            Root<E> subqueryRoot = subquery.from(this.entityClass);
+            
+            queryContext.setPivotingContext(this.createPivotingContext(cb, subqueryRoot, request));
+            this.select(cb, subqueryRoot, request, queryContext);
+            this.where(cb, subqueryRoot, request, queryContext);
+            this.groupBy(cb, subqueryRoot, request, queryContext);
+            this.having(cb, request, queryContext);
+            
+            // select the group root column in subquery
+            subquery.select(subqueryRoot.get(rootGroupCol));
+            // where
+            if (!queryContext.getWherePredicates().isEmpty()) {
+                Predicate[] predicates = queryContext.getWherePredicates().stream().map(WherePredicateMetadata::getPredicate).toArray(Predicate[]::new);
+                subquery.where(predicates);
+            }
+            // group by
+            if (!queryContext.getGrouping().isEmpty()) {
+                subquery.groupBy(queryContext.getGrouping().values().stream().map(GroupingMetadata::getGropingExpression).collect(Collectors.toList()));
+            }
+            // having
+            if (!queryContext.getHaving().isEmpty()) {
+                Predicate[] having = queryContext.getHaving().stream().map(HavingMetadata::getPredicate).toArray(Predicate[]::new);
+                subquery.having(having);
+            }
+            
+            // in parent query, count distinct values of root group that are returned in subquery
+            query.select(cb.countDistinct(root.get(rootGroupCol)));
+            query.where(cb.in(root.get(rootGroupCol)).value(subquery));
+            
+            return this.entityManager.createQuery(query).getSingleResult();
+        } else {
+            // no groups, count rows
+            this.select(cb, root, request, queryContext);
+            this.where(cb, root, request, queryContext);
+            
+            query.select(cb.count(root));
+            if (!queryContext.getWherePredicates().isEmpty()) {
+                Predicate[] predicates = queryContext.getWherePredicates().stream().map(WherePredicateMetadata::getPredicate).toArray(Predicate[]::new);
+                query.where(predicates);
+            }
+            
+            return this.entityManager.createQuery(query).getSingleResult();
+        }
+    }
 
     protected List<Tuple> apply(CriteriaQuery<Tuple> query, QueryContext queryContext) {
         // select
