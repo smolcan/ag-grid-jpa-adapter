@@ -100,7 +100,28 @@ public class QueryBuilder<E> {
         loadSuccessParams.setPivotResultFields(queryContext.getPivotingContext().getPivotingResultFields());
         return loadSuccessParams;
     }
-    
+
+    /**
+     * Counts the number of rows or groups that match the criteria specified in the request.
+     * <p>
+     * This method determines the total count of rows or groups based on the filtering and grouping
+     * specifications in the provided {@link ServerSideGetRowsRequest}. The behavior differs depending
+     * on whether the request contains row grouping:
+     * <ul>
+     *   <li>If no grouping is applied, it counts the total number of entity rows that match the filter criteria.</li>
+     *   <li>If grouping is applied, it counts the distinct values of the root group column that would be displayed
+     *       at the current grouping level, taking into account all filters and having conditions.</li>
+     * </ul>
+     * <p>
+     *     
+     * This count can be used for server-side pagination calculations or to determine the total
+     * number of rows/groups available when displaying partial results.
+     *
+     * @param request The {@link ServerSideGetRowsRequest} containing filtering, grouping, and other criteria information.
+     * @return The count of rows or groups that match the criteria in the request.
+     * @throws OnPivotMaxColumnsExceededException If the number of pivot columns to be generated exceeds the configured limit.
+     * @see #getRows(ServerSideGetRowsRequest) For retrieving the actual row data.
+     */
     public long countRows(ServerSideGetRowsRequest request) throws OnPivotMaxColumnsExceededException {
         this.validateRequest(request);
 
@@ -163,6 +184,14 @@ public class QueryBuilder<E> {
         }
     }
 
+    /**
+     * Applies the given {@link CriteriaQuery} by setting its select, where, group by,
+     * having, and order by clauses based on the provided {@link QueryContext}, then executes it.
+     *
+     * @param query        the criteria query to configure
+     * @param queryContext the context containing metadata for selections, filters, grouping, etc.
+     * @return a list of results returned by the executed query
+     */
     protected List<Tuple> apply(CriteriaQuery<Tuple> query, QueryContext queryContext) {
         // select
         query.multiselect(queryContext.getSelections().values().stream().map(SelectionMetadata::getSelection).collect(Collectors.toList()));
@@ -191,7 +220,19 @@ public class QueryBuilder<E> {
         
         return typedQuery.getResultList();
     }
-    
+
+    /**
+     * Populates the {@link QueryContext} with appropriate selections based on the request type.
+     * <p>
+     * Handles both flat data and grouped/pivoted data by determining the structure of the
+     * {@link ServerSideGetRowsRequest}. If grouping or pivoting is active, selects group and
+     * aggregate expressions accordingly; otherwise, selects all fields directly from the root entity.
+     *
+     * @param cb           the {@link CriteriaBuilder} used to construct aggregate expressions
+     * @param root         the root entity in the criteria query
+     * @param request      the AG Grid server-side row request containing grouping and aggregation info
+     * @param queryContext the query context to populate with selection metadata
+     */
     protected void select(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
         // select
         List<SelectionMetadata> selections;
@@ -285,8 +326,19 @@ public class QueryBuilder<E> {
         
         queryContext.setSelections(selectionsWithAliases);
     }
-    
-    
+
+    /**
+     * Constructs and adds {@code WHERE} predicates to the {@link QueryContext} based on the grouping keys
+     * and filter model in the {@link ServerSideGetRowsRequest}.
+     * <p>
+     * For each group column with a corresponding group key, a predicate is created to match the key.
+     * Additional filter predicates are generated from the filter model and added as well.
+     *
+     * @param cb           the {@link CriteriaBuilder} used to create predicates
+     * @param root         the root entity in the criteria query
+     * @param request      the AG Grid server-side row request containing group keys and filters
+     * @param queryContext the query context to populate with predicate metadata
+     */
     protected void where(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
         List<WherePredicateMetadata> wherePredicateMetadata = new ArrayList<>();
 
@@ -318,8 +370,19 @@ public class QueryBuilder<E> {
         
         queryContext.setWherePredicates(wherePredicateMetadata);
     }
-    
 
+
+    /**
+     * Adds {@code GROUP BY} expressions to the {@link QueryContext} if the request indicates active grouping.
+     * <p>
+     * Determines whether grouping is needed based on the number of group columns vs. group keys,
+     * and collects grouping metadata for the next unresolved group column.
+     *
+     * @param cb           the {@link CriteriaBuilder}, not used here but provided for consistency
+     * @param root         the root entity in the criteria query
+     * @param request      the AG Grid server-side row request containing group column info
+     * @param queryContext the query context to populate with grouping metadata
+     */
     protected void groupBy(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
         // we know data are still grouped if request contains more group columns than group keys
         boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
@@ -338,7 +401,19 @@ public class QueryBuilder<E> {
             queryContext.setGrouping(groupingInfo);
         }
     }
-    
+
+
+    /**
+     * Builds {@code ORDER BY} expressions based on the sorting model in the {@link ServerSideGetRowsRequest}
+     * and the current query mode (pivoting, grouping, or flat).
+     * <p>
+     * Depending on the mode, it generates appropriate sort orders for grouped columns,
+     * aggregated fields, or direct selections, and stores them in the {@link QueryContext}.
+     *
+     * @param cb           the {@link CriteriaBuilder} used to construct order expressions
+     * @param request      the AG Grid server-side row request containing sort model data
+     * @param queryContext the query context to populate with order metadata
+     */
     protected void orderBy(CriteriaBuilder cb, ServerSideGetRowsRequest request, QueryContext queryContext) {
         
         List<Order> orders = new ArrayList<>();
@@ -457,7 +532,16 @@ public class QueryBuilder<E> {
                         .collect(Collectors.toList())
         );
     }
-    
+
+    /**
+     * Constructs {@code HAVING} predicates from the filter model for fields that are aggregated selections.
+     * <p>
+     *
+     * @param cb           the {@link CriteriaBuilder} used to construct predicates
+     * @param request      the AG Grid server-side row request containing filter model data
+     * @param queryContext the query context to populate with {@code HAVING} clause metadata
+     * @throws IllegalArgumentException if a referenced column is not found in {@code colDefs}
+     */
     @SuppressWarnings("unchecked")
     protected void having(CriteriaBuilder cb, ServerSideGetRowsRequest request, QueryContext queryContext) {
         List<HavingMetadata> havingMetadata = request.getFilterModel().entrySet()
@@ -488,12 +572,26 @@ public class QueryBuilder<E> {
         
         queryContext.setHaving(havingMetadata);
     }
-    
+
+    /**
+     * Sets pagination parameters in the {@link QueryContext} based on the request's row range.
+     * <p>
+     * Configures the starting index and the maximum number of results to fetch from the data source.
+     *
+     * @param request      the AG Grid server-side row request containing {@code startRow} and {@code endRow}
+     * @param queryContext the query context to populate with pagination (offset and limit)
+     */
     protected void limitOffset(ServerSideGetRowsRequest request, QueryContext queryContext) {
         queryContext.setFirstResult(request.getStartRow());
         queryContext.setMaxResults(request.getEndRow() - request.getStartRow() + 1);
     }
 
+    /**
+     * Converts a list of JPA {@link Tuple} objects to a list of maps keyed by their aliases.
+     *
+     * @param tuples the list of JPA tuples to convert
+     * @return a list of maps where each map represents a tuple with alias-value pairs
+     */
     private static List<Map<String, Object>> tupleToMap(List<Tuple> tuples) {
         return tuples.stream()
                 .map(tuple -> {
@@ -509,6 +607,19 @@ public class QueryBuilder<E> {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Converts a filter model into a {@link Predicate} wrapped in {@link WherePredicateMetadata}.
+     * <p>
+     * Supports both column-based and advanced filters. Filters on aggregation fields are excluded
+     * and should be processed separately as HAVING clauses.
+     *
+     * @param cb            the {@link CriteriaBuilder} used to construct predicates
+     * @param root          the query root entity
+     * @param filterModel   the filter model received from the client (AG Grid)
+     * @param queryContext  the current query context holding metadata like selections
+     * @return the constructed {@link WherePredicateMetadata} representing the filter predicate
+     * @throws IllegalArgumentException if a filter references a non-existent or non-filterable column
+     */
     @SuppressWarnings("unchecked")
     private WherePredicateMetadata filterToWherePredicate(CriteriaBuilder cb, Root<E> root, Map<String, Object> filterModel, QueryContext queryContext) {
         if (!this.isColumnFilter(filterModel)) {
