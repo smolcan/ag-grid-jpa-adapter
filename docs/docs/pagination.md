@@ -11,4 +11,14 @@ For grids with grouping enabled, only root groups are counted.
 Use the `queryBuilder.countRows(request)` method to retrieve this count
 
 ## Paginate child rows
-! WIP !
+Set `paginateChildRows=true` in `QueryBuilder` to maintain exact page size. This makes `queryBuilder.countRows(request)` 
+count rows within expanded groups rather than number of root groups.
+
+```java
+QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
+    .colDefs(...)
+    .paginateChildRows(true)
+    .build();
+```
+
+Note: When expanding groups in the frontend and `paginateChildRows` is set to `true`, you should also call count rows.
