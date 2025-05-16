@@ -42,6 +42,7 @@ public class QueryBuilder<E> {
     private final String serverSidePivotResultFieldSeparator;
     private final boolean enableAdvancedFilter;
     private final Integer pivotMaxGeneratedColumns;
+    private final boolean paginateChildRows;
     private final Map<String, ColDef> colDefs;
     
     public static <E> Builder<E> builder(Class<E> entityClass, EntityManager entityManager) {
@@ -54,6 +55,7 @@ public class QueryBuilder<E> {
         this.serverSidePivotResultFieldSeparator = builder.serverSidePivotResultFieldSeparator;
         this.enableAdvancedFilter = builder.enableAdvancedFilter;
         this.pivotMaxGeneratedColumns = builder.pivotMaxGeneratedColumns;
+        this.paginateChildRows = builder.paginateChildRows;
         this.colDefs = builder.colDefs;
     }
 
@@ -132,7 +134,17 @@ public class QueryBuilder<E> {
         // record all the context we put into query
         QueryContext queryContext = new QueryContext();
         
-        boolean countingGroups = !request.getRowGroupCols().isEmpty();
+        // we count groups when there is grouping
+        boolean isGrouping = !request.getRowGroupCols().isEmpty();
+        boolean countingGroups = isGrouping;
+        if (isGrouping && this.paginateChildRows) {
+            // if paginateChildRows is turned on and all groups are expanded, we paginate records inside group (not counting groups)
+            boolean allGroupsExpanded = request.getRowGroupCols().size() == request.getGroupKeys().size();
+            if (allGroupsExpanded) {
+                countingGroups = false;
+            }
+        }
+        
         if (countingGroups) {
             // name of the root group column
             String rootGroupCol = request.getRowGroupCols().get(0).getId();
@@ -1120,6 +1132,7 @@ public class QueryBuilder<E> {
         private String serverSidePivotResultFieldSeparator = DEFAULT_SERVER_SIDE_PIVOT_RESULT_FIELD_SEPARATOR;
         private Integer pivotMaxGeneratedColumns;
         private boolean enableAdvancedFilter;
+        private boolean paginateChildRows;
         
         private Map<String, ColDef> colDefs;
 
@@ -1163,6 +1176,11 @@ public class QueryBuilder<E> {
         
         public Builder<E> enableAdvancedFilter(boolean enableAdvancedFilter) {
             this.enableAdvancedFilter = enableAdvancedFilter;
+            return this;
+        }
+        
+        public Builder<E> paginateChildRows(boolean paginateChildRows) {
+            this.paginateChildRows = paginateChildRows;
             return this;
         }
 
