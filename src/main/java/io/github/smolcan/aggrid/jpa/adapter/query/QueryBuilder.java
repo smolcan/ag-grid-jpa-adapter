@@ -901,6 +901,9 @@ public class QueryBuilder<E> {
 
     /**
      * Creates pivoting context object to hold all the info about pivoting
+     * @param cb    criteria builder
+     * @param root  root
+     * @param request   request             
      * @throws OnPivotMaxColumnsExceededException when number of columns to be generated from pivot values is bigger than limit  
      * @return pivoting context
      */
