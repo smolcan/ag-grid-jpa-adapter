@@ -24,7 +24,7 @@ public class QueryContext {
     private List<OrderMetadata> orders = new ArrayList<>();
     private int firstResult;
     private int maxResults;
-    private PivotingContext pivotingContext;
+    private PivotingContext pivotingContext = new PivotingContext();
 
 
     public Map<String, SelectionMetadata> getSelections() {

@@ -381,7 +381,7 @@ public class QueryBuilder<E> {
         
         // filter where
         if (request.getFilterModel() != null && !request.getFilterModel().isEmpty()) {
-            WherePredicateMetadata filterPredicate = this.filterToWherePredicate(cb, root, request.getFilterModel(), queryContext);
+            WherePredicateMetadata filterPredicate = this.filterToWherePredicate(cb, root, request, queryContext);
             wherePredicateMetadata.add(filterPredicate);
         }
         
@@ -561,6 +561,10 @@ public class QueryBuilder<E> {
      */
     @SuppressWarnings("unchecked")
     protected void having(CriteriaBuilder cb, ServerSideGetRowsRequest request, QueryContext queryContext) {
+        if (request.getFilterModel() == null) {
+            return;
+        }
+        
         List<HavingMetadata> havingMetadata = request.getFilterModel().entrySet()
                 .stream()
                 .filter(entry -> queryContext.getSelections().containsKey(entry.getKey()))
@@ -632,13 +636,15 @@ public class QueryBuilder<E> {
      *
      * @param cb            the {@link CriteriaBuilder} used to construct predicates
      * @param root          the query root entity
-     * @param filterModel   the filter model received from the client (AG Grid)
+     * @param request       the request received from the client (AG Grid)
      * @param queryContext  the current query context holding metadata like selections
      * @return the constructed {@link WherePredicateMetadata} representing the filter predicate
      * @throws IllegalArgumentException if a filter references a non-existent or non-filterable column
      */
     @SuppressWarnings("unchecked")
-    private WherePredicateMetadata filterToWherePredicate(CriteriaBuilder cb, Root<E> root, Map<String, Object> filterModel, QueryContext queryContext) {
+    private WherePredicateMetadata filterToWherePredicate(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
+        Map<String, Object> filterModel = request.getFilterModel();
+        
         if (!this.isColumnFilter(filterModel)) {
             // advanced filter
             AdvancedFilterModel advancedFilterModel = this.recognizeAdvancedFilter(filterModel);
@@ -651,26 +657,29 @@ public class QueryBuilder<E> {
                     .advancedFilterModel(advancedFilterModel)
                     .build();
         } else {
-            // column filter
-            // columnName: filter
-            List<Predicate> predicates = filterModel.entrySet()
-                    .stream()
-                    // filter out aggregated selections (should be in having clause since it's filtering of aggregated fields)
-                    .filter(entry -> !queryContext.getSelections().get(entry.getKey()).isAggregationSelection())
-                    .map(entry -> {
-                        String columnName = entry.getKey();
-                        Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();
-                        Selection<?> selection = queryContext.getSelections().get(entry.getKey()).getSelection();
-                        
-                        ColDef colDef = Optional.ofNullable(this.colDefs.get(columnName)).orElseThrow(() -> new IllegalArgumentException("Column " + columnName + " not found in col defs"));
-                        IFilter<?, ?> filter = colDef.getFilter();
-                        if (filter == null) {
-                            throw new IllegalArgumentException("Column " + columnName + " is not filterable field!");
-                        }
-                        
-                        return filter.toPredicate(cb, (Expression<?>) selection, filterMap);
-                    })
-                    .collect(Collectors.toList());
+            List<Predicate> predicates = new ArrayList<>(filterModel.size());
+            for (var entry : filterModel.entrySet()) {
+                String columnName = entry.getKey();
+                Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();
+                
+                if (queryContext.getPivotingContext().isPivoting() && queryContext.getPivotingContext().getPivotingResultFields().contains(columnName)) {
+                    // filter on pivot-generated column, will be resolved in 'having' clause, skip
+                    continue;
+                }
+                
+                // find col def
+                ColDef colDef = Optional.ofNullable(this.colDefs.get(columnName))
+                        .orElseThrow(() -> new IllegalArgumentException("Column " + columnName + " not found in col defs"));
+                // filter of given column
+                IFilter<?, ?> filter = colDef.getFilter();
+                if (filter == null) {
+                    throw new IllegalArgumentException("Column " + columnName + " is not filterable field!");
+                }
+                
+                // predicate from filter
+                Predicate predicate = filter.toPredicate(cb, root.get(columnName), filterMap);
+                predicates.add(predicate);
+            }
 
             Predicate predicate = cb.and(predicates.toArray(new Predicate[0]));
             
@@ -736,6 +745,9 @@ public class QueryBuilder<E> {
         } else {
             // column
             String colId = filter.get("colId").toString();
+            if (!this.colDefs.containsKey(colId)) {
+                throw new IllegalArgumentException("Can not filter on column not defined in col defs!");
+            }
             // assert the filter has enabled filtering
             if (this.colDefs.get(colId).getFilter() == null) {
                 throw new IllegalArgumentException("Can not filter on column which has filtering turned-off");
