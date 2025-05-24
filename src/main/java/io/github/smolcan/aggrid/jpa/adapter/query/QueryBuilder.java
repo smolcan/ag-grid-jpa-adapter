@@ -135,10 +135,10 @@ public class QueryBuilder<E> {
         QueryContext queryContext = new QueryContext();
         
         // we count groups when there is grouping
-        boolean isGrouping = !request.getRowGroupCols().isEmpty();
-        boolean countingGroups = isGrouping;
-        if (isGrouping && this.paginateChildRows) {
-            // if paginateChildRows is turned on and all groups are expanded, we paginate records inside group (not counting groups)
+        boolean hasGroupCols = !request.getRowGroupCols().isEmpty();
+        boolean countingGroups = hasGroupCols;
+        if (hasGroupCols && this.paginateChildRows) {
+            // if paginateChildRows is turned on and all groups are expanded, we count records inside group (not counting groups)
             boolean allGroupsExpanded = request.getRowGroupCols().size() == request.getGroupKeys().size();
             if (allGroupsExpanded) {
                 countingGroups = false;
@@ -146,11 +146,16 @@ public class QueryBuilder<E> {
         }
         
         if (countingGroups) {
-            // name of the root group column
-            String rootGroupCol = request.getRowGroupCols().get(0).getId();
+            // select the group col that we are counting
+            int countingGroupColIndex = this.paginateChildRows
+                    // when paginating child rows, we count the first unexpanded group (next after last group key)
+                    ? request.getGroupKeys().size()
+                    // otherwise, we count root group
+                    : 0;
+            String countingGroupCol = request.getRowGroupCols().get(countingGroupColIndex).getId();
 
-            // subquery will only select the root column 
-            Subquery<?> subquery = query.subquery(root.get(rootGroupCol).getJavaType());
+            // subquery will only select the group column 
+            Subquery<?> subquery = query.subquery(root.get(countingGroupCol).getJavaType());
             Root<E> subqueryRoot = subquery.from(this.entityClass);
             
             queryContext.setPivotingContext(this.createPivotingContext(cb, subqueryRoot, request));
@@ -159,8 +164,8 @@ public class QueryBuilder<E> {
             this.groupBy(cb, subqueryRoot, request, queryContext);
             this.having(cb, request, queryContext);
             
-            // select the group root column in subquery
-            subquery.select(subqueryRoot.get(rootGroupCol));
+            // select the group column in subquery
+            subquery.select(subqueryRoot.get(countingGroupCol));
             // where
             if (!queryContext.getWherePredicates().isEmpty()) {
                 Predicate[] predicates = queryContext.getWherePredicates().stream().map(WherePredicateMetadata::getPredicate).toArray(Predicate[]::new);
@@ -176,9 +181,9 @@ public class QueryBuilder<E> {
                 subquery.having(having);
             }
             
-            // in parent query, count distinct values of root group that are returned in subquery
-            query.select(cb.countDistinct(root.get(rootGroupCol)));
-            query.where(cb.in(root.get(rootGroupCol)).value(subquery));
+            // in parent query, count distinct values of column group that are returned in subquery
+            query.select(cb.countDistinct(root.get(countingGroupCol)));
+            query.where(cb.in(root.get(countingGroupCol)).value(subquery));
             
             return this.entityManager.createQuery(query).getSingleResult();
         } else {
