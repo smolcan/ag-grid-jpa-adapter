@@ -43,6 +43,8 @@ public class QueryBuilder<E> {
     private final boolean enableAdvancedFilter;
     private final Integer pivotMaxGeneratedColumns;
     private final boolean paginateChildRows;
+    private final boolean groupAggFiltering;
+    private final boolean suppressAggFilteredOnly;
     private final Map<String, ColDef> colDefs;
     
     public static <E> Builder<E> builder(Class<E> entityClass, EntityManager entityManager) {
@@ -56,6 +58,8 @@ public class QueryBuilder<E> {
         this.enableAdvancedFilter = builder.enableAdvancedFilter;
         this.pivotMaxGeneratedColumns = builder.pivotMaxGeneratedColumns;
         this.paginateChildRows = builder.paginateChildRows;
+        this.groupAggFiltering = builder.groupAggFiltering;
+        this.suppressAggFilteredOnly = builder.groupAggFiltering || builder.suppressAggFilteredOnly;
         this.colDefs = builder.colDefs;
     }
 
@@ -564,34 +568,66 @@ public class QueryBuilder<E> {
         if (request.getFilterModel() == null) {
             return;
         }
+        // we know data are still grouped if request contains more group columns than group keys
+        boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
+        if (!isGrouping) {
+            // when not grouping, can't have 'having' clause
+            return;
+        }
         
-        List<HavingMetadata> havingMetadata = request.getFilterModel().entrySet()
-                .stream()
-                .filter(entry -> queryContext.getSelections().containsKey(entry.getKey()))
-                .filter(entry -> queryContext.getSelections().get(entry.getKey()).isAggregationSelection())
-                .map(entry -> {
-                    String selectionAlias = entry.getKey();
-                    SelectionMetadata selectionMetadata = queryContext.getSelections().get(selectionAlias);
-                    
-                    String columnName;
-                    if (selectionMetadata.isPivotingSelection()) {
-                        columnName = selectionAlias.substring(selectionAlias.lastIndexOf(this.serverSidePivotResultFieldSeparator) + 1);
-                    } else {
-                        columnName = selectionAlias;
-                    }
+        if (queryContext.getPivotingContext().isPivoting()) {
+            // todo: pivoting filtering later, need to investigate more
+            if (request.getRowGroupCols().size() != request.getGroupKeys().size() + 1) {
+                // only apply filtering when we are on the last group
+                return;
+            }
+            
+            List<HavingMetadata> pivotingHavingMetadata = request.getFilterModel().entrySet()
+                    .stream()
+                    .filter(entry -> queryContext.getSelections().containsKey(entry.getKey()))
+                    .filter(entry -> queryContext.getSelections().get(entry.getKey()).isPivotingSelection())
+                    .map(entry -> {
+                        String selectionAlias = entry.getKey();
+                        SelectionMetadata selectionMetadata = queryContext.getSelections().get(selectionAlias);
+                        String columnName = selectionAlias.substring(selectionAlias.lastIndexOf(this.serverSidePivotResultFieldSeparator) + 1);;
 
-                    IFilter<?, ?> filter = Optional.ofNullable(this.colDefs.get(columnName)).map(ColDef::getFilter).orElseThrow(() -> new IllegalArgumentException("Column " + columnName + " not found in col defs"));
-                    Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();
-                    
-                    Predicate predicate = filter.toPredicate(cb, (Expression<?>) selectionMetadata.getSelection(), filterMap);
-                    
-                    return HavingMetadata.builder(predicate)
-                            .isPivoting(selectionMetadata.isPivotingSelection())
-                            .build();
-                })
-                .collect(Collectors.toList());
-        
-        queryContext.setHaving(havingMetadata);
+                        IFilter<?, ?> filter = Optional.ofNullable(this.colDefs.get(columnName)).map(ColDef::getFilter)
+                                .orElseThrow(() -> new IllegalArgumentException("Column " + columnName + " not found in col defs"));
+                        Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();
+
+                        Predicate predicate = filter.toPredicate(cb, (Expression<?>) selectionMetadata.getSelection(), filterMap);
+
+                        return HavingMetadata.builder(predicate)
+                                .isPivoting(true)
+                                .build();
+                    })
+                    .collect(Collectors.toList());
+            
+            queryContext.setHaving(pivotingHavingMetadata);
+        } else {
+            // not pivoting
+            // 'groupAggFiltering' must be turned on, and we filter only the first group (group keys is empty)
+            if (this.groupAggFiltering && request.getGroupKeys().isEmpty()) {
+                List<HavingMetadata> havingMetadata = request.getFilterModel().entrySet()
+                        .stream()
+                        .filter(entry -> queryContext.getSelections().containsKey(entry.getKey()))
+                        .filter(entry -> queryContext.getSelections().get(entry.getKey()).isAggregationSelection())
+                        .map(entry -> {
+                            String columnName = entry.getKey();
+                            SelectionMetadata selectionMetadata = queryContext.getSelections().get(columnName);
+
+                            IFilter<?, ?> filter = Optional.ofNullable(this.colDefs.get(columnName)).map(ColDef::getFilter)
+                                    .orElseThrow(() -> new IllegalArgumentException("Column " + columnName + " not found in col defs"));
+                            Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();
+
+                            Predicate predicate = filter.toPredicate(cb, (Expression<?>) selectionMetadata.getSelection(), filterMap);
+                            return HavingMetadata.builder(predicate).build();
+                        })
+                        .collect(Collectors.toList());
+                
+                queryContext.setHaving(havingMetadata);
+            }
+        }
     }
 
     /**
@@ -657,6 +693,9 @@ public class QueryBuilder<E> {
                     .advancedFilterModel(advancedFilterModel)
                     .build();
         } else {
+            // we know data are still grouped if request contains more group columns than group keys
+            boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
+            
             List<Predicate> predicates = new ArrayList<>(filterModel.size());
             for (var entry : filterModel.entrySet()) {
                 String columnName = entry.getKey();
@@ -674,6 +713,22 @@ public class QueryBuilder<E> {
                 IFilter<?, ?> filter = colDef.getFilter();
                 if (filter == null) {
                     throw new IllegalArgumentException("Column " + columnName + " is not filterable field!");
+                }
+
+                // When using Filters and Aggregations together, the aggregated values reflect only the rows which have passed the filter. 
+                // This can be changed to instead ignore applied filters by using the 'suppressAggFilteredOnly' grid option.
+                if (isGrouping && this.suppressAggFilteredOnly) {
+                    // if this filter was applied above the column that is not group column, ignore it
+                    boolean isGroupFilter = request.getRowGroupCols().stream().anyMatch(c -> c.getId().equals(columnName));
+                    if (!isGroupFilter) {
+                        continue;
+                    }
+                }
+                if (this.groupAggFiltering) {
+                    boolean isAggregationColumn = request.getValueCols().stream().anyMatch(vc -> vc.getId().equals(columnName));
+                    if (isAggregationColumn) {
+                        continue;
+                    }
                 }
                 
                 // predicate from filter
@@ -1153,6 +1208,8 @@ public class QueryBuilder<E> {
         private Integer pivotMaxGeneratedColumns;
         private boolean enableAdvancedFilter;
         private boolean paginateChildRows;
+        private boolean groupAggFiltering;
+        private boolean suppressAggFilteredOnly;
         
         private Map<String, ColDef> colDefs;
 
@@ -1201,6 +1258,16 @@ public class QueryBuilder<E> {
         
         public Builder<E> paginateChildRows(boolean paginateChildRows) {
             this.paginateChildRows = paginateChildRows;
+            return this;
+        }
+        
+        public Builder<E> suppressAggFilteredOnly(boolean suppressAggFilteredOnly) {
+            this.suppressAggFilteredOnly = suppressAggFilteredOnly;
+            return this;
+        }
+        
+        public Builder<E> groupAggFiltering(boolean groupAggFiltering) {
+            this.groupAggFiltering = groupAggFiltering;
             return this;
         }
 
