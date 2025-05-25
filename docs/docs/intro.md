@@ -20,7 +20,7 @@ Development will continue for the next 12 months, and significant changes or bre
 <dependency>
     <groupId>io.github.smolcan</groupId>
     <artifactId>ag-grid-jpa-adapter</artifactId>
-    <version>0.0.11</version>
+    <version>0.0.12</version>
 </dependency>
 ```
 **Requirements 🛠️**
