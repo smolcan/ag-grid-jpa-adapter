@@ -1,5 +1,6 @@
 package io.github.smolcan.aggrid.jpa.adapter.exceptions;
 
+
 /**
  * This exception is thrown when number of pivot columns to be generated is bigger than specified max columns
  */
