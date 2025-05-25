@@ -714,19 +714,22 @@ public class QueryBuilder<E> {
                 if (filter == null) {
                     throw new IllegalArgumentException("Column " + columnName + " is not filterable field!");
                 }
-
+                
+                // allowing filters to also apply against the aggregated values
+                if (this.groupAggFiltering) {
+                    // when filter is applied on column that is aggregated, we do not apply
+                    // predicate in 'where' clause, but in 'having' clause (we are filtering on aggregated value)
+                    boolean isAggregationColumn = request.getValueCols().stream().anyMatch(vc -> vc.getId().equals(columnName));
+                    if (isAggregationColumn) {
+                        continue;
+                    }
+                }
                 // When using Filters and Aggregations together, the aggregated values reflect only the rows which have passed the filter. 
                 // This can be changed to instead ignore applied filters by using the 'suppressAggFilteredOnly' grid option.
                 if (isGrouping && this.suppressAggFilteredOnly) {
                     // if this filter was applied above the column that is not group column, ignore it
                     boolean isGroupFilter = request.getRowGroupCols().stream().anyMatch(c -> c.getId().equals(columnName));
                     if (!isGroupFilter) {
-                        continue;
-                    }
-                }
-                if (this.groupAggFiltering) {
-                    boolean isAggregationColumn = request.getValueCols().stream().anyMatch(vc -> vc.getId().equals(columnName));
-                    if (isAggregationColumn) {
                         continue;
                     }
                 }
