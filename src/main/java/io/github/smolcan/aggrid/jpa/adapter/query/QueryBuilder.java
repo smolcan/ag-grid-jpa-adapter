@@ -1,6 +1,7 @@
 package io.github.smolcan.aggrid.jpa.adapter.query;
 
 import io.github.smolcan.aggrid.jpa.adapter.column.ColDef;
+import io.github.smolcan.aggrid.jpa.adapter.exceptions.InvalidRequestException;
 import io.github.smolcan.aggrid.jpa.adapter.exceptions.OnPivotMaxColumnsExceededException;
 import io.github.smolcan.aggrid.jpa.adapter.filter.IFilter;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.JoinOperator;
@@ -864,13 +865,22 @@ public class QueryBuilder<E> {
     }
 
     protected void validateRequest(ServerSideGetRowsRequest request) {
-        StringBuilder errors = new StringBuilder();
+        List<InvalidRequestException.ValidationError> errors = new ArrayList<>();
 
         // validate groups cols
         if (request.getRowGroupCols() != null && !request.getRowGroupCols().isEmpty()) {
-            List<ColumnVO> rowGroupColsNotInColDefs = request.getRowGroupCols().stream().filter(c -> !this.colDefs.containsKey(c.getField())).collect(Collectors.toList());
+            List<ColumnVO> rowGroupColsNotInColDefs = request.getRowGroupCols().stream()
+                    .filter(c -> !this.colDefs.containsKey(c.getField()))
+                    .collect(Collectors.toList());
             if (!rowGroupColsNotInColDefs.isEmpty()) {
-                errors.append(String.format("These row group cols not found in col defs: %s\n", rowGroupColsNotInColDefs.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
+                String invalidFields = rowGroupColsNotInColDefs.stream()
+                        .map(ColumnVO::getField)
+                        .collect(Collectors.joining(", "));
+                errors.add(new InvalidRequestException.ValidationError(
+                        "rowGroupCols",
+                        "These row group columns are not found in column definitions: " + invalidFields,
+                        rowGroupColsNotInColDefs
+                ));
             }
 
             List<ColumnVO> rowGroupColsDisabledGrouping = request.getRowGroupCols()
@@ -879,15 +889,31 @@ public class QueryBuilder<E> {
                     .filter(c -> !this.colDefs.get(c.getField()).isEnableRowGroup())
                     .collect(Collectors.toList());
             if (!rowGroupColsDisabledGrouping.isEmpty()) {
-                errors.append(String.format("These row group cols do not have enabled grouping: %s\n", rowGroupColsDisabledGrouping.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
+                String disabledFields = rowGroupColsDisabledGrouping.stream()
+                        .map(ColumnVO::getField)
+                        .collect(Collectors.joining(", "));
+                errors.add(new InvalidRequestException.ValidationError(
+                        "rowGroupCols",
+                        "These row group columns do not have grouping enabled: " + disabledFields,
+                        rowGroupColsDisabledGrouping
+                ));
             }
         }
 
         // validate value cols
         if (request.getValueCols() != null && !request.getValueCols().isEmpty()) {
-            List<ColumnVO> valueColsNotInColDefs = request.getValueCols().stream().filter(c -> !this.colDefs.containsKey(c.getField())).collect(Collectors.toList());
+            List<ColumnVO> valueColsNotInColDefs = request.getValueCols().stream()
+                    .filter(c -> !this.colDefs.containsKey(c.getField()))
+                    .collect(Collectors.toList());
             if (!valueColsNotInColDefs.isEmpty()) {
-                errors.append(String.format("These value cols not found in col defs: %s\n", valueColsNotInColDefs.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
+                String invalidFields = valueColsNotInColDefs.stream()
+                        .map(ColumnVO::getField)
+                        .collect(Collectors.joining(", "));
+                errors.add(new InvalidRequestException.ValidationError(
+                        "valueCols",
+                        "These value columns are not found in column definitions: " + invalidFields,
+                        valueColsNotInColDefs
+                ));
             }
 
             // turned off aggregations
@@ -897,7 +923,14 @@ public class QueryBuilder<E> {
                     .filter(valueCol -> !this.colDefs.get(valueCol.getField()).isEnableValue())
                     .collect(Collectors.toList());
             if (!valueColsTurnedOffAggregations.isEmpty()) {
-                errors.append(String.format("These row value cols have aggregations turned off, modify the enableValue=true property in col def to be aggregated: %s\n", valueColsTurnedOffAggregations.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
+                String disabledFields = valueColsTurnedOffAggregations.stream()
+                        .map(ColumnVO::getField)
+                        .collect(Collectors.joining(", "));
+                errors.add(new InvalidRequestException.ValidationError(
+                        "valueCols",
+                        "These value columns have aggregations disabled. Set enableValue=true in column definitions: " + disabledFields,
+                        valueColsTurnedOffAggregations
+                ));
             }
 
             // validate agg functions
@@ -908,10 +941,19 @@ public class QueryBuilder<E> {
                     .filter(valueCol -> !this.colDefs.get(valueCol.getField()).getAllowedAggFuncs().contains(valueCol.getAggFunc()))
                     .collect(Collectors.toList());
             if (!valueColsNotAllowedAggregations.isEmpty()) {
-                errors.append(String.format("These row value cols do not have allowed received aggregation: %s\n", valueColsNotAllowedAggregations.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
+                for (ColumnVO col : valueColsNotAllowedAggregations) {
+                    errors.add(new InvalidRequestException.ValidationError(
+                            "valueCols",
+                            String.format("Column '%s' does not allow aggregation function '%s'. Allowed functions: %s",
+                                    col.getField(),
+                                    col.getAggFunc(),
+                                    this.colDefs.get(col.getField()).getAllowedAggFuncs()),
+                            col
+                    ));
+                }
             }
         }
-        
+
         // validate pivot cols
         if (request.getPivotCols() != null && !request.getPivotCols().isEmpty()) {
             List<ColumnVO> pivotColsNotInColDefs = request.getPivotCols()
@@ -919,20 +961,34 @@ public class QueryBuilder<E> {
                     .filter(c -> !this.colDefs.containsKey(c.getField()))
                     .collect(Collectors.toList());
             if (!pivotColsNotInColDefs.isEmpty()) {
-                errors.append(String.format("These pivot cols not found in col defs: %s\n", pivotColsNotInColDefs.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
+                String invalidFields = pivotColsNotInColDefs.stream()
+                        .map(ColumnVO::getField)
+                        .collect(Collectors.joining(", "));
+                errors.add(new InvalidRequestException.ValidationError(
+                        "pivotCols",
+                        "These pivot columns are not found in column definitions: " + invalidFields,
+                        pivotColsNotInColDefs
+                ));
             }
-            
+
             List<ColumnVO> pivotColsDisabledPivoting = request.getPivotCols()
                     .stream()
                     .filter(c -> this.colDefs.containsKey(c.getField()))
                     .filter(c -> !this.colDefs.get(c.getField()).isEnablePivot())
                     .collect(Collectors.toList());
             if (!pivotColsDisabledPivoting.isEmpty()) {
-                errors.append(String.format("These pivot cols not do not have enabled pivoting (but pivoting was requested): %s\n", pivotColsDisabledPivoting.stream().map(ColumnVO::getField).collect(Collectors.joining(", "))));
+                String disabledFields = pivotColsDisabledPivoting.stream()
+                        .map(ColumnVO::getField)
+                        .collect(Collectors.joining(", "));
+                errors.add(new InvalidRequestException.ValidationError(
+                        "pivotCols",
+                        "These pivot columns do not have pivoting enabled: " + disabledFields,
+                        pivotColsDisabledPivoting
+                ));
             }
         }
-        
-        // sort cols
+
+        // validate sort cols
         if (request.getSortModel() != null && !request.getSortModel().isEmpty()) {
             List<SortModelItem> sortModelItemsNotInColDefs = request.getSortModel()
                     .stream()
@@ -948,10 +1004,19 @@ public class QueryBuilder<E> {
                         return !isInColDefs;
                     }).collect(Collectors.toList());
             if (!sortModelItemsNotInColDefs.isEmpty()) {
-                errors.append(String.format("These sort model cols not found in col defs: %s\n", sortModelItemsNotInColDefs.stream().map(SortModelItem::getColId).collect(Collectors.joining(", "))));
+                String invalidFields = sortModelItemsNotInColDefs.stream()
+                        .map(SortModelItem::getColId)
+                        .collect(Collectors.joining(", "));
+                errors.add(new InvalidRequestException.ValidationError(
+                        "sortModel",
+                        "These sort columns are not found in column definitions: " + invalidFields,
+                        sortModelItemsNotInColDefs
+                ));
             }
 
-            Set<String> notSortableColDefs = this.colDefs.keySet().stream().filter(field -> !this.colDefs.get(field).isSortable()).collect(Collectors.toSet());
+            Set<String> notSortableColDefs = this.colDefs.keySet().stream()
+                    .filter(field -> !this.colDefs.get(field).isSortable())
+                    .collect(Collectors.toSet());
             List<SortModelItem> sortModelItemsIllegalSort = request.getSortModel()
                     .stream()
                     .filter(c -> !AUTO_GROUP_COLUMN_NAME.equals(c.getColId()))
@@ -965,12 +1030,19 @@ public class QueryBuilder<E> {
                         return isNotSortable;
                     }).collect(Collectors.toList());
             if (!sortModelItemsIllegalSort.isEmpty()) {
-                errors.append(String.format("These sort model cols can not be sorted by (disabled in col defs): %s\n", sortModelItemsIllegalSort.stream().map(SortModelItem::getColId).collect(Collectors.joining(", "))));
+                String unsortableFields = sortModelItemsIllegalSort.stream()
+                        .map(SortModelItem::getColId)
+                        .collect(Collectors.joining(", "));
+                errors.add(new InvalidRequestException.ValidationError(
+                        "sortModel",
+                        "These columns cannot be sorted (sorting disabled in column definitions): " + unsortableFields,
+                        sortModelItemsIllegalSort
+                ));
             }
         }
 
-        if (errors.length() > 0) {
-            throw new IllegalArgumentException(errors.toString());
+        if (!errors.isEmpty()) {
+            throw new InvalidRequestException(errors);
         }
     }
 
