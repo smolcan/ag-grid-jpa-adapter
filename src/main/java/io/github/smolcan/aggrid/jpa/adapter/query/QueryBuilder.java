@@ -260,8 +260,8 @@ public class QueryBuilder<E> {
         List<SelectionMetadata> selections;
         
         // we know data are still grouped if request contains more group columns than group keys
-        boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
-        if (!isGrouping) {
+        boolean hasUnexpandedGroups = request.getRowGroupCols().size() > request.getGroupKeys().size();
+        if (!hasUnexpandedGroups) {
             // SELECT * from root if not grouping
             selections = this.colDefs.values()
                     .stream()
@@ -407,8 +407,8 @@ public class QueryBuilder<E> {
      */
     protected void groupBy(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
         // we know data are still grouped if request contains more group columns than group keys
-        boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
-        if (isGrouping) {
+        boolean hasUnexpandedGroups = request.getRowGroupCols().size() > request.getGroupKeys().size();
+        if (hasUnexpandedGroups) {
             Map<String, GroupingMetadata> groupingInfo = new HashMap<>();
             for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size() + 1; i++) {
                 String groupCol = request.getRowGroupCols().get(i).getField();
@@ -481,8 +481,8 @@ public class QueryBuilder<E> {
             orders.addAll(pivotingAggregationOrders);
         } else {
             // we know data are still grouped if request contains more group columns than group keys
-            boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
-            if (isGrouping) {
+            boolean hasUnexpandedGroups = request.getRowGroupCols().size() > request.getGroupKeys().size();
+            if (hasUnexpandedGroups) {
                 // grid is in grouping mode
 
                 // ordering by grouped columns
@@ -570,8 +570,8 @@ public class QueryBuilder<E> {
             return;
         }
         // we know data are still grouped if request contains more group columns than group keys
-        boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
-        if (!isGrouping) {
+        boolean hasUnexpandedGroups = request.getRowGroupCols().size() > request.getGroupKeys().size();
+        if (!hasUnexpandedGroups) {
             // when not grouping, can't have 'having' clause
             return;
         }
@@ -695,17 +695,12 @@ public class QueryBuilder<E> {
                     .build();
         } else {
             // we know data are still grouped if request contains more group columns than group keys
-            boolean isGrouping = request.getRowGroupCols().size() > request.getGroupKeys().size();
+            boolean hasUnexpandedGroups = request.getRowGroupCols().size() > request.getGroupKeys().size();
             
             List<Predicate> predicates = new ArrayList<>(filterModel.size());
             for (var entry : filterModel.entrySet()) {
                 String columnName = entry.getKey();
                 Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();
-                
-                if (queryContext.getPivotingContext().isPivoting() && queryContext.getPivotingContext().getPivotingResultFields().contains(columnName)) {
-                    // filter on pivot-generated column, will be resolved in 'having' clause, skip
-                    continue;
-                }
                 
                 // find col def
                 ColDef colDef = Optional.ofNullable(this.colDefs.get(columnName))
@@ -715,22 +710,43 @@ public class QueryBuilder<E> {
                 if (filter == null) {
                     throw new IllegalArgumentException("Column " + columnName + " is not filterable field!");
                 }
-                
-                // allowing filters to also apply against the aggregated values
-                if (this.groupAggFiltering) {
-                    // when filter is applied on column that is aggregated, we do not apply
-                    // predicate in 'where' clause, but in 'having' clause (we are filtering on aggregated value)
-                    boolean isAggregationColumn = request.getValueCols().stream().anyMatch(vc -> vc.getId().equals(columnName));
-                    if (isAggregationColumn) {
-                        continue;
-                    }
+
+                boolean isPivotingColumnFilter = queryContext.getPivotingContext().isPivoting() && queryContext.getPivotingContext().getPivotingResultFields().contains(columnName);
+                if (isPivotingColumnFilter) {
+                    // filter on pivot-generated column, will be resolved in 'having' clause, skip
+                    continue;
                 }
+
                 // When using Filters and Aggregations together, the aggregated values reflect only the rows which have passed the filter. 
                 // This can be changed to instead ignore applied filters by using the 'suppressAggFilteredOnly' grid option.
-                if (isGrouping && this.suppressAggFilteredOnly) {
-                    // if this filter was applied above the column that is not group column, ignore it
-                    boolean isGroupFilter = request.getRowGroupCols().stream().anyMatch(c -> c.getId().equals(columnName));
-                    if (!isGroupFilter) {
+                if (this.suppressAggFilteredOnly) {
+                    // if this filter is applied on column that is grouped
+                    boolean isGroupingColumnFilter = request.getRowGroupCols().stream().anyMatch(c -> c.getId().equals(columnName));
+                    if (isGroupingColumnFilter) {
+                        // filter on group column
+                        // we only apply this filter when currently opened group is one above filtered one
+                        if (hasUnexpandedGroups) {
+                            String nextGroup = request.getRowGroupCols().get(request.getGroupKeys().size()).getId();
+                            boolean isFilteringOnNextUnexpandedGroup = columnName.equals(nextGroup);
+                            if (!isFilteringOnNextUnexpandedGroup) {
+                                // we don't care about filter on the group column until it's the next group to expand
+                                continue;
+                            }
+                        } else {
+                            // we ignore filtering on groups that are already expanded
+                            continue;
+                        }
+                    } else {
+                        // filter on non-group column
+                        if (hasUnexpandedGroups) {
+                            // while has unexpanded groups, we ignore filters on non-group columns (until expanding all groups)
+                            continue;
+                        }
+                    }
+
+                    // if this filter is applied on column that is aggregated
+                    boolean isAggregationColumnFilter = request.getValueCols().stream().anyMatch(c -> c.getId().equals(columnName));
+                    if (this.groupAggFiltering && isAggregationColumnFilter && !hasUnexpandedGroups) {
                         continue;
                     }
                 }
