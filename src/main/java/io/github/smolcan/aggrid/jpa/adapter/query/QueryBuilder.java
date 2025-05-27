@@ -711,17 +711,28 @@ public class QueryBuilder<E> {
                     throw new IllegalArgumentException("Column " + columnName + " is not filterable field!");
                 }
 
+                // filter properties
                 boolean isPivotingColumnFilter = queryContext.getPivotingContext().isPivoting() && queryContext.getPivotingContext().getPivotingResultFields().contains(columnName);
+                boolean isGroupingColumnFilter = request.getRowGroupCols().stream().anyMatch(c -> c.getId().equals(columnName));
+                boolean isAggregationColumnFilter = request.getValueCols().stream().anyMatch(c -> c.getId().equals(columnName));
+
                 if (isPivotingColumnFilter) {
                     // filter on pivot-generated column, will be resolved in 'having' clause, skip
                     continue;
+                }
+                // filtering on group that has been already expanded is ignored
+                if (isGroupingColumnFilter) {
+                    int groupColumnIndex = request.getRowGroupCols().indexOf(request.getRowGroupCols().stream().filter(c -> c.getId().equals(columnName)).findFirst().orElseThrow());
+                    boolean groupWasAlreadyExpanded = groupColumnIndex <= request.getGroupKeys().size() - 1;
+                    if (groupWasAlreadyExpanded) {
+                        continue;
+                    }
                 }
 
                 // When using Filters and Aggregations together, the aggregated values reflect only the rows which have passed the filter. 
                 // This can be changed to instead ignore applied filters by using the 'suppressAggFilteredOnly' grid option.
                 if (this.suppressAggFilteredOnly) {
                     // if this filter is applied on column that is grouped
-                    boolean isGroupingColumnFilter = request.getRowGroupCols().stream().anyMatch(c -> c.getId().equals(columnName));
                     if (isGroupingColumnFilter) {
                         // filter on group column
                         // we only apply this filter when currently opened group is one above filtered one
@@ -745,7 +756,6 @@ public class QueryBuilder<E> {
                     }
 
                     // if this filter is applied on column that is aggregated
-                    boolean isAggregationColumnFilter = request.getValueCols().stream().anyMatch(c -> c.getId().equals(columnName));
                     if (this.groupAggFiltering && isAggregationColumnFilter && !hasUnexpandedGroups) {
                         continue;
                     }
