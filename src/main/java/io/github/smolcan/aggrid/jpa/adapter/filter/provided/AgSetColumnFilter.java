@@ -35,22 +35,44 @@ public class AgSetColumnFilter extends IProvidedFilter<SetFilterModel, SetFilter
             return cb.disjunction();
         }
         
-        // string type, basic behaviour
+        boolean hasNullInValues = filterModel.getValues().stream().anyMatch(Objects::isNull);
+        if (hasNullInValues && filterModel.getValues().size() == 1) {
+            // only null value in values set
+            return cb.isNull(expression);
+        }
+        
+        
+        Predicate predicate;
         if (expression.getJavaType().equals(String.class)) {
+            // string type, basic behaviour
             Expression<String> stringExpression = this.generateExpressionFromFilterParams(cb, expression.as(String.class));
-            return stringExpression.in(filterModel.getValues().stream().map(v -> this.generateExpressionFromFilterParams(cb, cb.literal(v))).collect(Collectors.toList()));
+            List<Expression<String>> inExpressions = filterModel.getValues()
+                    .stream()
+                    .filter(Objects::nonNull)
+                    .map(v -> this.generateExpressionFromFilterParams(cb, cb.literal(v)))
+                    .collect(Collectors.toList()); 
+            
+            predicate = stringExpression.in(inExpressions);
         } else {
             // other types synchronization
             Expression<?> expr = null;
             List<Object> values = new ArrayList<>(filterModel.getValues().size());
             for (String value : filterModel.getValues()) {
-                var syncResult = TypeValueSynchronizer.synchronizeTypes(expression, value);
-                expr = syncResult.getSynchronizedPath();
-                values.add(syncResult.getSynchronizedValue());
+                if (value != null) {
+                    var syncResult = TypeValueSynchronizer.synchronizeTypes(expression, value);
+                    expr = syncResult.getSynchronizedPath();
+                    values.add(syncResult.getSynchronizedValue());
+                }
             }
 
-            return Objects.requireNonNull(expr).in(values);
+            predicate = Objects.requireNonNull(expr).in(values);
         }
+        
+        
+        if (hasNullInValues) {
+            predicate = cb.or(predicate, cb.isNull(expression));
+        }
+        return predicate;
     }
 
 

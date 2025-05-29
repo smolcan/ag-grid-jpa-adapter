@@ -38,6 +38,10 @@ public class TypeValueSynchronizer {
      * @throws IllegalArgumentException if the type of the expression is not supported or if parsing fails.
      */
     public static Result<?> synchronizeTypes(Expression<?> expr, String value) {
+        if (value == null) {
+            return new Result<>(expr, null);
+        }
+        
         Class<?> exprType = expr.getJavaType();
         
         // compatible
