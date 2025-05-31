@@ -11,6 +11,7 @@ For grids with grouping enabled, only root groups are counted.
 Use the `queryBuilder.countRows(request)` method to retrieve this count
 
 - try to group by `Portfolio` column and see how counting groups work
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/PaginationService.java)
 
 import PaginationGrid from './pagination-grid';
 
@@ -30,6 +31,8 @@ QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityMan
 Note: When expanding groups in the frontend and `paginateChildRows` is set to `true`, you should also call count rows.
 
 - try to group by `Portfolio` column and see how counting groups work
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/PaginationService.java)
+
 
 import PaginateChildRowsGrid from './paginate-child-rows-grid';
 

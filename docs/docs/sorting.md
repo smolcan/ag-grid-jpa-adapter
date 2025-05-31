@@ -23,6 +23,7 @@ ColDef priceColumn = ColDef.builder()
 - sorting `Trade ID` works
 - sorting `Product` is turned off
 - sorting `Portfolio` is turned on in client, but turned off in server: `Server throws exception`
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/SortingService.java)
 
 import SortingGrid from './sorting-grid';
 

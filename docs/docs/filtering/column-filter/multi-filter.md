@@ -62,6 +62,8 @@ Multi filter model is represented by [MultiFilterModel](https://github.com/smolc
 
 
 ## Grid using Server Side Multi Filter
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MultiFilterService.java)
+
 
 import MultiFilterGrid from './multi-filter-grid';
 

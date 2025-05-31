@@ -61,6 +61,8 @@ Set filter model is represented by [SetFilterModel](https://github.com/smolcan/a
 - `Submitter Id` uses set filter with numbers
 - `Birth Date` uses set filter with dates
 - `Is Sold` uses set filter with boolean values + Blank value can be selected
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/SetFilterService.java)
+
 
 import SetFilterGrid from './set-filter-grid';
 
