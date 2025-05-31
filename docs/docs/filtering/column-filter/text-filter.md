@@ -119,6 +119,9 @@ If more than one Filter Condition is set, then multiple instances of the model a
 - `Bid Type` uses custom text matcher - matches only if you type `bid`
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/TextFilterService.java)
 
+import GridLoadingMessage from './../../grid-loading-message';
 import TextFilterGrid from './text-filter-grid';
 
+<GridLoadingMessage>
 <TextFilterGrid></TextFilterGrid>
+</GridLoadingMessage>

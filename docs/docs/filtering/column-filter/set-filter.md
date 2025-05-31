@@ -63,7 +63,9 @@ Set filter model is represented by [SetFilterModel](https://github.com/smolcan/a
 - `Is Sold` uses set filter with boolean values + Blank value can be selected
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/SetFilterService.java)
 
-
+import GridLoadingMessage from './../../grid-loading-message';
 import SetFilterGrid from './set-filter-grid';
 
+<GridLoadingMessage>
 <SetFilterGrid></SetFilterGrid>
+</GridLoadingMessage>

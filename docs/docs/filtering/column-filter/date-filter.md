@@ -66,7 +66,9 @@ If more than one Filter Condition is set, then multiple instances of the model a
 - `minValidYear` is `current - 1` and `maxValidYear` is `current + 1`
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/DateFilterService.java)
 
-
+import GridLoadingMessage from './../../grid-loading-message';
 import DateFilterGrid from './date-filter-grid';
 
+<GridLoadingMessage>
 <DateFilterGrid></DateFilterGrid>
+</GridLoadingMessage>

@@ -104,7 +104,9 @@ ColDef colDef = ColDef.builder()
 - `Submitter Deal Id` uses custom filter with option `includeNullValues=true`
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/CustomFilterService.java)
 
-
+import GridLoadingMessage from './../../grid-loading-message';
 import CustomFilterGrid from './custom-filter-grid';
 
+<GridLoadingMessage>
 <CustomFilterGrid></CustomFilterGrid>
+</GridLoadingMessage>
