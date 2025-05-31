@@ -52,3 +52,16 @@ ColDef colDef = ColDef.builder()
 
 ## Set Filter Model
 Set filter model is represented by [SetFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/model/simple/SetFilterModel.java) class.
+
+
+## Grid using Server Side Set Filter
+- `Product` uses default set filter
+- `Portfolio` is case-sensitive
+- `Book` uses set filter with custom `textFormatter` - accent removal
+- `Submitter Id` uses set filter with numbers
+- `Birth Date` uses set filter with dates
+- `Is Sold` uses set filter with boolean values + Blank value can be selected
+
+import SetFilterGrid from './set-filter-grid';
+
+<SetFilterGrid></SetFilterGrid>

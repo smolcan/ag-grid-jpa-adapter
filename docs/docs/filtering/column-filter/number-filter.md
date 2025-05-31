@@ -50,3 +50,17 @@ ColDef colDef = ColDef.builder()
 Text filter model is represented by [NumberFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/model/simple/NumberFilterModel.java) class.
 
 If more than one Filter Condition is set, then multiple instances of the model are created and wrapped inside a Combined Model ([`CombinedSimpleModel<NumberFilterModel>`](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/model/simple/CombinedSimpleModel.java)).
+
+
+## Grid using Server Side Number Filter
+
+- `Trade Id` uses default filter config
+- `Submitter Id` has `inRangeInclusive` set to `true`
+- `Submitter Deal ID` has both `includeBlanksInEquals` and `includeBlanksInNotEqual` set to `true`
+- `Current Value` has both `includeBlanksInLessThan` and `includeBlanksInGreaterThan` set to `true`
+- `Previous Value` has `includeBlanksInRange` set to `true`
+
+import NumberFilterGrid from './number-filter-grid';
+
+<NumberFilterGrid></NumberFilterGrid>
+

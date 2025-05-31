@@ -97,3 +97,12 @@ ColDef colDef = ColDef.builder()
     )
     .build();
 ```
+
+
+## Grid using Server Side Custom Filter
+- `Trade ID` uses custom filter
+- `Submitter Deal Id` uses custom filter with option `includeNullValues=true`
+
+import CustomFilterGrid from './custom-filter-grid';
+
+<CustomFilterGrid></CustomFilterGrid>

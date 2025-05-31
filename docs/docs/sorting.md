@@ -16,3 +16,14 @@ ColDef priceColumn = ColDef.builder()
     .sortable(false)
     .build();
 ```
+
+
+## Grid using server side sorting
+
+- sorting `Trade ID` works
+- sorting `Product` is turned off
+- sorting `Portfolio` is turned on in client, but turned off in server: `Server throws exception`
+
+import SortingGrid from './sorting-grid';
+
+<SortingGrid></SortingGrid>

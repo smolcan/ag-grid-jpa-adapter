@@ -10,6 +10,12 @@ For grids with grouping enabled, only root groups are counted.
 
 Use the `queryBuilder.countRows(request)` method to retrieve this count
 
+- try to group by `Portfolio` column and see how counting groups work
+
+import PaginationGrid from './pagination-grid';
+
+<PaginationGrid></PaginationGrid>
+
 ## Paginate child rows
 Set `paginateChildRows=true` in `QueryBuilder` to maintain exact page size. This makes `queryBuilder.countRows(request)` 
 count rows within expanded groups rather than number of root groups.
@@ -22,3 +28,10 @@ QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityMan
 ```
 
 Note: When expanding groups in the frontend and `paginateChildRows` is set to `true`, you should also call count rows.
+
+- try to group by `Portfolio` column and see how counting groups work
+
+import PaginateChildRowsGrid from './paginate-child-rows-grid';
+
+
+<PaginateChildRowsGrid></PaginateChildRowsGrid>

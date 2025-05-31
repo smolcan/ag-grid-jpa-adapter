@@ -58,3 +58,13 @@ ColDef colDef = ColDef.builder()
 Date filter model is represented by [DateFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/model/simple/DateFilterModel.java) class.
 
 If more than one Filter Condition is set, then multiple instances of the model are created and wrapped inside a Combined Model ([`CombinedSimpleModel<DateFilterModel>`](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/model/simple/CombinedSimpleModel.java)).
+
+
+## Grid using Server Side Date Filter
+
+- On column `Birth Date`, `inRangeInclusive`, `includeBlanksInEquals`, `includeBlanksInNotEqual`, `includeBlanksInLessThan`, `includeBlanksInGreaterThan`, `includeBlanksInRange` are all set to `true`
+- `minValidYear` is `current - 1` and `maxValidYear` is `current + 1`
+
+import DateFilterGrid from './date-filter-grid';
+
+<DateFilterGrid></DateFilterGrid>

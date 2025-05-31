@@ -108,3 +108,16 @@ ColDef colDef = ColDef.builder()
 Text filter model is represented by [TextFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/model/simple/TextFilterModel.java) class.
 
 If more than one Filter Condition is set, then multiple instances of the model are created and wrapped inside a Combined Model ([`CombinedSimpleModel<TextFilterModel>`](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/model/simple/CombinedSimpleModel.java)).
+
+
+## Grid using Server Side Text Filter
+
+- `Portfolio` uses default text filter config
+- `Product` is case-sensitive
+- `Book` trims input
+- `Deal Type` uses custom text formatter - removes accent
+- `Bid Type` uses custom text matcher - matches only if you type `bid`
+
+import TextFilterGrid from './text-filter-grid';
+
+<TextFilterGrid></TextFilterGrid>
