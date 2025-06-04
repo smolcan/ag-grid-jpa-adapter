@@ -14,3 +14,10 @@ ColDef priceColumn = ColDef.builder()
     .enableRowGroup(true)
     .build();
 ```
+
+import RowGroupingGrid from './row-grouping-grid';
+import GridLoadingMessage from './grid-loading-message';
+
+<GridLoadingMessage>
+    <RowGroupingGrid></RowGroupingGrid>
+</GridLoadingMessage>
