@@ -86,7 +86,7 @@ const AggregationGrid = () => {
 
     const serverSideDatasource: IServerSideDatasource = useMemo(() => ({
         getRows: (params) => {
-            fetch('http://localhost:8080/docs/aggregation/getRows', {
+            fetch('https://ag-grid-jpa-adapter-docs-backend.onrender.com/docs/aggregation/getRows', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

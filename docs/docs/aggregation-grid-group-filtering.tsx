@@ -86,7 +86,7 @@ const AggregationGridGroupFiltering = () => {
 
     const serverSideDatasource: IServerSideDatasource = useMemo(() => ({
         getRows: (params) => {
-            fetch('http://localhost:8080/docs/aggregation/group-agg-filtering/getRows', {
+            fetch('https://ag-grid-jpa-adapter-docs-backend.onrender.com/docs/aggregation/group-agg-filtering/getRows', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

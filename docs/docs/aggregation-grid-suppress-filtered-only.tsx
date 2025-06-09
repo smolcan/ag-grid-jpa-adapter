@@ -86,7 +86,7 @@ const AggregationGridSuppressFilteredOnly = () => {
 
     const serverSideDatasource: IServerSideDatasource = useMemo(() => ({
         getRows: (params) => {
-            fetch('http://localhost:8080/docs/aggregation/suppress-agg-filtered-only/getRows', {
+            fetch('https://ag-grid-jpa-adapter-docs-backend.onrender.com/docs/aggregation/suppress-agg-filtered-only/getRows', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
