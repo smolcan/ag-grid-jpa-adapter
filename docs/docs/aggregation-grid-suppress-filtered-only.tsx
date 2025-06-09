@@ -1,0 +1,159 @@
+import React, { useMemo, useState } from 'react';
+import { AgGridReact } from 'ag-grid-react';
+import { ModuleRegistry } from 'ag-grid-community';
+import {
+    ColDef, ColumnAutoSizeModule,
+    GridReadyEvent,
+    IServerSideDatasource, NumberFilterModule, RowGroupingPanelModule,
+    ServerSideRowModelModule, TextFilterModule,
+    themeQuartz, ValidationModule
+} from 'ag-grid-enterprise';
+import { useColorMode } from '@docusaurus/theme-common';
+
+// Register the required modules
+ModuleRegistry.registerModules([ServerSideRowModelModule, ValidationModule, ColumnAutoSizeModule, NumberFilterModule, TextFilterModule, RowGroupingPanelModule]);
+
+const AggregationGridSuppressFilteredOnly = () => {
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const { colorMode } = useColorMode();
+
+    const theme = useMemo(() =>
+        themeQuartz.withParams({
+            backgroundColor: colorMode === 'dark' ? "#1f2836" : "#ffffff",
+            browserColorScheme: colorMode,
+            chromeBackgroundColor: {
+                ref: "foregroundColor",
+                mix: 0.07,
+                onto: "backgroundColor"
+            },
+            foregroundColor: colorMode === 'dark' ? "#FFF" : "#000",
+            headerFontSize: 14
+        }), [colorMode]);
+
+    const columnDefs = useMemo(() => [
+        {
+            headerName: 'Product',
+            field: 'product',
+            enableRowGroup: true,
+            rowGroup: true,
+            hide: true,
+            cellDataType: 'text'
+        },
+        {
+            headerName: 'Portfolio',
+            field: 'portfolio',
+            enableRowGroup: true,
+            rowGroup: true,
+            hide: true,
+            cellDataType: 'text'
+        },
+        {
+            headerName: 'Book',
+            field: 'book',
+            enableRowGroup: true,
+            rowGroup: true,
+            hide: true,
+            cellDataType: 'text'
+        },
+        {
+            headerName: 'Submitter ID',
+            field: 'submitterId',
+            cellDataType: 'number',
+            initialAggFunc: 'count',
+            filter: 'agNumberColumnFilter'
+        },
+        {
+            headerName: 'Submitter Deal ID',
+            field: 'submitterDealId',
+            cellDataType: 'number',
+            initialAggFunc: 'max',
+            filter: 'agNumberColumnFilter'
+        },
+        {
+            headerName: 'Birth Date',
+            field: 'birthDate',
+            cellDataType: 'dateString',
+            initialAggFunc: 'min',
+            filter: 'agDateColumnFilter'
+        },
+    ] as ColDef[], []);
+
+    const defaultColDef = useMemo(() => ({
+        resizable: true,
+        filter: false,
+        flex: 1,
+    } as ColDef), []);
+
+    const serverSideDatasource: IServerSideDatasource = useMemo(() => ({
+        getRows: (params) => {
+            fetch('http://localhost:8080/docs/aggregation/suppress-agg-filtered-only/getRows', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(params.request)
+            })
+                .then(async response => {
+                    if (!response.ok) {
+                        const errorText = await response.text(); // Read plain text from Spring Boot
+                        throw new Error(errorText || `HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    setErrorMessage(null);
+                    params.success(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    setErrorMessage(error.message || 'Failed to fetch data');
+                    params.fail();
+                });
+        }
+    }), []);
+
+    const onGridReady = (params: GridReadyEvent) => {
+        params.api.sizeColumnsToFit();
+    };
+
+    return (
+        <div style={{
+            backgroundColor: colorMode == 'dark' ? '#1a1c1d' : '#ffffff',
+            marginBottom: '1rem',
+            borderRadius: '8px',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            padding: '1rem'
+        }}>
+            {errorMessage && (
+                <div style={{
+                    backgroundColor: '#ff4d4f',
+                    color: '#fff',
+                    display: 'inline-block',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '20px',
+                    fontSize: '0.875rem',
+                    marginBottom: '1rem',
+                    fontWeight: 500
+                }}>
+                    {errorMessage}
+                </div>
+            )}
+            <div style={{ height: '500px', width: '100%' }}>
+                <AgGridReact
+                    columnDefs={columnDefs}
+                    defaultColDef={defaultColDef}
+                    serverSideDatasource={serverSideDatasource}
+                    onGridReady={onGridReady}
+                    rowModelType="serverSide"
+                    theme={theme}
+                    animateRows={true}
+                    suppressMenuHide={true}
+                    rowGroupPanelShow={'always'}
+                    suppressAggFilteredOnly={true}
+                />
+            </div>
+        </div>
+    );
+};
+
+export default AggregationGridSuppressFilteredOnly;

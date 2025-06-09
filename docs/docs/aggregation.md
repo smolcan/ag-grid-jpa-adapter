@@ -20,6 +20,15 @@ ColDef priceColumn = ColDef.builder()
     .build();
 ```
 
+import GridLoadingMessage from './grid-loading-message';
+import AggregationGrid from './aggregation-grid';
+import AggregationGridGroupFiltering from './aggregation-grid-group-filtering';
+import AggregationGridSuppressFilteredOnly from './aggregation-grid-suppress-filtered-only';
+
+<GridLoadingMessage>
+    <AggregationGrid></AggregationGrid>
+</GridLoadingMessage>
+
 
 **⚠️ Disclaimer**
 Currently aggregation functions `first` and `last` are not supported in JPA. Using these functions will result in runtime exception.
@@ -41,6 +50,10 @@ QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityMan
     .build();
 ```
 
+<GridLoadingMessage>
+    <AggregationGridSuppressFilteredOnly></AggregationGridSuppressFilteredOnly>
+</GridLoadingMessage>
+
 ### Filtering for Aggregated Values
 The grid only applies filters to leaf level rows, this can be toggled to instead also apply filtering to group rows by enabling the `groupAggFiltering` grid option, 
 allowing filters to also apply against the aggregated values.
@@ -57,3 +70,6 @@ QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityMan
 - When a group row passes a filter, it also includes all of its descendent rows in the filtered results.
 - The `suppressAggFilteredOnly` grid option will be implicitly enabled.
 
+<GridLoadingMessage>
+    <AggregationGridGroupFiltering></AggregationGridGroupFiltering>
+</GridLoadingMessage>
