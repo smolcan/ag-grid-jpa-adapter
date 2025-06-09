@@ -28,3 +28,12 @@ If a column does not have a filter set in `ColDef`, attempting to apply an Advan
 - **Date & DateString Filters** → [DateFilterParams](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/model/simple/params/DateFilterParams.java)
 - **Number Filters** → [NumberFilterParams](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/model/simple/params/NumberFilterParams.java)
 - **Boolean Filters** → No filter parameters
+
+## Grid using Server Side Advanced Filter
+
+import GridLoadingMessage from './../../grid-loading-message';
+import AdvancedFilterGrid from './advanced-filter-grid';
+
+<GridLoadingMessage>
+<AdvancedFilterGrid></AdvancedFilterGrid>
+</GridLoadingMessage>
