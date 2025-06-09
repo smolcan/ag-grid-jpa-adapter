@@ -2,16 +2,16 @@ import React, { useMemo, useState } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry } from 'ag-grid-community';
 import {
-    ColDef, ColumnAutoSizeModule,
+    ColDef, ColumnAutoSizeModule, ColumnsToolPanelModule, DateFilterModule, FiltersToolPanelModule,
     GridReadyEvent,
     IServerSideDatasource, NumberFilterModule, RowGroupingPanelModule,
-    ServerSideRowModelModule, TextFilterModule,
+    ServerSideRowModelModule, SideBarModule, TextFilterModule,
     themeQuartz, ValidationModule
 } from 'ag-grid-enterprise';
 import { useColorMode } from '@docusaurus/theme-common';
 
 // Register the required modules
-ModuleRegistry.registerModules([ServerSideRowModelModule, ValidationModule, ColumnAutoSizeModule, NumberFilterModule, TextFilterModule, RowGroupingPanelModule]);
+ModuleRegistry.registerModules([ServerSideRowModelModule, ValidationModule, ColumnAutoSizeModule, NumberFilterModule, TextFilterModule, RowGroupingPanelModule, DateFilterModule, SideBarModule, ColumnsToolPanelModule, FiltersToolPanelModule]);
 
 const AggregationGrid = () => {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -149,6 +149,7 @@ const AggregationGrid = () => {
                     animateRows={true}
                     suppressMenuHide={true}
                     rowGroupPanelShow={'always'}
+                    sideBar={true}
                 />
             </div>
         </div>
