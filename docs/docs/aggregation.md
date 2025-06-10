@@ -5,6 +5,9 @@ sidebar_position: 6
 # Aggregation
 Apply provided functions to values to calculate group values in the grid.
 
+Backend source code of example grids available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/AggregationService.java)
+
+
 ## Enabling Aggregation
 To make column available for aggregation, set the `enableValue` parameter to `true` on `ColDef`,
 otherwise aggregation attempt on this column will result to runtime exception.
