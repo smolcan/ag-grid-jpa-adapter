@@ -5,6 +5,13 @@ sidebar_position: 7
 # Pivoting
 Pivoting breaks down data in an additional dimension.
 
+import PivotingGrid from './pivoting-grid';
+import GridLoadingMessage from './grid-loading-message';
+
+<GridLoadingMessage>
+    <PivotingGrid></PivotingGrid>
+</GridLoadingMessage>
+
 ## Enabling Pivoting
 To make column available for pivoting, set the `enablePivot` parameter to `true` on `ColDef`,
 otherwise pivoting attempt on this column will result to runtime exception.
