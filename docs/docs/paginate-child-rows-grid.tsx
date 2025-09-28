@@ -8,6 +8,7 @@ import {
 import React, {useMemo, useState, useCallback, useRef} from 'react';
 import {useColorMode} from '@docusaurus/theme-common';
 import {AgGridReact} from 'ag-grid-react';
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
 ModuleRegistry.registerModules([ServerSideRowModelModule, NumberFilterModule, DateFilterModule, TextFilterModule, ValidationModule, ColumnAutoSizeModule, PaginationModule, EventApiModule, RowGroupingPanelModule]);
 
@@ -16,6 +17,8 @@ const PaginateChildRowsGrid = () => {
     const pagination = true;
     let refetchRowCount = true;
     const gridApiRef = useRef<GridApi | null>(null);
+    const { siteConfig } = useDocusaurusContext();
+    const { API_URL } = siteConfig.customFields;
 
     const { colorMode } = useColorMode();
 
@@ -68,7 +71,7 @@ const PaginateChildRowsGrid = () => {
 
     const serverSideDatasource: IServerSideDatasource = useMemo(() => ({
         getRows: (params) => {
-            const dataRequest = fetch('https://ag-grid-jpa-adapter-docs-backend.onrender.com/docs/pagination/paginate-child-rows/getRows', {
+            const dataRequest = fetch(`${API_URL}/docs/pagination/paginate-child-rows/getRows`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -83,7 +86,7 @@ const PaginateChildRowsGrid = () => {
             });
 
             if (pagination && refetchRowCount) {
-                const countRequest = fetch('https://ag-grid-jpa-adapter-docs-backend.onrender.com/docs/pagination/paginate-child-rows/countRows', {
+                const countRequest = fetch(`${API_URL}/docs/pagination/paginate-child-rows/countRows`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

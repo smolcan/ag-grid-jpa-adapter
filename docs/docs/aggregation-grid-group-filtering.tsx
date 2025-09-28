@@ -9,6 +9,7 @@ import {
     themeQuartz, ValidationModule
 } from 'ag-grid-enterprise';
 import { useColorMode } from '@docusaurus/theme-common';
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
 // Register the required modules
 ModuleRegistry.registerModules([ServerSideRowModelModule, ValidationModule, ColumnAutoSizeModule, NumberFilterModule, TextFilterModule, RowGroupingPanelModule, DateFilterModule, SideBarModule, ColumnsToolPanelModule, FiltersToolPanelModule]);
@@ -16,6 +17,8 @@ ModuleRegistry.registerModules([ServerSideRowModelModule, ValidationModule, Colu
 const AggregationGridGroupFiltering = () => {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const { colorMode } = useColorMode();
+    const { siteConfig } = useDocusaurusContext();
+    const { API_URL } = siteConfig.customFields;
 
     const theme = useMemo(() =>
         themeQuartz.withParams({
@@ -86,7 +89,7 @@ const AggregationGridGroupFiltering = () => {
 
     const serverSideDatasource: IServerSideDatasource = useMemo(() => ({
         getRows: (params) => {
-            fetch('https://ag-grid-jpa-adapter-docs-backend.onrender.com/docs/aggregation/group-agg-filtering/getRows', {
+            fetch(`${API_URL}/docs/aggregation/group-agg-filtering/getRows`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -11,6 +11,7 @@ import {
 import React, {useCallback, useMemo, useRef, useState} from 'react';
 import {useColorMode} from '@docusaurus/theme-common';
 import {AgGridReact} from 'ag-grid-react';
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
 
 ModuleRegistry.registerModules([ServerSideRowModelModule, NumberFilterModule, ValidationModule, ColumnAutoSizeModule, EventApiModule, RowGroupingPanelModule, PivotModule]);
@@ -18,6 +19,8 @@ ModuleRegistry.registerModules([ServerSideRowModelModule, NumberFilterModule, Va
 const PivotingGrid = () => {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const gridApiRef = useRef<GridApi | null>(null);
+    const { siteConfig } = useDocusaurusContext();
+    const { API_URL } = siteConfig.customFields;
 
     const { colorMode } = useColorMode();
 
@@ -72,7 +75,7 @@ const PivotingGrid = () => {
     const serverSideDatasource: IServerSideDatasource = useMemo(() => ({
         getRows: (params) => {
             fetch(
-                'https://ag-grid-jpa-adapter-docs-backend.onrender.com/docs/pivoting/getRows',
+                `${API_URL}/docs/pivoting/getRows`,
                 {
                 method: 'POST',
                 headers: {

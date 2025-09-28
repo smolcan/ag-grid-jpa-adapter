@@ -8,12 +8,15 @@ import {
 import React, {useMemo, useState} from 'react';
 import {useColorMode} from '@docusaurus/theme-common';
 import {AgGridReact} from 'ag-grid-react';
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
 
 ModuleRegistry.registerModules([ServerSideRowModelModule, DateFilterModule, ValidationModule, ColumnAutoSizeModule]);
 const DateFilterGrid = () => {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const { colorMode } = useColorMode();
+    const { siteConfig } = useDocusaurusContext();
+    const { API_URL } = siteConfig.customFields;
 
     const theme = useMemo(() =>
         themeQuartz.withParams({
@@ -61,7 +64,7 @@ const DateFilterGrid = () => {
 
     const serverSideDatasource: IServerSideDatasource = useMemo(() => ({
         getRows: (params) => {
-            fetch('https://ag-grid-jpa-adapter-docs-backend.onrender.com/docs/filtering/column-filter/date-filter/getRows', {
+            fetch(`${API_URL}/docs/filtering/column-filter/date-filter/getRows`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, ReactNode } from 'react';
 import { useColorMode } from '@docusaurus/theme-common';
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
 interface GridWrapperProps {
     children: ReactNode;
@@ -8,10 +9,11 @@ interface GridWrapperProps {
 
 const GridLoadingMessage: React.FC<GridWrapperProps> = ({
                                                      children,
-                                                     serviceUrl = 'https://ag-grid-jpa-adapter-docs-backend.onrender.com'
                                                  }) => {
     const [showSlowLoadingMessage, setShowSlowLoadingMessage] = useState<boolean>(false);
     const { colorMode } = useColorMode();
+    const { siteConfig } = useDocusaurusContext();
+    const { API_URL } = siteConfig.customFields;
 
     useEffect(() => {
         let slowLoadingTimer: NodeJS.Timeout;
@@ -24,7 +26,7 @@ const GridLoadingMessage: React.FC<GridWrapperProps> = ({
             const [url] = args;
 
             // Check if this request is to our backend service
-            if (typeof url === 'string' && url.includes(serviceUrl)) {
+            if (typeof url === 'string' && url.includes(`${API_URL}`)) {
                 activeRequestCount++;
 
                 // Only start timer on first request
@@ -42,7 +44,7 @@ const GridLoadingMessage: React.FC<GridWrapperProps> = ({
                 const response = await originalFetch(...args);
 
                 // If this was a request to our service, decrement counter
-                if (typeof url === 'string' && url.includes(serviceUrl)) {
+                if (typeof url === 'string' && url.includes(`${API_URL}`)) {
                     activeRequestCount--;
 
                     // Only clear when all requests are done
@@ -55,7 +57,7 @@ const GridLoadingMessage: React.FC<GridWrapperProps> = ({
                 return response;
             } catch (error) {
                 // Clear message on error
-                if (typeof url === 'string' && url.includes(serviceUrl)) {
+                if (typeof url === 'string' && url.includes(`${API_URL}`)) {
                     activeRequestCount--;
 
                     // Only clear when all requests are done
@@ -75,7 +77,7 @@ const GridLoadingMessage: React.FC<GridWrapperProps> = ({
                 clearTimeout(slowLoadingTimer);
             }
         };
-    }, [serviceUrl]);
+    }, [`${API_URL}`]);
 
     return (
         <div>

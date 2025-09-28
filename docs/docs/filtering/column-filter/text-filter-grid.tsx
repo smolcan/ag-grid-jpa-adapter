@@ -10,12 +10,15 @@ import {
 } from 'ag-grid-enterprise';
 import {AgGridReact} from 'ag-grid-react';
 import {ModuleRegistry} from 'ag-grid-community';
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
 ModuleRegistry.registerModules([ServerSideRowModelModule, TextFilterModule, ValidationModule, ColumnAutoSizeModule]);
 
 const TextFilterGrid = () => {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const { colorMode } = useColorMode();
+    const { siteConfig } = useDocusaurusContext();
+    const { API_URL } = siteConfig.customFields;
 
     const theme = useMemo(() =>
         themeQuartz.withParams({
@@ -80,7 +83,7 @@ const TextFilterGrid = () => {
 
     const serverSideDatasource: IServerSideDatasource = useMemo(() => ({
         getRows: (params) => {
-            fetch('https://ag-grid-jpa-adapter-docs-backend.onrender.com/docs/filtering/column-filter/text-filter/getRows', {
+            fetch(`${API_URL}/docs/filtering/column-filter/text-filter/getRows`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

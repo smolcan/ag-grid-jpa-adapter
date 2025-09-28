@@ -11,6 +11,7 @@ import {
 import React, {useCallback, useMemo, useRef, useState} from 'react';
 import {useColorMode} from '@docusaurus/theme-common';
 import {AgGridReact} from 'ag-grid-react';
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
 
 ModuleRegistry.registerModules([ServerSideRowModelModule, NumberFilterModule, TextFilterModule, ValidationModule, ColumnAutoSizeModule, EventApiModule, RowGroupingPanelModule]);
@@ -18,6 +19,8 @@ ModuleRegistry.registerModules([ServerSideRowModelModule, NumberFilterModule, Te
 const RowGroupingGrid = () => {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const gridApiRef = useRef<GridApi | null>(null);
+    const { siteConfig } = useDocusaurusContext();
+    const { API_URL } = siteConfig.customFields;
 
     const { colorMode } = useColorMode();
 
@@ -69,7 +72,7 @@ const RowGroupingGrid = () => {
 
     const serverSideDatasource: IServerSideDatasource = useMemo(() => ({
         getRows: (params) => {
-            fetch('https://ag-grid-jpa-adapter-docs-backend.onrender.com/docs/row-grouping/getRows', {
+            fetch(`${API_URL}/docs/row-grouping/getRows`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

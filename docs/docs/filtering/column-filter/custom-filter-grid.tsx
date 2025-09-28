@@ -13,6 +13,7 @@ import {
 import React, { useMemo, useState, ChangeEvent } from 'react';
 import { AgGridReact, useGridFilter } from 'ag-grid-react';
 import { useColorMode } from '@docusaurus/theme-common';
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
 ModuleRegistry.registerModules([
     ServerSideRowModelModule,
@@ -91,6 +92,8 @@ const CustomNumberFilter = ({ model, onModelChange }) => {
 const CustomFilterGrid: React.FC = () => {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const { colorMode } = useColorMode();
+    const { siteConfig } = useDocusaurusContext();
+    const { API_URL } = siteConfig.customFields;
 
     const theme = useMemo(() =>
         themeQuartz.withParams({
@@ -131,7 +134,7 @@ const CustomFilterGrid: React.FC = () => {
 
     const serverSideDatasource: IServerSideDatasource = useMemo(() => ({
         getRows: (params) => {
-            fetch('https://ag-grid-jpa-adapter-docs-backend.onrender.com/docs/filtering/column-filter/custom-filter/getRows', {
+            fetch(`${API_URL}/docs/filtering/column-filter/custom-filter/getRows`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

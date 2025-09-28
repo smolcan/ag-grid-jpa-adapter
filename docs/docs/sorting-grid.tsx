@@ -9,11 +9,16 @@ import {
     themeQuartz, ValidationModule
 } from 'ag-grid-enterprise';
 import { useColorMode } from '@docusaurus/theme-common';
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
 // Register the required modules
 ModuleRegistry.registerModules([ServerSideRowModelModule, ValidationModule, ColumnAutoSizeModule]);
 
 const SortingGrid = () => {
+    const { siteConfig } = useDocusaurusContext();
+    const { API_URL } = siteConfig.customFields;
+    
+    // const API_URL = process.env.REACT_APP_API_URL;
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const { colorMode } = useColorMode();
 
@@ -59,7 +64,7 @@ const SortingGrid = () => {
 
     const serverSideDatasource: IServerSideDatasource = useMemo(() => ({
         getRows: (params) => {
-            fetch('https://ag-grid-jpa-adapter-docs-backend.onrender.com/docs/sorting/getRows', {
+            fetch(`${API_URL}/docs/sorting/getRows`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
