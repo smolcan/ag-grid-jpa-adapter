@@ -641,7 +641,7 @@ public class QueryBuilder<E> {
      */
     protected void limitOffset(ServerSideGetRowsRequest request, QueryContext queryContext) {
         queryContext.setFirstResult(request.getStartRow());
-        queryContext.setMaxResults(request.getEndRow() - request.getStartRow() + 1);
+        queryContext.setMaxResults(request.getEndRow() - request.getStartRow());
     }
 
     /**
