@@ -22,6 +22,7 @@ import io.github.smolcan.aggrid.jpa.adapter.utils.Pair;
 import io.github.smolcan.aggrid.jpa.adapter.utils.TypeValueSynchronizer;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Tuple;
+import jakarta.persistence.TupleElement;
 import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.*;
 
@@ -651,18 +652,31 @@ public class QueryBuilder<E> {
      * @return a list of maps where each map represents a tuple with alias-value pairs
      */
     private static List<Map<String, Object>> tupleToMap(List<Tuple> tuples) {
-        return tuples.stream()
-                .map(tuple -> {
-                    Map<String, Object> map = new HashMap<>();
-                    tuple.getElements().forEach(element -> {
-                        String alias = element.getAlias();
-                        if (alias != null) {
-                            map.put(alias, tuple.get(alias));
-                        }
-                    });
-                    return map;
-                })
-                .collect(Collectors.toList());
+        if (tuples == null || tuples.isEmpty()) {
+            return new ArrayList<>(0);
+        }
+
+        List<TupleElement<?>> elements = tuples.get(0).getElements();
+        int columnCount = elements.size();
+        
+        String[] aliases = new String[columnCount];
+        for (int i = 0; i < columnCount; i++) {
+            aliases[i] = elements.get(i).getAlias();
+        }
+
+        List<Map<String, Object>> result = new ArrayList<>(tuples.size());
+        for (Tuple tuple : tuples) {
+            Map<String, Object> map = new HashMap<>(columnCount);
+
+            for (int i = 0; i < columnCount; i++) {
+                if (aliases[i] != null) {
+                    map.put(aliases[i], tuple.get(i));
+                }
+            }
+            result.add(map);
+        }
+        
+        return result;
     }
 
     /**
