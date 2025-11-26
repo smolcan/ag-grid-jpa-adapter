@@ -311,7 +311,7 @@ public class QueryBuilder<E> {
                         );
                     }
                     
-                    isServerSideGroupSelection = cb.greaterThan(subquery, 0L);
+                    isServerSideGroupSelection = cb.exists(subquery);
                 }
                 
                 selections.add(
