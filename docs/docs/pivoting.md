@@ -5,6 +5,10 @@ sidebar_position: 7
 # Pivoting
 Pivoting breaks down data in an additional dimension.
 
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/pivoting-grid.tsx)
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/PivotingService.java)
+
+
 import PivotingGrid from './pivoting-grid';
 import GridLoadingMessage from './grid-loading-message';
 

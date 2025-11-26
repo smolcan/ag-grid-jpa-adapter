@@ -23,6 +23,8 @@ ColDef priceColumn = ColDef.builder()
     .build();
 ```
 
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/aggregation-grid.tsx)
+
 import GridLoadingMessage from './grid-loading-message';
 import AggregationGrid from './aggregation-grid';
 import AggregationGridGroupFiltering from './aggregation-grid-group-filtering';
@@ -53,6 +55,8 @@ QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityMan
     .build();
 ```
 
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/aggregation-grid-suppress-filtered-only.tsx)
+
 <GridLoadingMessage>
     <AggregationGridSuppressFilteredOnly></AggregationGridSuppressFilteredOnly>
 </GridLoadingMessage>
@@ -72,6 +76,7 @@ QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityMan
 
 - When a group row passes a filter, it also includes all of its descendent rows in the filtered results.
 - The `suppressAggFilteredOnly` grid option will be implicitly enabled.
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/aggregation-grid-group-filtering.tsx)
 
 <GridLoadingMessage>
     <AggregationGridGroupFiltering></AggregationGridGroupFiltering>

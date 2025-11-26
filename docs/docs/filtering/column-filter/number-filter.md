@@ -59,6 +59,7 @@ If more than one Filter Condition is set, then multiple instances of the model a
 - `Submitter Deal ID` has both `includeBlanksInEquals` and `includeBlanksInNotEqual` set to `true`
 - `Current Value` has both `includeBlanksInLessThan` and `includeBlanksInGreaterThan` set to `true`
 - `Previous Value` has `includeBlanksInRange` set to `true`
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/filtering/column-filter/number-filter-grid.tsx)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/NumberFilterService.java)
 
 import GridLoadingMessage from './../../grid-loading-message';

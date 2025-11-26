@@ -64,6 +64,7 @@ If more than one Filter Condition is set, then multiple instances of the model a
 
 - On column `Birth Date`, `inRangeInclusive`, `includeBlanksInEquals`, `includeBlanksInNotEqual`, `includeBlanksInLessThan`, `includeBlanksInGreaterThan`, `includeBlanksInRange` are all set to `true`
 - `minValidYear` is `current - 1` and `maxValidYear` is `current + 1`
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/filtering/column-filter/date-filter-grid.tsx)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/DateFilterService.java)
 
 import GridLoadingMessage from './../../grid-loading-message';

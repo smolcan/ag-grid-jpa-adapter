@@ -117,6 +117,7 @@ If more than one Filter Condition is set, then multiple instances of the model a
 - `Book` trims input
 - `Deal Type` uses custom text formatter - removes accent
 - `Bid Type` uses custom text matcher - matches only if you type `bid`
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/filtering/column-filter/text-filter-grid.tsx)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/TextFilterService.java)
 
 import GridLoadingMessage from './../../grid-loading-message';

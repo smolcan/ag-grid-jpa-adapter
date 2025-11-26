@@ -31,6 +31,10 @@ If a column does not have a filter set in `ColDef`, attempting to apply an Advan
 
 ## Grid using Server Side Advanced Filter
 
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/filtering/advanced-filter/advanced-filter-grid.tsx)
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/AdvancedFilterService.java)
+
+
 import GridLoadingMessage from './../../grid-loading-message';
 import AdvancedFilterGrid from './advanced-filter-grid';
 
