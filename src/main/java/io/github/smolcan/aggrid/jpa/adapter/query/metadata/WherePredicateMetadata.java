@@ -14,6 +14,9 @@ public class WherePredicateMetadata {
     
     private final Predicate predicate;
     
+    // tree data predicate properties
+    private final boolean isTreeDataPredicate;
+    
     // group predicate properties
     private final boolean isGroupPredicate;
     private final Object groupKey;
@@ -27,6 +30,7 @@ public class WherePredicateMetadata {
 
     private WherePredicateMetadata(Builder builder) {
         this.predicate = builder.predicate;
+        this.isTreeDataPredicate = builder.isTreeDataPredicate;
         this.isGroupPredicate = builder.isGroupPredicate;
         this.groupKey = builder.groupKey;
         this.groupCol = builder.groupCol;
@@ -63,6 +67,10 @@ public class WherePredicateMetadata {
     public boolean isAdvancedFilterPredicate() {
         return isAdvancedFilterPredicate;
     }
+    
+    public boolean isTreeDataPredicate() {
+        return isTreeDataPredicate;
+    }
 
     public AdvancedFilterModel getAdvancedFilterModel() {
         return advancedFilterModel;
@@ -74,6 +82,8 @@ public class WherePredicateMetadata {
 
     public static class Builder {
         private Predicate predicate;
+        
+        private boolean isTreeDataPredicate;
 
         private boolean isGroupPredicate;
         private Object groupKey;
@@ -127,6 +137,11 @@ public class WherePredicateMetadata {
 
         public Builder advancedFilterModel(AdvancedFilterModel advancedFilterModel) {
             this.advancedFilterModel = advancedFilterModel;
+            return this;
+        }
+        
+        public Builder isTreeDataPredicate(boolean isTreeDataPredicate) {
+            this.isTreeDataPredicate = isTreeDataPredicate;
             return this;
         }
 
