@@ -39,8 +39,17 @@ const TreeDataGrid = () => {
         {
             headerName: 'Trade ID',
             field: 'tradeId',
-            sortable: true,
             cellDataType: 'number'
+        },
+        {
+            headerName: 'Product',
+            field: 'product',
+            cellDataType: 'text'
+        },
+        {
+            headerName: 'Portfolio',
+            field: 'portfolio',
+            cellDataType: 'text'
         },
         
     ] as ColDef[], []);

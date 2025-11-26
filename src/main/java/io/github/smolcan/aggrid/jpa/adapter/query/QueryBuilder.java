@@ -50,10 +50,10 @@ public class QueryBuilder<E> {
     private final boolean suppressAggFilteredOnly;
     
     private final boolean treeData;
-    private final String treeData_isServerSideGroupFieldName;
-    private final String treeData_parentEntityFieldName;
-    private final String treeData_parentIdFieldName;
-    private final String treeData_childrenCollectionFieldName;
+    private final String isServerSideGroupFieldName;
+    private final String treeDataParentReferenceField;
+    private final String treeDataParentIdField;
+    private final String treeDataChildrenField;
     
     private final Map<String, ColDef> colDefs;
     
@@ -72,10 +72,10 @@ public class QueryBuilder<E> {
         this.groupAggFiltering = builder.groupAggFiltering;
         this.suppressAggFilteredOnly = builder.groupAggFiltering || builder.suppressAggFilteredOnly;
         this.treeData = builder.treeData;
-        this.treeData_isServerSideGroupFieldName = builder.isServerSideGroupFieldName;
-        this.treeData_parentEntityFieldName = builder.treeData_parentEntityFieldName;
-        this.treeData_parentIdFieldName = builder.treeData_parentIdFieldName;
-        this.treeData_childrenCollectionFieldName = builder.treeData_childrenCollectionFieldName;
+        this.isServerSideGroupFieldName = builder.isServerSideGroupFieldName;
+        this.treeDataParentReferenceField = builder.treeDataParentReferenceField;
+        this.treeDataParentIdField = builder.treeDataParentIdField;
+        this.treeDataChildrenField = builder.treeDataChildrenField;
         this.colDefs = builder.colDefs;
     }
 
@@ -292,21 +292,21 @@ public class QueryBuilder<E> {
             // if treeData, add expression for isServerSideGroup field
             if (this.treeData) {
                 Selection<Boolean> isServerSideGroupSelection;
-                if (this.treeData_childrenCollectionFieldName != null) {
-                    isServerSideGroupSelection = cb.isNotEmpty(root.get(this.treeData_childrenCollectionFieldName));
+                if (this.treeDataChildrenField != null) {
+                    isServerSideGroupSelection = cb.isNotEmpty(root.get(this.treeDataChildrenField));
                 } else {
                     // Subquery: Select count from Entity where parent = root
                     Subquery<Long> subquery = cb.createTupleQuery().subquery(Long.class);
                     Root<E> subRoot = subquery.from(this.entityClass);
                     subquery.select(cb.count(subRoot));
-                    if (this.treeData_parentEntityFieldName != null) {
+                    if (this.treeDataParentReferenceField != null) {
                         // compare parent reference directly with root
-                        subquery.where(cb.equal(subRoot.get(this.treeData_parentEntityFieldName), root));
+                        subquery.where(cb.equal(subRoot.get(this.treeDataParentReferenceField), root));
                     } else {
                         // no reference field, just parent id
                         subquery.where(
                                 cb.equal(
-                                        subRoot.get(this.treeData_parentIdFieldName), 
+                                        subRoot.get(this.treeDataParentIdField), 
                                         root.get(this.primaryFieldName))
                         );
                     }
@@ -316,7 +316,7 @@ public class QueryBuilder<E> {
                 
                 selections.add(
                         SelectionMetadata
-                                .builder(isServerSideGroupSelection.alias(this.treeData_isServerSideGroupFieldName))
+                                .builder(isServerSideGroupSelection.alias(this.isServerSideGroupFieldName))
                                 .isServerSideGroupSelection(true)
                                 .build()
                 );
@@ -436,10 +436,10 @@ public class QueryBuilder<E> {
             if (request.getGroupKeys().isEmpty()) {
                 // only parent records
                 Predicate treeRootPredicate;
-                if (this.treeData_parentEntityFieldName != null) {
-                    treeRootPredicate = cb.isNull(root.get(this.treeData_parentEntityFieldName));
+                if (this.treeDataParentReferenceField != null) {
+                    treeRootPredicate = cb.isNull(root.get(this.treeDataParentReferenceField));
                 } else {
-                    treeRootPredicate = cb.isNull(root.get(this.treeData_parentIdFieldName));
+                    treeRootPredicate = cb.isNull(root.get(this.treeDataParentIdField));
                 }
                 
                 wherePredicateMetadata.add(
@@ -453,8 +453,8 @@ public class QueryBuilder<E> {
                 String parentKey = request.getGroupKeys().get(request.getGroupKeys().size() - 1);
                 
                 Predicate treeParentPredicate;
-                if (this.treeData_parentEntityFieldName != null) {
-                    Path<?> parentIdPath = root.get(this.treeData_parentEntityFieldName).get(this.primaryFieldName);
+                if (this.treeDataParentReferenceField != null) {
+                    Path<?> parentIdPath = root.get(this.treeDataParentReferenceField).get(this.primaryFieldName);
                     // try to synchronize col and key to same data type to prevent errors
                     // for example, group key is date as string, but field is date, need to parse to date and then compare
                     TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(parentIdPath, parentKey);
@@ -462,7 +462,7 @@ public class QueryBuilder<E> {
                 } else {
                     // try to synchronize col and key to same data type to prevent errors
                     // for example, group key is date as string, but field is date, need to parse to date and then compare
-                    TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(root.get(this.treeData_parentIdFieldName), parentKey);
+                    TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(root.get(this.treeDataParentIdField), parentKey);
                     treeParentPredicate =  cb.equal(synchronizedValueType.getSynchronizedPath(), synchronizedValueType.getSynchronizedValue());
                 }
 
@@ -1419,9 +1419,9 @@ public class QueryBuilder<E> {
         
         private boolean treeData;
         private String isServerSideGroupFieldName;
-        private String treeData_parentEntityFieldName;
-        private String treeData_parentIdFieldName;
-        private String treeData_childrenCollectionFieldName;
+        private String treeDataParentReferenceField;
+        private String treeDataParentIdField;
+        private String treeDataChildrenField;
         
         private Map<String, ColDef> colDefs;
 
@@ -1498,64 +1498,53 @@ public class QueryBuilder<E> {
             return this;
         }
 
-        public Builder<E> treeData_parentEntityFieldName(String treeData_parentEntityFieldName) {
-            this.treeData_parentEntityFieldName = treeData_parentEntityFieldName;
+        public Builder<E> treeDataParentReferenceField(String treeDataParentReferenceField) {
+            this.treeDataParentReferenceField = treeDataParentReferenceField;
             return this;
         }
 
-        public Builder<E> treeData_parentIdFieldName(String treeData_parentIdFieldName) {
-            this.treeData_parentIdFieldName = treeData_parentIdFieldName;
+        public Builder<E> treeDataParentIdField(String treeDataParentIdField) {
+            this.treeDataParentIdField = treeDataParentIdField;
             return this;
         }
 
-        public Builder<E> treeData_childrenCollectionFieldName(String treeData_childrenCollectionFieldName) {
-            this.treeData_childrenCollectionFieldName = treeData_childrenCollectionFieldName;
+        public Builder<E> treeDataChildrenField(String treeDataChildrenField) {
+            this.treeDataChildrenField = treeDataChildrenField;
             return this;
         }
-//        
-//        public Builder<E> isServerSideGroup(Function<Root<E>, Predicate> isServerSideGroup) {
-//            this.isServerSideGroup = isServerSideGroup;
-//            return this;
-//        }
-//        
-//        public Builder<E> getServerSideGroupKey(Function<Root<E>, Path<?>> getServerSideGroupKey) {
-//            this.getServerSideGroupKey = getServerSideGroupKey;
-//            return this;
-//        }
 
         public QueryBuilder<E> build() {
+            this.validateBeforeBuild();
+            return new QueryBuilder<>(this);
+        }
+        
+        private void validateBeforeBuild() {
+            // colDefs args validation
             if (this.colDefs == null || this.colDefs.isEmpty()) {
                 throw new IllegalArgumentException("colDefs cannot be null or empty");
             }
-            
-//            // tree data arguments validation
-//            if (this.treeData) {
-//                if (this.isServerSideGroupFieldName == null) {
-//                    throw new IllegalStateException("When treeData is set to true, isServerSideGroupFieldName must be provided");
-//                }
-//                if (this.colDefs.containsKey(this.isServerSideGroupFieldName)) {
-//                    throw new IllegalStateException("isServerSideGroupFieldName '" + this.isServerSideGroupFieldName + "' collides with existing colDef");
-//                }
-//                
-//                if (this.isServerSideGroup == null) {
-//                    throw new IllegalStateException("When treeData is set to true, isServerSideGroup must be provided");
-//                }
-//                if (this.getServerSideGroupKey == null) {
-//                    throw new IllegalStateException("When treeData is set to true, getServerSideGroupKey must be provided");
-//                }
-//            } else {
-//                if (this.isServerSideGroupFieldName != null) {
-//                    throw new IllegalStateException("Can not set isServerSideGroupFieldName if treeData is not set to true");
-//                }
-//                if (this.isServerSideGroup != null) {
-//                    throw new IllegalStateException("Can not set isServerSideGroup if treeData is not set to true");
-//                }
-//                if (this.getServerSideGroupKey != null) {
-//                    throw new IllegalStateException("Can not set getServerSideGroupKey if treeData is not set to true");
-//                }
-//            }
-            
-            return new QueryBuilder<>(this);
+
+            // tree data arguments validation
+            if (this.treeData) {
+                List<String> treeDataErrorMessages = new ArrayList<>();
+                if (this.primaryFieldName == null) {
+                    treeDataErrorMessages.add("When treeData is set to true, primaryFieldName must be provided");
+                }
+                if (this.isServerSideGroupFieldName == null) {
+                    treeDataErrorMessages.add("When treeData is set to true, isServerSideGroupFieldName must be provided");
+                }
+                if (this.colDefs.containsKey(this.isServerSideGroupFieldName)) {
+                    treeDataErrorMessages.add("isServerSideGroupFieldName '" + this.isServerSideGroupFieldName + "' collides with existing colDef");
+                }
+                
+                if (this.treeDataParentReferenceField == null && this.treeDataParentIdField == null) {
+                    treeDataErrorMessages.add("When treeData is set to true, either treeDataParentReferenceField or treeDataParentIdField must be provided");
+                }
+                
+                if (!treeDataErrorMessages.isEmpty()) {
+                    throw new IllegalStateException(String.join("\n", treeDataErrorMessages));
+                }
+            }
         }
     }
 }
