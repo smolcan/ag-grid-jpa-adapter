@@ -39,7 +39,7 @@ const TreeDataGrid = () => {
         {
             headerName: 'Trade ID',
             field: 'tradeId',
-            cellDataType: 'number'
+            cellDataType: 'number',
         },
         {
             headerName: 'Product',
