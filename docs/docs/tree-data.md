@@ -42,6 +42,8 @@ this.queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
     .build();
 ```
 
+Source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/TreeDataService.java)
+
 import GridLoadingMessage from './grid-loading-message';
 import TreeDataGrid from './tree-data-grid';
 
