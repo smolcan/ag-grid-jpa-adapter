@@ -33,7 +33,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static io.github.smolcan.aggrid.jpa.adapter.utils.CartesianProduct.cartesianProduct;
+import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.cartesianProduct;
+import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.getPath; 
 
 public class QueryBuilder<E> {
     private static final DateTimeFormatter DATE_FORMATTER_FOR_DATE_ADVANCED_FILTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -48,6 +49,7 @@ public class QueryBuilder<E> {
     private final boolean paginateChildRows;
     private final boolean groupAggFiltering;
     private final boolean suppressAggFilteredOnly;
+    private final boolean suppressFieldDotNotation;
     
     private final boolean treeData;
     private final String isServerSideGroupFieldName;
@@ -71,6 +73,7 @@ public class QueryBuilder<E> {
         this.paginateChildRows = builder.paginateChildRows;
         this.groupAggFiltering = builder.groupAggFiltering;
         this.suppressAggFilteredOnly = builder.groupAggFiltering || builder.suppressAggFilteredOnly;
+        this.suppressFieldDotNotation = builder.suppressFieldDotNotation;
         this.treeData = builder.treeData;
         this.isServerSideGroupFieldName = builder.isServerSideGroupFieldName;
         this.treeDataParentReferenceField = builder.treeDataParentReferenceField;
@@ -118,7 +121,7 @@ public class QueryBuilder<E> {
         
         List<Tuple> data = this.apply(query, queryContext);
         LoadSuccessParams loadSuccessParams = new LoadSuccessParams();
-        loadSuccessParams.setRowData(tupleToMap(data));
+        loadSuccessParams.setRowData(this.tupleToMap(data));
         loadSuccessParams.setPivotResultFields(queryContext.getPivotingContext().getPivotingResultFields());
         return loadSuccessParams;
     }
@@ -144,6 +147,7 @@ public class QueryBuilder<E> {
      * @throws OnPivotMaxColumnsExceededException If the number of pivot columns to be generated exceeds the configured limit.
      * @see #getRows(ServerSideGetRowsRequest) For retrieving the actual row data.
      */
+    @SuppressWarnings("unchecked")
     public long countRows(ServerSideGetRowsRequest request) throws OnPivotMaxColumnsExceededException {
         this.validateRequest(request);
 
@@ -175,7 +179,7 @@ public class QueryBuilder<E> {
             String countingGroupCol = request.getRowGroupCols().get(countingGroupColIndex).getId();
 
             // subquery will only select the group column 
-            Subquery<?> subquery = query.subquery(root.get(countingGroupCol).getJavaType());
+            Subquery<?> subquery = query.subquery(getPath(root, countingGroupCol).getJavaType());
             Root<E> subqueryRoot = subquery.from(this.entityClass);
             
             queryContext.setPivotingContext(this.createPivotingContext(cb, subqueryRoot, request));
@@ -185,7 +189,7 @@ public class QueryBuilder<E> {
             this.having(cb, request, queryContext);
             
             // select the group column in subquery
-            subquery.select(subqueryRoot.get(countingGroupCol));
+            subquery.select((Expression) getPath(subqueryRoot, countingGroupCol));
             // where
             if (!queryContext.getWherePredicates().isEmpty()) {
                 Predicate[] predicates = queryContext.getWherePredicates().stream().map(WherePredicateMetadata::getPredicate).toArray(Predicate[]::new);
@@ -202,8 +206,8 @@ public class QueryBuilder<E> {
             }
             
             // in parent query, count distinct values of column group that are returned in subquery
-            query.select(cb.countDistinct(root.get(countingGroupCol)));
-            query.where(cb.in(root.get(countingGroupCol)).value(subquery));
+            query.select(cb.countDistinct(getPath(root, countingGroupCol)));
+            query.where(cb.in(getPath(root, countingGroupCol)).value((Subquery) subquery));
             
             return this.entityManager.createQuery(query).getSingleResult();
         } else {
@@ -283,7 +287,7 @@ public class QueryBuilder<E> {
             
             // add each field to selections 
             for (ColDef colDef : this.colDefs.values()) {
-                Path<?> field = root.get(colDef.getField());
+                Path<?> field = getPath(root, colDef.getField());
                 Selection<?> selection = field.alias(colDef.getField());
                 
                 selections.add(SelectionMetadata.builder(selection).build());
@@ -326,7 +330,7 @@ public class QueryBuilder<E> {
             // group columns
             for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size() + 1; i++) {
                 ColumnVO groupCol = request.getRowGroupCols().get(i);
-                Selection<?> groupSelection = root.get(groupCol.getField()).alias(groupCol.getField());
+                Selection<?> groupSelection = getPath(root, groupCol.getField()).alias(groupCol.getField());
                 
                 SelectionMetadata groupSelectionMetadata = SelectionMetadata
                         .builder(groupSelection)
@@ -353,23 +357,23 @@ public class QueryBuilder<E> {
                     Expression<?> aggregatedField;
                     switch (columnVO.getAggFunc()) {
                         case avg: {
-                            aggregatedField = cb.avg(root.get(columnVO.getField()));
+                            aggregatedField = cb.avg((Expression) getPath(root, columnVO.getField()));
                             break;
                         }
                         case sum: {
-                            aggregatedField = cb.sum(root.get(columnVO.getField()));
+                            aggregatedField = cb.sum((Expression) getPath(root, columnVO.getField()));
                             break;
                         }
                         case min: {
-                            aggregatedField = cb.least((Expression) root.get(columnVO.getField()));
+                            aggregatedField = cb.least((Expression) getPath(root, columnVO.getField()));
                             break;
                         }
                         case max: {
-                            aggregatedField = cb.greatest((Expression) root.get(columnVO.getField()));
+                            aggregatedField = cb.greatest((Expression) getPath(root, columnVO.getField()));
                             break;
                         }
                         case count: {
-                            aggregatedField = cb.count(root.get(columnVO.getField()));
+                            aggregatedField = cb.count(getPath(root, columnVO.getField()));
                             break;
                         }
                         default: {
@@ -418,7 +422,7 @@ public class QueryBuilder<E> {
 
             // try to synchronize col and key to same data type to prevent errors
             // for example, group key is date as string, but field is date, need to parse to date and then compare
-            TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(root.get(groupCol), groupKey);
+            TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(getPath(root, groupCol), groupKey);
             Predicate groupPredicate = cb.equal(synchronizedValueType.getSynchronizedPath(), synchronizedValueType.getSynchronizedValue());
             
             // wrap in predicate info object
@@ -504,7 +508,7 @@ public class QueryBuilder<E> {
             for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size() + 1; i++) {
                 String groupCol = request.getRowGroupCols().get(i).getField();
                 GroupingMetadata groupingMetadata = GroupingMetadata
-                        .builder(root.get(groupCol))
+                        .builder(getPath(root, groupCol))
                         .column(groupCol)
                         .build();
                 
@@ -741,7 +745,7 @@ public class QueryBuilder<E> {
      * @param tuples the list of JPA tuples to convert
      * @return a list of maps where each map represents a tuple with alias-value pairs
      */
-    private static List<Map<String, Object>> tupleToMap(List<Tuple> tuples) {
+    protected List<Map<String, Object>> tupleToMap(List<Tuple> tuples) {
         if (tuples == null || tuples.isEmpty()) {
             return new ArrayList<>(0);
         }
@@ -759,9 +763,43 @@ public class QueryBuilder<E> {
             Map<String, Object> map = new HashMap<>(columnCount);
 
             for (int i = 0; i < columnCount; i++) {
-                if (aliases[i] != null) {
-                    map.put(aliases[i], tuple.get(i));
+                String alias = aliases[i];
+                Object value = tuple.get(i);
+                if (alias == null) {
+                    continue;
                 }
+
+                // if dot notation is not suppressed and field contains dot notation, create embedded map
+                if (!this.suppressFieldDotNotation && alias.contains(".")) {
+                    String[] parts = alias.split("\\.");
+                    
+                    Map<String, Object> currentLevel = map;
+                    for (int insertionLevel = 0; insertionLevel < parts.length - 1; insertionLevel++) {
+                        String part = parts[insertionLevel];
+                        
+                        Object existing = currentLevel.get(part);
+                        if (existing instanceof Map) {
+                            // exists already
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> nextLevel = (Map<String, Object>) existing;
+                            // move level down
+                            currentLevel = nextLevel;
+                        } else {
+                            // Create new nested map and link it
+                            Map<String, Object> newMap = new HashMap<>();
+                            currentLevel.put(part, newMap);
+                            // move level down
+                            currentLevel = newMap;
+                        }
+                    }
+
+                    // put value to the level of insertion
+                    currentLevel.put(parts[parts.length - 1], value);
+                    continue;
+                }
+
+                // simple scenario
+                map.put(alias, tuple.get(i));
             }
             result.add(map);
         }
@@ -866,7 +904,7 @@ public class QueryBuilder<E> {
                 }
                 
                 // predicate from filter
-                Predicate predicate = filter.toPredicate(cb, root.get(columnName), filterMap);
+                Predicate predicate = filter.toPredicate(cb, getPath(root, columnName), filterMap);
                 predicates.add(predicate);
             }
 
@@ -1240,8 +1278,8 @@ public class QueryBuilder<E> {
             Root<E> root = query.from(this.entityClass);
 
             // select
-            query.multiselect(root.get(field)).distinct(true);
-            query.orderBy(cb.asc(root.get(field)));
+            query.multiselect(getPath(root, field)).distinct(true);
+            query.orderBy(cb.asc(getPath(root, field)));
 
             // result
             List<Object> result = this.entityManager.createQuery(query).getResultList();
@@ -1322,7 +1360,7 @@ public class QueryBuilder<E> {
             // Subquery for count(distinct <field>)
             Subquery<Long> subquery = mainQuery.subquery(Long.class);
             Root<E> subRoot = subquery.from(this.entityClass);
-            subquery.select(cb.countDistinct(subRoot.get(pivotCol.getField())));
+            subquery.select(cb.countDistinct(getPath(subRoot, pivotCol.getField())));
 
             productExpression = cb.prod(productExpression, subquery.getSelection());
         }
@@ -1353,16 +1391,16 @@ public class QueryBuilder<E> {
             request.getValueCols()
                     .forEach(columnVO -> {
 
-                        Path<?> field = root.get(columnVO.getField());
+                        Path<?> field = getPath(root, columnVO.getField());
 
                         CriteriaBuilder.Case<?> caseExpression = null;
                         for (Pair<String, Object> pair : pairs) {
                             if (caseExpression == null) {
                                 caseExpression = cb.selectCase()
-                                        .when(cb.equal(root.get(pair.getKey()), pair.getValue()), field);
+                                        .when(cb.equal(getPath(root, pair.getKey()), pair.getValue()), field);
                             } else {
                                 caseExpression = cb.selectCase()
-                                        .when(cb.equal(root.get(pair.getKey()), pair.getValue()), caseExpression);
+                                        .when(cb.equal(getPath(root, pair.getKey()), pair.getValue()), caseExpression);
                             }
                         }
                         Objects.requireNonNull(caseExpression);
@@ -1416,6 +1454,7 @@ public class QueryBuilder<E> {
         private boolean paginateChildRows;
         private boolean groupAggFiltering;
         private boolean suppressAggFilteredOnly;
+        private boolean suppressFieldDotNotation;
         
         private boolean treeData;
         private String isServerSideGroupFieldName;
@@ -1475,6 +1514,11 @@ public class QueryBuilder<E> {
         
         public Builder<E> paginateChildRows(boolean paginateChildRows) {
             this.paginateChildRows = paginateChildRows;
+            return this;
+        }
+
+        public Builder<E> suppressFieldDotNotation(boolean suppressFieldDotNotation) {
+            this.suppressFieldDotNotation = suppressFieldDotNotation;
             return this;
         }
         

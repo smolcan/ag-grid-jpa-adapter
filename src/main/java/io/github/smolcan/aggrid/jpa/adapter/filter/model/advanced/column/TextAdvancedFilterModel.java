@@ -4,6 +4,7 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.ColumnAdvanced
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.SimpleFilterModelType;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextFilterParams;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextMatcherParams;
+import io.github.smolcan.aggrid.jpa.adapter.utils.Utils;
 import jakarta.persistence.criteria.*;
 
 public class TextAdvancedFilterModel extends ColumnAdvancedFilterModel {
@@ -20,7 +21,7 @@ public class TextAdvancedFilterModel extends ColumnAdvancedFilterModel {
     public Predicate toPredicate(CriteriaBuilder cb, Root<?> root) {
 
         Expression<String> filterExpression = this.filterParams.generateExpressionFromFilterParams(cb, cb.literal(this.filter));
-        Expression<String> valueExpression = this.filterParams.generateExpressionFromFilterParams(cb, root.get(this.getColId()));
+        Expression<String> valueExpression = this.filterParams.generateExpressionFromFilterParams(cb, Utils.getPath(root, this.getColId()).as(String.class));
 
         // check if provided custom text matcher
         if (this.filterParams.getTextMatcher() != null) {

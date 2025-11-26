@@ -2,6 +2,7 @@ package io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.column;
 
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.ColumnAdvancedFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.DateFilterParams;
+import io.github.smolcan.aggrid.jpa.adapter.utils.Utils;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
@@ -24,7 +25,7 @@ public class DateAdvancedFilterModel extends ColumnAdvancedFilterModel {
         this.filterParams.validateDate(this.filter);
         Predicate predicate;
 
-        Expression<LocalDate> path = root.get(this.getColId()).as(LocalDate.class);
+        Expression<LocalDate> path = Utils.getPath(root, this.getColId()).as(LocalDate.class);
         switch (this.type) {
             case blank: {
                 predicate = cb.isNull(path);

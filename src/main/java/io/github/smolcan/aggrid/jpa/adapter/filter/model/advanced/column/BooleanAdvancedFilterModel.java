@@ -1,6 +1,7 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.column;
 
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.ColumnAdvancedFilterModel;
+import io.github.smolcan.aggrid.jpa.adapter.utils.Utils;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
@@ -17,7 +18,8 @@ public class BooleanAdvancedFilterModel extends ColumnAdvancedFilterModel {
     public Predicate toPredicate(CriteriaBuilder cb, Root<?> root) {
         Predicate predicate;
 
-        Path<Boolean> path = root.get(this.getColId());
+        @SuppressWarnings("unchecked")
+        Path<Boolean> path = (Path<Boolean>) Utils.getPath(root, this.getColId());
         switch (this.type) {
             case TRUE: {
                 predicate = cb.isTrue(path);

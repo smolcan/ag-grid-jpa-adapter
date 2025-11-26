@@ -2,6 +2,7 @@ package io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.column;
 
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.ColumnAdvancedFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.NumberFilterParams;
+import io.github.smolcan.aggrid.jpa.adapter.utils.Utils;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
@@ -25,7 +26,7 @@ public class NumberAdvancedFilterModel extends ColumnAdvancedFilterModel {
 
         // ensuring number compatibility
         // comparing any number types without problem, cast both to big decimal
-        Expression<BigDecimal> path = root.get(this.getColId()).as(BigDecimal.class);
+        Expression<BigDecimal> path = Utils.getPath(root, this.getColId()).as(BigDecimal.class);
         switch (this.type) {
             case blank: {
                 predicate = cb.isNull(path);
