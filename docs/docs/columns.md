@@ -42,3 +42,31 @@ QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityMan
     .colDefs(priceColumn, nameColumn)
     .build();
 ```
+
+## Dot notation
+
+The adapter fully supports querying nested fields using standard dot notation (e.g., `"category.name"` or `"user.address.city"`).
+
+:::info JPA Requirement
+For dot notation to work, the referenced path must correspond to a mapped relationship (e.g., `@ManyToOne`, `@OneToOne`) within your JPA Entity.
+:::
+
+### Suppress Field Dot Notation - Flat data
+
+By default, dot notation fields are returned as **nested JSON objects** to align with AG Grid's default behavior.
+
+To return flat keys (e.g., `"category.name": "Value"`), you must enable suppressFieldDotNotation in the `QueryBuilder`.
+
+```java
+QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
+    .colDefs(
+        // ...col defs
+    )
+    .suppressFieldDotNotation(true)
+    .build();
+```
+
+:::warning Client-Side Configuration
+If you enable `suppressFieldDotNotation(true)` in the backend, you must also set [suppressFieldDotNotation](https://www.ag-grid.com/react-data-grid/grid-options/#reference-columns-suppressFieldDotNotation) to `true` in your AG Grid options on the frontend to ensure the grid treats dots as literal characters.
+:::
+
