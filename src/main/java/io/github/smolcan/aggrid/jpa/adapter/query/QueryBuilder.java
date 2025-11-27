@@ -67,13 +67,13 @@ public class QueryBuilder<E> {
     private final CreateMasterRowPredicate createMasterRowPredicate;
     
 
-    protected final Map<String, ColDef> colDefs;
+    private final Map<String, ColDef> colDefs;
     
     public static <E> Builder<E> builder(Class<E> entityClass, EntityManager entityManager) {
         return new Builder<>(entityClass, entityManager);
     }
     
-    protected QueryBuilder(Builder<E> builder) {
+    private QueryBuilder(Builder<E> builder) {
         this.entityClass = builder.entityClass;
         this.entityManager = builder.entityManager;
         this.primaryFieldName = builder.primaryFieldName;
@@ -251,7 +251,16 @@ public class QueryBuilder<E> {
             return this.entityManager.createQuery(query).getSingleResult();
         }
     }
-    
+
+    /**
+     * Retrieves the detail row data for a specific master row in Master-Detail mode.
+     * <p>
+     * This method executes a query to fetch child records associated with the provided
+     * {@code masterRow}, applying any dynamic class resolution or column definitions if configured.
+     *
+     * @param masterRow the data of the parent row for which details are being requested
+     * @return a list of maps representing the detail rows
+     */
     public List<Map<String, Object>> getDetailRowData(Map<String, Object> masterRow) {
         Class<?> detailClass = this.dynamicDetailClass != null
                 ? this.dynamicDetailClass.apply(masterRow)
@@ -280,6 +289,17 @@ public class QueryBuilder<E> {
         return this.tupleToMap(data);
     }
 
+    /**
+     * Constructs the JPA predicate used to filter detail records based on the master row.
+     * <p>
+     * This method builds the {@code WHERE} clause that links the detail entity to the specific
+     * parent record, using either a custom predicate function or standard foreign key matching.
+     *
+     * @param cb        the {@link CriteriaBuilder} used to construct the predicate
+     * @param root      the query root of the detail entity
+     * @param masterRow the data of the parent row containing the primary key
+     * @return the filtering {@link Predicate} used to select only relevant child records
+     */
     protected Predicate createMasterRowPredicate(CriteriaBuilder cb, Root<?> root, Map<String, Object> masterRow) {
         // add to wherePredicates predicate for parent
         Predicate masterRowPredicate;

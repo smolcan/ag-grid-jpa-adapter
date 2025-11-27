@@ -95,7 +95,7 @@ const MasterDetailGrid = () => {
 
     const detailCellRendererParams = (params: ICellRendererParams) => {
         
-        let colDefs;
+        let colDefs: ColDef[];
         if (params.data.product.includes('1') || params.data.product.includes('2') || params.data.product.includes('3')) {
             colDefs = [
                 {
@@ -153,7 +153,7 @@ const MasterDetailGrid = () => {
                         setErrorMessage(error.message || 'Failed to fetch data');
                     });
             }
-        };
+        } as IDetailCellRendererParams;
     };
 
     const onGridReady = (params: GridReadyEvent) => {
