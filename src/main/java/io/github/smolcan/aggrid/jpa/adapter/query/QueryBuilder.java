@@ -34,27 +34,29 @@ import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.cartesianProduct;
 import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.getPath; 
 
 public class QueryBuilder<E> {
-    protected static final DateTimeFormatter DATE_FORMATTER_FOR_DATE_ADVANCED_FILTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    protected static final String AUTO_GROUP_COLUMN_NAME = "ag-Grid-AutoColumn";
+    private static final DateTimeFormatter DATE_FORMATTER_FOR_DATE_ADVANCED_FILTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final String AUTO_GROUP_COLUMN_NAME = "ag-Grid-AutoColumn";
 
-    protected final Class<E> entityClass;
-    protected final String primaryFieldName;
-    protected final EntityManager entityManager;
-    protected final String serverSidePivotResultFieldSeparator;
-    protected final boolean enableAdvancedFilter;
-    protected final Integer pivotMaxGeneratedColumns;
-    protected final boolean paginateChildRows;
-    protected final boolean groupAggFiltering;
-    protected final boolean suppressAggFilteredOnly;
-    protected final boolean suppressFieldDotNotation;
+    private final Class<E> entityClass;
+    private final String primaryFieldName;
+    private final EntityManager entityManager;
+    private final String serverSidePivotResultFieldSeparator;
+    private final boolean enableAdvancedFilter;
+    private final Integer pivotMaxGeneratedColumns;
+    private final boolean paginateChildRows;
+    private final boolean groupAggFiltering;
+    private final boolean suppressAggFilteredOnly;
+    private final boolean suppressFieldDotNotation;
 
-    protected final boolean treeData;
-    protected final String isServerSideGroupFieldName;
-    protected final String treeDataParentReferenceField;
-    protected final String treeDataParentIdField;
-    protected final String treeDataChildrenField;
-    
-    protected final boolean masterDetail;
+    private final boolean treeData;
+    private final String isServerSideGroupFieldName;
+    private final String treeDataParentReferenceField;
+    private final String treeDataParentIdField;
+    private final String treeDataChildrenField;
+
+    private final boolean masterDetail;
+    private final boolean masterDetailLazy;
+    private final String masterDetailRowDataFieldName; 
     private final Class<?> detailClass;
     private final Map<String, ColDef> detailColDefs;
     private final String detailMasterReferenceField;
@@ -85,6 +87,8 @@ public class QueryBuilder<E> {
         this.treeDataParentIdField = builder.treeDataParentIdField;
         this.treeDataChildrenField = builder.treeDataChildrenField;
         this.masterDetail = builder.masterDetail;
+        this.masterDetailLazy = builder.masterDetailLazy;
+        this.masterDetailRowDataFieldName = builder.masterDetailRowDataFieldName;
         this.detailClass = builder.detailClass;
         this.detailColDefs = builder.detailColDefs;
         this.detailMasterReferenceField = builder.detailMasterReferenceField;
@@ -131,8 +135,15 @@ public class QueryBuilder<E> {
         this.limitOffset(request, queryContext);
         
         List<Tuple> data = this.apply(query, queryContext);
+        List<Map<String, Object>> resData = this.tupleToMap(data);
+        if (this.masterDetail && !this.masterDetailLazy) {
+            for (Map<String, Object> res : resData) {
+                res.put(this.masterDetailRowDataFieldName, this.getDetailRowData(res));
+            }
+        }
+        
         LoadSuccessParams loadSuccessParams = new LoadSuccessParams();
-        loadSuccessParams.setRowData(this.tupleToMap(data));
+        loadSuccessParams.setRowData(resData);
         loadSuccessParams.setPivotResultFields(queryContext.getPivotingContext().getPivotingResultFields());
         return loadSuccessParams;
     }
@@ -1525,6 +1536,8 @@ public class QueryBuilder<E> {
         
         private boolean masterDetail;
         private Class<?> detailClass;
+        private boolean masterDetailLazy;
+        private String masterDetailRowDataFieldName;
         private Map<String, ColDef> detailColDefs;
         private String detailMasterReferenceField;
         private String detailMasterIdField;
@@ -1627,6 +1640,16 @@ public class QueryBuilder<E> {
         
         public Builder<E> masterDetail(boolean masterDetail) {
             this.masterDetail = masterDetail;
+            return this;
+        }
+
+        public Builder<E> masterDetailLazy(boolean masterDetailLazy) {
+            this.masterDetailLazy = masterDetailLazy;
+            return this;
+        }
+
+        public Builder<E> masterDetailRowDataFieldName(String masterDetailRowDataFieldName) {
+            this.masterDetailRowDataFieldName = masterDetailRowDataFieldName;
             return this;
         }
 
