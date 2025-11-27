@@ -37,33 +37,37 @@ import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.cartesianProduct;
 import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.getPath; 
 
 public class QueryBuilder<E> {
-    private static final DateTimeFormatter DATE_FORMATTER_FOR_DATE_ADVANCED_FILTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final String AUTO_GROUP_COLUMN_NAME = "ag-Grid-AutoColumn";
+    protected static final DateTimeFormatter DATE_FORMATTER_FOR_DATE_ADVANCED_FILTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    protected static final String AUTO_GROUP_COLUMN_NAME = "ag-Grid-AutoColumn";
+
+    protected final Class<E> entityClass;
+    protected final String primaryFieldName;
+    protected final EntityManager entityManager;
+    protected final String serverSidePivotResultFieldSeparator;
+    protected final boolean enableAdvancedFilter;
+    protected final Integer pivotMaxGeneratedColumns;
+    protected final boolean paginateChildRows;
+    protected final boolean groupAggFiltering;
+    protected final boolean suppressAggFilteredOnly;
+    protected final boolean suppressFieldDotNotation;
+
+    protected final boolean treeData;
+    protected final String isServerSideGroupFieldName;
+    protected final String treeDataParentReferenceField;
+    protected final String treeDataParentIdField;
+    protected final String treeDataChildrenField;
     
-    private final Class<E> entityClass;
-    private final String primaryFieldName;
-    private final EntityManager entityManager;
-    private final String serverSidePivotResultFieldSeparator;
-    private final boolean enableAdvancedFilter;
-    private final Integer pivotMaxGeneratedColumns;
-    private final boolean paginateChildRows;
-    private final boolean groupAggFiltering;
-    private final boolean suppressAggFilteredOnly;
-    private final boolean suppressFieldDotNotation;
+    protected final boolean masterDetail;
+    protected final DetailQueryBuilder<?, E> detailQueryBuilder;
     
-    private final boolean treeData;
-    private final String isServerSideGroupFieldName;
-    private final String treeDataParentReferenceField;
-    private final String treeDataParentIdField;
-    private final String treeDataChildrenField;
-    
-    private final Map<String, ColDef> colDefs;
+
+    protected final Map<String, ColDef> colDefs;
     
     public static <E> Builder<E> builder(Class<E> entityClass, EntityManager entityManager) {
         return new Builder<>(entityClass, entityManager);
     }
     
-    private QueryBuilder(Builder<E> builder) {
+    protected QueryBuilder(Builder<E> builder) {
         this.entityClass = builder.entityClass;
         this.entityManager = builder.entityManager;
         this.primaryFieldName = builder.primaryFieldName;
@@ -79,6 +83,8 @@ public class QueryBuilder<E> {
         this.treeDataParentReferenceField = builder.treeDataParentReferenceField;
         this.treeDataParentIdField = builder.treeDataParentIdField;
         this.treeDataChildrenField = builder.treeDataChildrenField;
+        this.masterDetail = builder.masterDetail;
+        this.detailQueryBuilder = builder.detailQueryBuilder;
         this.colDefs = builder.colDefs;
     }
 
@@ -100,7 +106,7 @@ public class QueryBuilder<E> {
      * @return A {@link LoadSuccessParams} object containing the retrieved row data mapped to a format suitable for AG Grid.
      * @throws OnPivotMaxColumnsExceededException - when number of pivot columns exceeded limit
      */
-    public LoadSuccessParams getRows(ServerSideGetRowsRequest request) throws OnPivotMaxColumnsExceededException {
+    public LoadSuccessParams getRows(ServerSideGetRowsRequest request) {
         this.validateRequest(request);
         
         CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
@@ -223,6 +229,14 @@ public class QueryBuilder<E> {
             
             return this.entityManager.createQuery(query).getSingleResult();
         }
+    }
+    
+    public LoadSuccessParams getDetailRowData(ServerSideGetRowsRequest request, Map<String, Object> masterRow) {
+        if (!this.masterDetail) {
+            throw new IllegalStateException("Master detail is not set!");
+        }
+        
+        return this.detailQueryBuilder.getDetailRowData(request, masterRow);
     }
 
     /**
@@ -1370,7 +1384,7 @@ public class QueryBuilder<E> {
         return this.entityManager.createQuery(mainQuery).getSingleResult();
     }
 
-    private Map<String, Expression<?>> createPivotingExpressions(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, List<List<Pair<String, Object>>> cartesianProduct) {
+    private Map<String, Expression<?>> createPivotingExpressions(CriteriaBuilder cb, Root<?> root, ServerSideGetRowsRequest request, List<List<Pair<String, Object>>> cartesianProduct) {
         Map<String, Expression<?>> pivotingExpressions = new LinkedHashMap<>();
 
         cartesianProduct.forEach(pairs -> {
@@ -1462,10 +1476,13 @@ public class QueryBuilder<E> {
         private String treeDataParentIdField;
         private String treeDataChildrenField;
         
+        private boolean masterDetail;
+        private DetailQueryBuilder<?, E> detailQueryBuilder;
+        
         private Map<String, ColDef> colDefs;
 
 
-        private Builder(Class<E> entityClass, EntityManager entityManager) {
+        protected Builder(Class<E> entityClass, EntityManager entityManager) {
             this.entityClass = entityClass;
             this.entityManager = entityManager;
         }
@@ -1554,6 +1571,16 @@ public class QueryBuilder<E> {
 
         public Builder<E> treeDataChildrenField(String treeDataChildrenField) {
             this.treeDataChildrenField = treeDataChildrenField;
+            return this;
+        }
+        
+        public Builder<E> masterDetail(boolean masterDetail) {
+            this.masterDetail = masterDetail;
+            return this;
+        }
+        
+        public Builder<E> detailQueryBuilder(DetailQueryBuilder<?, E> detailQueryBuilder) {
+            this.detailQueryBuilder = detailQueryBuilder;
             return this;
         }
 

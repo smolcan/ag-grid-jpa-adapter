@@ -17,6 +17,9 @@ public class WherePredicateMetadata {
     // tree data predicate properties
     private final boolean isTreeDataPredicate;
     
+    // master/detail predicate properties
+    private final boolean isMasterDetailPredicate;
+    
     // group predicate properties
     private final boolean isGroupPredicate;
     private final Object groupKey;
@@ -31,6 +34,7 @@ public class WherePredicateMetadata {
     private WherePredicateMetadata(Builder builder) {
         this.predicate = builder.predicate;
         this.isTreeDataPredicate = builder.isTreeDataPredicate;
+        this.isMasterDetailPredicate = builder.isMasterDetailPredicate;
         this.isGroupPredicate = builder.isGroupPredicate;
         this.groupKey = builder.groupKey;
         this.groupCol = builder.groupCol;
@@ -84,6 +88,8 @@ public class WherePredicateMetadata {
         private Predicate predicate;
         
         private boolean isTreeDataPredicate;
+
+        private boolean isMasterDetailPredicate;
 
         private boolean isGroupPredicate;
         private Object groupKey;
@@ -142,6 +148,11 @@ public class WherePredicateMetadata {
         
         public Builder isTreeDataPredicate(boolean isTreeDataPredicate) {
             this.isTreeDataPredicate = isTreeDataPredicate;
+            return this;
+        }
+        
+        public Builder isMasterDetailPredicate(boolean isMasterDetailPredicate) {
+            this.isMasterDetailPredicate = isMasterDetailPredicate;
             return this;
         }
 
