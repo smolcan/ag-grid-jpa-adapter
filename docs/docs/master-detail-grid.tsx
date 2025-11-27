@@ -4,7 +4,7 @@ import { ModuleRegistry } from 'ag-grid-community';
 import {
     ClientSideRowModelModule,
     ColDef, ColumnAutoSizeModule, GetDetailRowData, GetDetailRowDataParams,
-    GridReadyEvent,
+    GridReadyEvent, ICellRendererParams, IDetailCellRendererParams,
     IServerSideDatasource, MasterDetailModule, ServerSideRowModelModule,
     themeQuartz, ValidationModule
 } from 'ag-grid-enterprise';
@@ -93,29 +93,43 @@ const MasterDetailGrid = () => {
         }
     }), []);
 
-    const detailCellRendererParams: any = useMemo(() => {
+    const detailCellRendererParams = (params: ICellRendererParams) => {
+        
+        let colDefs;
+        if (params.data.product.includes('1') || params.data.product.includes('2') || params.data.product.includes('3')) {
+            colDefs = [
+                {
+                    headerName: 'Trade ID',
+                    field: 'tradeId',
+                    cellDataType: 'number',
+                },
+                {
+                    headerName: 'Product',
+                    field: 'product',
+                    cellDataType: 'text'
+                },
+            ];
+        } else {
+            colDefs = [
+                {
+                    headerName: 'Trade ID',
+                    field: 'tradeId',
+                    cellDataType: 'number',
+                },
+                {
+                    headerName: 'Portfolio',
+                    field: 'portfolio',
+                    cellDataType: 'text'
+                },
+            ];
+        }
+        
+        
         return {
             detailGridOptions: {
-                columnDefs: [
-                    {
-                        headerName: 'Trade ID',
-                        field: 'parentTrade.tradeId',
-                        cellDataType: 'number',
-                    },
-                    {
-                        headerName: 'Product',
-                        field: 'product',
-                        cellDataType: 'text'
-                    },
-                    {
-                        headerName: 'Portfolio',
-                        field: 'portfolio',
-                        cellDataType: 'text'
-                    },
-                ],
+                columnDefs: colDefs,
             },
             getDetailRowData: (params: GetDetailRowDataParams) => {
-                // params.successCallback(params.data.detailRowData);
                 fetch(`${API_URL}/docs/master-detail/getDetailRowData`, {
                     method: 'POST',
                     headers: {
@@ -132,7 +146,6 @@ const MasterDetailGrid = () => {
                     })
                     .then(data => {
                         setErrorMessage(null);
-                        console.log(data);
                         params.successCallback(data);
                     })
                     .catch(error => {
@@ -141,7 +154,7 @@ const MasterDetailGrid = () => {
                     });
             }
         };
-    }, []);
+    };
 
     const onGridReady = (params: GridReadyEvent) => {
         params.api.sizeColumnsToFit();

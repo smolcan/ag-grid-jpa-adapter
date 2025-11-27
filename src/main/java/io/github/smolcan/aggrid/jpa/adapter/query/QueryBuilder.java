@@ -28,6 +28,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.cartesianProduct;
@@ -58,7 +59,9 @@ public class QueryBuilder<E> {
     private final boolean masterDetailLazy;
     private final String masterDetailRowDataFieldName; 
     private final Class<?> detailClass;
+    private final Function<Map<String, Object>, Class<?>> dynamicDetailClass;
     private final Map<String, ColDef> detailColDefs;
+    private final Function<Map<String, Object>, List<ColDef>> dynamicColDefs;
     private final String detailMasterReferenceField;
     private final String detailMasterIdField;
     private final CreateMasterRowPredicate createMasterRowPredicate;
@@ -90,7 +93,9 @@ public class QueryBuilder<E> {
         this.masterDetailLazy = builder.masterDetailLazy;
         this.masterDetailRowDataFieldName = builder.masterDetailRowDataFieldName;
         this.detailClass = builder.detailClass;
+        this.dynamicDetailClass = builder.dynamicDetailClass;
         this.detailColDefs = builder.detailColDefs;
+        this.dynamicColDefs = builder.dynamicColDefs;
         this.detailMasterReferenceField = builder.detailMasterReferenceField;
         this.detailMasterIdField = builder.detailMasterIdField;
         this.createMasterRowPredicate = builder.createMasterRowPredicate;
@@ -248,13 +253,19 @@ public class QueryBuilder<E> {
     }
     
     public List<Map<String, Object>> getDetailRowData(Map<String, Object> masterRow) {
+        Class<?> detailClass = this.dynamicDetailClass != null
+                ? this.dynamicDetailClass.apply(masterRow)
+                : this.detailClass;
+        Collection<ColDef> detailColDefs = this.dynamicColDefs != null
+                ? this.dynamicColDefs.apply(masterRow)
+                : this.detailColDefs.values();
+        
         CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
         CriteriaQuery<Tuple> query = cb.createTupleQuery();
-        Root<?> root = query.from(this.detailClass);
+        Root<?> root = query.from(detailClass);
         
         // select
-        query.multiselect(this.detailColDefs.values()
-                .stream()
+        query.multiselect(detailColDefs.stream()
                 .map(colDef -> getPath(root, colDef.getField()).alias(colDef.getField()))
                 .collect(Collectors.toList())
         );
@@ -1536,9 +1547,11 @@ public class QueryBuilder<E> {
         
         private boolean masterDetail;
         private Class<?> detailClass;
+        private Function<Map<String, Object>, Class<?>> dynamicDetailClass;
         private boolean masterDetailLazy = true;
         private String masterDetailRowDataFieldName;
         private Map<String, ColDef> detailColDefs;
+        private Function<Map<String, Object>, List<ColDef>> dynamicColDefs;
         private String detailMasterReferenceField;
         private String detailMasterIdField;
         private CreateMasterRowPredicate createMasterRowPredicate;
@@ -1673,6 +1686,16 @@ public class QueryBuilder<E> {
             }
             return this;
         }
+        
+        public Builder<E> dynamicColDefs(Function<Map<String, Object>, List<ColDef>> dynamicColDefs) {
+            this.dynamicColDefs = dynamicColDefs;
+            return this;
+        }
+        
+        public Builder<E> dynamicDetailClass(Function<Map<String, Object>, Class<?>> dynamicDetailClass) {
+            this.dynamicDetailClass = dynamicDetailClass;
+            return this;
+        }
 
         public Builder<E> detailMasterReferenceField(String detailMasterReferenceField) {
             this.detailMasterReferenceField = detailMasterReferenceField;
@@ -1700,27 +1723,67 @@ public class QueryBuilder<E> {
             if (this.colDefs == null || this.colDefs.isEmpty()) {
                 throw new IllegalArgumentException("colDefs cannot be null or empty");
             }
-
+            
             // tree data arguments validation
             if (this.treeData) {
-                List<String> treeDataErrorMessages = new ArrayList<>();
+                this.validateTreeDataArgs();
+            }
+            if (this.masterDetail) {
+                this.validateMasterDetailArgs();
+            }
+        }
+        
+        private void validateTreeDataArgs() {
+            List<String> treeDataErrorMessages = new ArrayList<>();
+            if (this.primaryFieldName == null) {
+                treeDataErrorMessages.add("When treeData is set to true, primaryFieldName must be provided");
+            }
+            if (this.isServerSideGroupFieldName == null) {
+                treeDataErrorMessages.add("When treeData is set to true, isServerSideGroupFieldName must be provided");
+            }
+            if (this.colDefs.containsKey(this.isServerSideGroupFieldName)) {
+                treeDataErrorMessages.add("isServerSideGroupFieldName '" + this.isServerSideGroupFieldName + "' collides with existing colDef");
+            }
+
+            if (this.treeDataParentReferenceField == null && this.treeDataParentIdField == null) {
+                treeDataErrorMessages.add("When treeData is set to true, either treeDataParentReferenceField or treeDataParentIdField must be provided");
+            }
+
+            if (!treeDataErrorMessages.isEmpty()) {
+                throw new IllegalStateException(String.join("\n", treeDataErrorMessages));
+            }
+        }
+        
+        private void validateMasterDetailArgs() {
+            List<String> masterDetailErrorMessages = new ArrayList<>();
+            if (this.detailClass == null && this.dynamicDetailClass == null) {
+                masterDetailErrorMessages.add("When masterDetail is set to true, detailClass or dynamicDetailClass must be provided");
+            }
+            if (this.detailColDefs == null || this.detailColDefs.isEmpty()) {
+                if (dynamicColDefs == null) {
+                    masterDetailErrorMessages.add("When masterDetail is set to true, detailColDefs or detailColDefs must be provided");
+                }
+            }
+
+            if (!this.masterDetailLazy) {
+                if (this.masterDetailRowDataFieldName == null) {
+                    masterDetailErrorMessages.add("When masterDetailLazy is set to false, masterDetailRowDataFieldName must be provided");
+                } else if (this.detailColDefs != null && this.detailColDefs.containsKey(this.masterDetailRowDataFieldName)) {
+                    masterDetailErrorMessages.add("masterDetailRowDataFieldName '" + this.masterDetailRowDataFieldName + "' collides with existing detailColDef");
+                }
+            }
+
+            if (this.createMasterRowPredicate == null) {
                 if (this.primaryFieldName == null) {
-                    treeDataErrorMessages.add("When treeData is set to true, primaryFieldName must be provided");
+                    masterDetailErrorMessages.add("Must provide primaryFieldName for master-detail relationship");
                 }
-                if (this.isServerSideGroupFieldName == null) {
-                    treeDataErrorMessages.add("When treeData is set to true, isServerSideGroupFieldName must be provided");
+                if (this.detailMasterReferenceField == null && this.detailMasterIdField == null) {
+                    masterDetailErrorMessages.add("Must provide either createMasterRowPredicate, detailMasterReferenceField or detailMasterIdField for master-detail relationship");
                 }
-                if (this.colDefs.containsKey(this.isServerSideGroupFieldName)) {
-                    treeDataErrorMessages.add("isServerSideGroupFieldName '" + this.isServerSideGroupFieldName + "' collides with existing colDef");
-                }
-                
-                if (this.treeDataParentReferenceField == null && this.treeDataParentIdField == null) {
-                    treeDataErrorMessages.add("When treeData is set to true, either treeDataParentReferenceField or treeDataParentIdField must be provided");
-                }
-                
-                if (!treeDataErrorMessages.isEmpty()) {
-                    throw new IllegalStateException(String.join("\n", treeDataErrorMessages));
-                }
+            }
+
+            if (!masterDetailErrorMessages.isEmpty()) {
+                throw new IllegalStateException(String.join("\n", masterDetailErrorMessages));
             }
         }
     }
