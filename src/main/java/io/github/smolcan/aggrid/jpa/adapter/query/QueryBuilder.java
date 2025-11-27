@@ -48,7 +48,7 @@ import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.getPath;
  * <li><b>Dynamic Selection:</b> Maps AG Grid columns to JPA entity fields, supporting nested dot notation (e.g., "category.name").</li>
  * <li><b>Filtering:</b> Supports both Simple and Advanced filter models, including text, number, date, and boolean filters.</li>
  * <li><b>Sorting:</b> Applies single or multi-column sorting.</li>
- * <li><b>Row Grouping & Aggregation:</b> Dynamically groups data and calculates aggregates (sum, min, max, avg, count).</li>
+ * <li><b>Row Grouping and Aggregation:</b> Dynamically groups data and calculates aggregates (sum, min, max, avg, count).</li>
  * <li><b>Pivoting:</b> Transforms rows into columns based on pivot configuration.</li>
  * <li><b>Tree Data:</b> Native support for hierarchical (self-referencing) data structures.</li>
  * <li><b>Master-Detail:</b> Supports fetching and mapping detail records for hierarchical grids.</li>
