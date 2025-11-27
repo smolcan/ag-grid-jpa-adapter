@@ -11,10 +11,7 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.DateFilte
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.NumberFilterParams;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextFilterParams;
 import io.github.smolcan.aggrid.jpa.adapter.query.metadata.*;
-import io.github.smolcan.aggrid.jpa.adapter.request.ColumnVO;
-import io.github.smolcan.aggrid.jpa.adapter.request.ServerSideGetRowsRequest;
-import io.github.smolcan.aggrid.jpa.adapter.request.SortModelItem;
-import io.github.smolcan.aggrid.jpa.adapter.request.SortType;
+import io.github.smolcan.aggrid.jpa.adapter.request.*;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.AdvancedFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.response.LoadSuccessParams;
 import io.github.smolcan.aggrid.jpa.adapter.query.metadata.PivotingContext;
@@ -31,15 +28,40 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.cartesianProduct;
-import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.getPath; 
+import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.getPath;
 
+/**
+ * A robust JPA adapter designed to seamlessly integrate AG Grid's Server-Side Row Model (SSRM)
+ * with a database backend.
+ * <p>
+ * This class translates an AG Grid {@link ServerSideGetRowsRequest} into dynamic JPA {@link jakarta.persistence.criteria.CriteriaQuery}
+ * structures. It handles the complexity of mapping grid operations directly to database queries, ensuring
+ * efficient data retrieval for large datasets.
+ * </p>
+ *
+ * <h2>Key Features</h2>
+ * <ul>
+ * <li><b>Dynamic Selection:</b> Maps AG Grid columns to JPA entity fields, supporting nested dot notation (e.g., "category.name").</li>
+ * <li><b>Filtering:</b> Supports both Simple and Advanced filter models, including text, number, date, and boolean filters.</li>
+ * <li><b>Sorting:</b> Applies single or multi-column sorting.</li>
+ * <li><b>Row Grouping & Aggregation:</b> Dynamically groups data and calculates aggregates (sum, min, max, avg, count).</li>
+ * <li><b>Pivoting:</b> Transforms rows into columns based on pivot configuration.</li>
+ * <li><b>Tree Data:</b> Native support for hierarchical (self-referencing) data structures.</li>
+ * <li><b>Master-Detail:</b> Supports fetching and mapping detail records for hierarchical grids.</li>
+ * </ul>
+ *
+ *
+ * @param <E> the type of the root JPA entity being queried
+ * @author Samuel Molčan
+ */
 public class QueryBuilder<E> {
     private static final DateTimeFormatter DATE_FORMATTER_FOR_DATE_ADVANCED_FILTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final String AUTO_GROUP_COLUMN_NAME = "ag-Grid-AutoColumn";
-    
+
     private final Class<E> entityClass;
     private final String primaryFieldName;
     private final EntityManager entityManager;
@@ -50,13 +72,25 @@ public class QueryBuilder<E> {
     private final boolean groupAggFiltering;
     private final boolean suppressAggFilteredOnly;
     private final boolean suppressFieldDotNotation;
-    
+
     private final boolean treeData;
     private final String isServerSideGroupFieldName;
     private final String treeDataParentReferenceField;
     private final String treeDataParentIdField;
     private final String treeDataChildrenField;
+
+    private final boolean masterDetail;
+    private final boolean masterDetailLazy;
+    private final String masterDetailRowDataFieldName; 
+    private final Class<?> detailClass;
+    private final Function<Map<String, Object>, Class<?>> dynamicDetailClass;
+    private final Map<String, ColDef> detailColDefs;
+    private final Function<Map<String, Object>, List<ColDef>> dynamicColDefs;
+    private final String detailMasterReferenceField;
+    private final String detailMasterIdField;
+    private final CreateMasterRowPredicate createMasterRowPredicate;
     
+
     private final Map<String, ColDef> colDefs;
     
     public static <E> Builder<E> builder(Class<E> entityClass, EntityManager entityManager) {
@@ -79,6 +113,16 @@ public class QueryBuilder<E> {
         this.treeDataParentReferenceField = builder.treeDataParentReferenceField;
         this.treeDataParentIdField = builder.treeDataParentIdField;
         this.treeDataChildrenField = builder.treeDataChildrenField;
+        this.masterDetail = builder.masterDetail;
+        this.masterDetailLazy = builder.masterDetailLazy;
+        this.masterDetailRowDataFieldName = builder.masterDetailRowDataFieldName;
+        this.detailClass = builder.detailClass;
+        this.dynamicDetailClass = builder.dynamicDetailClass;
+        this.detailColDefs = builder.detailColDefs;
+        this.dynamicColDefs = builder.dynamicColDefs;
+        this.detailMasterReferenceField = builder.detailMasterReferenceField;
+        this.detailMasterIdField = builder.detailMasterIdField;
+        this.createMasterRowPredicate = builder.createMasterRowPredicate;
         this.colDefs = builder.colDefs;
     }
 
@@ -100,7 +144,7 @@ public class QueryBuilder<E> {
      * @return A {@link LoadSuccessParams} object containing the retrieved row data mapped to a format suitable for AG Grid.
      * @throws OnPivotMaxColumnsExceededException - when number of pivot columns exceeded limit
      */
-    public LoadSuccessParams getRows(ServerSideGetRowsRequest request) throws OnPivotMaxColumnsExceededException {
+    public LoadSuccessParams getRows(ServerSideGetRowsRequest request) {
         this.validateRequest(request);
         
         CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
@@ -120,8 +164,15 @@ public class QueryBuilder<E> {
         this.limitOffset(request, queryContext);
         
         List<Tuple> data = this.apply(query, queryContext);
+        List<Map<String, Object>> resData = this.tupleToMap(data);
+        if (this.masterDetail && !this.masterDetailLazy) {
+            for (Map<String, Object> res : resData) {
+                res.put(this.masterDetailRowDataFieldName, this.getDetailRowData(res));
+            }
+        }
+        
         LoadSuccessParams loadSuccessParams = new LoadSuccessParams();
-        loadSuccessParams.setRowData(this.tupleToMap(data));
+        loadSuccessParams.setRowData(resData);
         loadSuccessParams.setPivotResultFields(queryContext.getPivotingContext().getPivotingResultFields());
         return loadSuccessParams;
     }
@@ -223,6 +274,82 @@ public class QueryBuilder<E> {
             
             return this.entityManager.createQuery(query).getSingleResult();
         }
+    }
+
+    /**
+     * Retrieves the detail row data for a specific master row in Master-Detail mode.
+     * <p>
+     * This method executes a query to fetch child records associated with the provided
+     * {@code masterRow}, applying any dynamic class resolution or column definitions if configured.
+     *
+     * @param masterRow the data of the parent row for which details are being requested
+     * @return a list of maps representing the detail rows
+     */
+    public List<Map<String, Object>> getDetailRowData(Map<String, Object> masterRow) {
+        Class<?> detailClass = this.dynamicDetailClass != null
+                ? this.dynamicDetailClass.apply(masterRow)
+                : this.detailClass;
+        Collection<ColDef> detailColDefs = this.dynamicColDefs != null
+                ? this.dynamicColDefs.apply(masterRow)
+                : this.detailColDefs.values();
+        
+        CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
+        CriteriaQuery<Tuple> query = cb.createTupleQuery();
+        Root<?> root = query.from(detailClass);
+        
+        // select
+        query.multiselect(detailColDefs.stream()
+                .map(colDef -> getPath(root, colDef.getField()).alias(colDef.getField()))
+                .collect(Collectors.toList())
+        );
+
+        // master predicate
+        Predicate masterPredicate = this.createMasterRowPredicate(cb, root, masterRow);
+        query.where(masterPredicate);
+
+        // result
+        TypedQuery<Tuple> typedQuery = this.entityManager.createQuery(query);
+        List<Tuple> data = typedQuery.getResultList();
+        return this.tupleToMap(data);
+    }
+
+    /**
+     * Constructs the JPA predicate used to filter detail records based on the master row.
+     * <p>
+     * This method builds the {@code WHERE} clause that links the detail entity to the specific
+     * parent record, using either a custom predicate function or standard foreign key matching.
+     *
+     * @param cb        the {@link CriteriaBuilder} used to construct the predicate
+     * @param root      the query root of the detail entity
+     * @param masterRow the data of the parent row containing the primary key
+     * @return the filtering {@link Predicate} used to select only relevant child records
+     */
+    protected Predicate createMasterRowPredicate(CriteriaBuilder cb, Root<?> root, Map<String, Object> masterRow) {
+        // add to wherePredicates predicate for parent
+        Predicate masterRowPredicate;
+        if (this.createMasterRowPredicate != null) {
+            // must have provided predicate function
+            masterRowPredicate = this.createMasterRowPredicate.apply(cb, root, masterRow);
+        } else {
+            Object masterIdValue = masterRow.get(this.primaryFieldName);
+            if (masterIdValue == null) {
+                throw new IllegalArgumentException(
+                        String.format("Master row data is missing value for primary field '%s'. Ensure this field is included in Master Grid columns.", this.primaryFieldName)
+                );
+            }
+
+            Path<?> pathToCheck;
+            if (this.detailMasterReferenceField != null) {
+                pathToCheck = root.get(this.detailMasterReferenceField).get(this.primaryFieldName);
+            } else {
+                pathToCheck = root.get(this.detailMasterIdField);
+            }
+
+            TypeValueSynchronizer.Result<?> sync = TypeValueSynchronizer.synchronizeTypes(pathToCheck, String.valueOf(masterIdValue));
+            masterRowPredicate = cb.equal(sync.getSynchronizedPath(), sync.getSynchronizedValue());
+        }
+
+        return masterRowPredicate;
     }
 
     /**
@@ -1370,7 +1497,7 @@ public class QueryBuilder<E> {
         return this.entityManager.createQuery(mainQuery).getSingleResult();
     }
 
-    private Map<String, Expression<?>> createPivotingExpressions(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, List<List<Pair<String, Object>>> cartesianProduct) {
+    private Map<String, Expression<?>> createPivotingExpressions(CriteriaBuilder cb, Root<?> root, ServerSideGetRowsRequest request, List<List<Pair<String, Object>>> cartesianProduct) {
         Map<String, Expression<?>> pivotingExpressions = new LinkedHashMap<>();
 
         cartesianProduct.forEach(pairs -> {
@@ -1462,10 +1589,21 @@ public class QueryBuilder<E> {
         private String treeDataParentIdField;
         private String treeDataChildrenField;
         
+        private boolean masterDetail;
+        private Class<?> detailClass;
+        private Function<Map<String, Object>, Class<?>> dynamicDetailClass;
+        private boolean masterDetailLazy = true;
+        private String masterDetailRowDataFieldName;
+        private Map<String, ColDef> detailColDefs;
+        private Function<Map<String, Object>, List<ColDef>> dynamicColDefs;
+        private String detailMasterReferenceField;
+        private String detailMasterIdField;
+        private CreateMasterRowPredicate createMasterRowPredicate;
+        
         private Map<String, ColDef> colDefs;
 
 
-        private Builder(Class<E> entityClass, EntityManager entityManager) {
+        protected Builder(Class<E> entityClass, EntityManager entityManager) {
             this.entityClass = entityClass;
             this.entityManager = entityManager;
         }
@@ -1556,6 +1694,68 @@ public class QueryBuilder<E> {
             this.treeDataChildrenField = treeDataChildrenField;
             return this;
         }
+        
+        public Builder<E> masterDetail(boolean masterDetail) {
+            this.masterDetail = masterDetail;
+            return this;
+        }
+
+        public Builder<E> masterDetailLazy(boolean masterDetailLazy) {
+            this.masterDetailLazy = masterDetailLazy;
+            return this;
+        }
+
+        public Builder<E> masterDetailRowDataFieldName(String masterDetailRowDataFieldName) {
+            this.masterDetailRowDataFieldName = masterDetailRowDataFieldName;
+            return this;
+        }
+
+        public Builder<E> detailClass(Class<?> detailClass) {
+            this.detailClass = detailClass;
+            return this;
+        }
+
+        public Builder<E> detailColDefs(ColDef ...colDefs) {
+            this.detailColDefs = new HashMap<>(colDefs.length);
+            for (ColDef colDef : colDefs) {
+                this.detailColDefs.put(colDef.getField(), colDef);
+            }
+            return this;
+        }
+
+        public Builder<E> detailColDefs(Collection<ColDef> colDefs) {
+            this.detailColDefs = new HashMap<>(colDefs.size());
+            for (ColDef colDef : colDefs) {
+                this.detailColDefs.put(colDef.getField(), colDef);
+            }
+            return this;
+        }
+        
+        public Builder<E> dynamicColDefs(Function<Map<String, Object>, List<ColDef>> dynamicColDefs) {
+            this.dynamicColDefs = dynamicColDefs;
+            return this;
+        }
+        
+        public Builder<E> dynamicDetailClass(Function<Map<String, Object>, Class<?>> dynamicDetailClass) {
+            this.dynamicDetailClass = dynamicDetailClass;
+            return this;
+        }
+
+        public Builder<E> detailMasterReferenceField(String detailMasterReferenceField) {
+            this.detailMasterReferenceField = detailMasterReferenceField;
+            return this;
+        }
+
+        public Builder<E> detailMasterIdField(String detailMasterIdField) {
+            this.detailMasterIdField = detailMasterIdField;
+            return this;
+        }
+
+        public Builder<E> createMasterRowPredicate(CreateMasterRowPredicate createMasterRowPredicate) {
+            this.createMasterRowPredicate = createMasterRowPredicate;
+            return this;
+        }
+
 
         public QueryBuilder<E> build() {
             this.validateBeforeBuild();
@@ -1567,28 +1767,73 @@ public class QueryBuilder<E> {
             if (this.colDefs == null || this.colDefs.isEmpty()) {
                 throw new IllegalArgumentException("colDefs cannot be null or empty");
             }
-
+            
             // tree data arguments validation
             if (this.treeData) {
-                List<String> treeDataErrorMessages = new ArrayList<>();
-                if (this.primaryFieldName == null) {
-                    treeDataErrorMessages.add("When treeData is set to true, primaryFieldName must be provided");
-                }
-                if (this.isServerSideGroupFieldName == null) {
-                    treeDataErrorMessages.add("When treeData is set to true, isServerSideGroupFieldName must be provided");
-                }
-                if (this.colDefs.containsKey(this.isServerSideGroupFieldName)) {
-                    treeDataErrorMessages.add("isServerSideGroupFieldName '" + this.isServerSideGroupFieldName + "' collides with existing colDef");
-                }
-                
-                if (this.treeDataParentReferenceField == null && this.treeDataParentIdField == null) {
-                    treeDataErrorMessages.add("When treeData is set to true, either treeDataParentReferenceField or treeDataParentIdField must be provided");
-                }
-                
-                if (!treeDataErrorMessages.isEmpty()) {
-                    throw new IllegalStateException(String.join("\n", treeDataErrorMessages));
-                }
+                this.validateTreeDataArgs();
+            }
+            if (this.masterDetail) {
+                this.validateMasterDetailArgs();
             }
         }
+        
+        private void validateTreeDataArgs() {
+            List<String> treeDataErrorMessages = new ArrayList<>();
+            if (this.primaryFieldName == null) {
+                treeDataErrorMessages.add("When treeData is set to true, primaryFieldName must be provided");
+            }
+            if (this.isServerSideGroupFieldName == null) {
+                treeDataErrorMessages.add("When treeData is set to true, isServerSideGroupFieldName must be provided");
+            }
+            if (this.colDefs.containsKey(this.isServerSideGroupFieldName)) {
+                treeDataErrorMessages.add("isServerSideGroupFieldName '" + this.isServerSideGroupFieldName + "' collides with existing colDef");
+            }
+
+            if (this.treeDataParentReferenceField == null && this.treeDataParentIdField == null) {
+                treeDataErrorMessages.add("When treeData is set to true, either treeDataParentReferenceField or treeDataParentIdField must be provided");
+            }
+
+            if (!treeDataErrorMessages.isEmpty()) {
+                throw new IllegalStateException(String.join("\n", treeDataErrorMessages));
+            }
+        }
+        
+        private void validateMasterDetailArgs() {
+            List<String> masterDetailErrorMessages = new ArrayList<>();
+            if (this.detailClass == null && this.dynamicDetailClass == null) {
+                masterDetailErrorMessages.add("When masterDetail is set to true, detailClass or dynamicDetailClass must be provided");
+            }
+            if (this.detailColDefs == null || this.detailColDefs.isEmpty()) {
+                if (dynamicColDefs == null) {
+                    masterDetailErrorMessages.add("When masterDetail is set to true, detailColDefs or detailColDefs must be provided");
+                }
+            }
+
+            if (!this.masterDetailLazy) {
+                if (this.masterDetailRowDataFieldName == null) {
+                    masterDetailErrorMessages.add("When masterDetailLazy is set to false, masterDetailRowDataFieldName must be provided");
+                } else if (this.detailColDefs != null && this.detailColDefs.containsKey(this.masterDetailRowDataFieldName)) {
+                    masterDetailErrorMessages.add("masterDetailRowDataFieldName '" + this.masterDetailRowDataFieldName + "' collides with existing detailColDef");
+                }
+            }
+
+            if (this.createMasterRowPredicate == null) {
+                if (this.primaryFieldName == null) {
+                    masterDetailErrorMessages.add("Must provide primaryFieldName for master-detail relationship");
+                }
+                if (this.detailMasterReferenceField == null && this.detailMasterIdField == null) {
+                    masterDetailErrorMessages.add("Must provide either createMasterRowPredicate, detailMasterReferenceField or detailMasterIdField for master-detail relationship");
+                }
+            }
+
+            if (!masterDetailErrorMessages.isEmpty()) {
+                throw new IllegalStateException(String.join("\n", masterDetailErrorMessages));
+            }
+        }
+    }
+
+    @FunctionalInterface
+    public interface CreateMasterRowPredicate {
+        Predicate apply(CriteriaBuilder cb, Root<?> detailRoot, Map<String, Object> masterRow);
     }
 }
