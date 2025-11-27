@@ -32,8 +32,32 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.cartesianProduct;
-import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.getPath; 
+import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.getPath;
 
+/**
+ * A robust JPA adapter designed to seamlessly integrate AG Grid's Server-Side Row Model (SSRM)
+ * with a database backend.
+ * <p>
+ * This class translates an AG Grid {@link ServerSideGetRowsRequest} into dynamic JPA {@link jakarta.persistence.criteria.CriteriaQuery}
+ * structures. It handles the complexity of mapping grid operations directly to database queries, ensuring
+ * efficient data retrieval for large datasets.
+ * </p>
+ *
+ * <h2>Key Features</h2>
+ * <ul>
+ * <li><b>Dynamic Selection:</b> Maps AG Grid columns to JPA entity fields, supporting nested dot notation (e.g., "category.name").</li>
+ * <li><b>Filtering:</b> Supports both Simple and Advanced filter models, including text, number, date, and boolean filters.</li>
+ * <li><b>Sorting:</b> Applies single or multi-column sorting.</li>
+ * <li><b>Row Grouping & Aggregation:</b> Dynamically groups data and calculates aggregates (sum, min, max, avg, count).</li>
+ * <li><b>Pivoting:</b> Transforms rows into columns based on pivot configuration.</li>
+ * <li><b>Tree Data:</b> Native support for hierarchical (self-referencing) data structures.</li>
+ * <li><b>Master-Detail:</b> Supports fetching and mapping detail records for hierarchical grids.</li>
+ * </ul>
+ *
+ *
+ * @param <E> the type of the root JPA entity being queried
+ * @author Samuel Molčan
+ */
 public class QueryBuilder<E> {
     private static final DateTimeFormatter DATE_FORMATTER_FOR_DATE_ADVANCED_FILTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final String AUTO_GROUP_COLUMN_NAME = "ag-Grid-AutoColumn";
