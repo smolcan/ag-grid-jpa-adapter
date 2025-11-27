@@ -2,11 +2,10 @@ import React, { useMemo, useState } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry } from 'ag-grid-community';
 import {
-    // ClientSideRowModelModule,
+    ClientSideRowModelModule,
     ColDef, ColumnAutoSizeModule, GetDetailRowData, GetDetailRowDataParams,
     GridReadyEvent,
     IServerSideDatasource, MasterDetailModule, ServerSideRowModelModule,
-    // ServerSideRowModelModule,
     themeQuartz, ValidationModule
 } from 'ag-grid-enterprise';
 import { useColorMode } from '@docusaurus/theme-common';
@@ -14,7 +13,7 @@ import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
 ModuleRegistry.registerModules([
     ServerSideRowModelModule, 
-    // ClientSideRowModelModule,
+    ClientSideRowModelModule,
     ValidationModule, ColumnAutoSizeModule, MasterDetailModule]);
 
 const MasterDetailGrid = () => {
@@ -94,44 +93,13 @@ const MasterDetailGrid = () => {
         }
     }), []);
 
-    const serverSideDetailDatasource: IServerSideDatasource = useMemo(() => ({
-        getRows: (params) => {
-            fetch(`${API_URL}/docs/master-detail/getDetailRowData`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(params.request)
-            })
-                .then(async response => {
-                    if (!response.ok) {
-                        const errorText = await response.text(); // Read plain text from Spring Boot
-                        throw new Error(errorText || `HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    setErrorMessage(null);
-                    params.success(data);
-                })
-                .catch(error => {
-                    console.error('Error fetching data:', error);
-                    setErrorMessage(error.message || 'Failed to fetch data');
-                    params.fail();
-                });
-        }
-    }), []);
-
     const detailCellRendererParams: any = useMemo(() => {
         return {
             detailGridOptions: {
-                rowModelType: "serverSide",
-                // serverSideDatasource: serverSideDetailDatasource,
-                // detail grid columns
                 columnDefs: [
                     {
                         headerName: 'Trade ID',
-                        field: 'tradeId',
+                        field: 'parentTrade.tradeId',
                         cellDataType: 'number',
                     },
                     {
@@ -163,6 +131,7 @@ const MasterDetailGrid = () => {
                     })
                     .then(data => {
                         setErrorMessage(null);
+                        console.log(data);
                         params.successCallback(data);
                     })
                     .catch(error => {

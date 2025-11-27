@@ -11,10 +11,7 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.DateFilte
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.NumberFilterParams;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextFilterParams;
 import io.github.smolcan.aggrid.jpa.adapter.query.metadata.*;
-import io.github.smolcan.aggrid.jpa.adapter.request.ColumnVO;
-import io.github.smolcan.aggrid.jpa.adapter.request.ServerSideGetRowsRequest;
-import io.github.smolcan.aggrid.jpa.adapter.request.SortModelItem;
-import io.github.smolcan.aggrid.jpa.adapter.request.SortType;
+import io.github.smolcan.aggrid.jpa.adapter.request.*;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.AdvancedFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.response.LoadSuccessParams;
 import io.github.smolcan.aggrid.jpa.adapter.query.metadata.PivotingContext;
@@ -58,7 +55,11 @@ public class QueryBuilder<E> {
     protected final String treeDataChildrenField;
     
     protected final boolean masterDetail;
-    protected final DetailQueryBuilder<?, E> detailQueryBuilder;
+    private final Class<?> detailClass;
+    private final Map<String, ColDef> detailColDefs;
+    private final String detailMasterReferenceField;
+    private final String detailMasterIdField;
+    private final CreateMasterRowPredicate createMasterRowPredicate;
     
 
     protected final Map<String, ColDef> colDefs;
@@ -84,7 +85,11 @@ public class QueryBuilder<E> {
         this.treeDataParentIdField = builder.treeDataParentIdField;
         this.treeDataChildrenField = builder.treeDataChildrenField;
         this.masterDetail = builder.masterDetail;
-        this.detailQueryBuilder = builder.detailQueryBuilder;
+        this.detailClass = builder.detailClass;
+        this.detailColDefs = builder.detailColDefs;
+        this.detailMasterReferenceField = builder.detailMasterReferenceField;
+        this.detailMasterIdField = builder.detailMasterIdField;
+        this.createMasterRowPredicate = builder.createMasterRowPredicate;
         this.colDefs = builder.colDefs;
     }
 
@@ -231,12 +236,54 @@ public class QueryBuilder<E> {
         }
     }
     
-    public LoadSuccessParams getDetailRowData(ServerSideGetRowsRequest request, Map<String, Object> masterRow) {
-        if (!this.masterDetail) {
-            throw new IllegalStateException("Master detail is not set!");
-        }
+    public List<Map<String, Object>> getDetailRowData(Map<String, Object> masterRow) {
+        CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
+        CriteriaQuery<Tuple> query = cb.createTupleQuery();
+        Root<?> root = query.from(this.detailClass);
         
-        return this.detailQueryBuilder.getDetailRowData(request, masterRow);
+        // select
+        query.multiselect(this.detailColDefs.values()
+                .stream()
+                .map(colDef -> getPath(root, colDef.getField()).alias(colDef.getField()))
+                .collect(Collectors.toList())
+        );
+
+        // master predicate
+        Predicate masterPredicate = this.createMasterRowPredicate(cb, root, masterRow);
+        query.where(masterPredicate);
+
+        // result
+        TypedQuery<Tuple> typedQuery = this.entityManager.createQuery(query);
+        List<Tuple> data = typedQuery.getResultList();
+        return this.tupleToMap(data);
+    }
+
+    protected Predicate createMasterRowPredicate(CriteriaBuilder cb, Root<?> root, Map<String, Object> masterRow) {
+        // add to wherePredicates predicate for parent
+        Predicate masterRowPredicate;
+        if (this.createMasterRowPredicate != null) {
+            // must have provided predicate function
+            masterRowPredicate = this.createMasterRowPredicate.apply(cb, root, masterRow);
+        } else {
+            Object masterIdValue = masterRow.get(this.primaryFieldName);
+            if (masterIdValue == null) {
+                throw new IllegalArgumentException(
+                        String.format("Master row data is missing value for primary field '%s'. Ensure this field is included in Master Grid columns.", this.primaryFieldName)
+                );
+            }
+
+            Path<?> pathToCheck;
+            if (this.detailMasterReferenceField != null) {
+                pathToCheck = root.get(this.detailMasterReferenceField).get(this.primaryFieldName);
+            } else {
+                pathToCheck = root.get(this.detailMasterIdField);
+            }
+
+            TypeValueSynchronizer.Result<?> sync = TypeValueSynchronizer.synchronizeTypes(pathToCheck, String.valueOf(masterIdValue));
+            masterRowPredicate = cb.equal(sync.getSynchronizedPath(), sync.getSynchronizedValue());
+        }
+
+        return masterRowPredicate;
     }
 
     /**
@@ -1477,7 +1524,11 @@ public class QueryBuilder<E> {
         private String treeDataChildrenField;
         
         private boolean masterDetail;
-        private DetailQueryBuilder<?, E> detailQueryBuilder;
+        private Class<?> detailClass;
+        private Map<String, ColDef> detailColDefs;
+        private String detailMasterReferenceField;
+        private String detailMasterIdField;
+        private CreateMasterRowPredicate createMasterRowPredicate;
         
         private Map<String, ColDef> colDefs;
 
@@ -1578,11 +1629,43 @@ public class QueryBuilder<E> {
             this.masterDetail = masterDetail;
             return this;
         }
-        
-        public Builder<E> detailQueryBuilder(DetailQueryBuilder<?, E> detailQueryBuilder) {
-            this.detailQueryBuilder = detailQueryBuilder;
+
+        public Builder<E> detailClass(Class<?> detailClass) {
+            this.detailClass = detailClass;
             return this;
         }
+
+        public Builder<E> detailColDefs(ColDef ...colDefs) {
+            this.detailColDefs = new HashMap<>(colDefs.length);
+            for (ColDef colDef : colDefs) {
+                this.detailColDefs.put(colDef.getField(), colDef);
+            }
+            return this;
+        }
+
+        public Builder<E> detailColDefs(Collection<ColDef> colDefs) {
+            this.detailColDefs = new HashMap<>(colDefs.size());
+            for (ColDef colDef : colDefs) {
+                this.detailColDefs.put(colDef.getField(), colDef);
+            }
+            return this;
+        }
+
+        public Builder<E> detailMasterReferenceField(String detailMasterReferenceField) {
+            this.detailMasterReferenceField = detailMasterReferenceField;
+            return this;
+        }
+
+        public Builder<E> detailMasterIdField(String detailMasterIdField) {
+            this.detailMasterIdField = detailMasterIdField;
+            return this;
+        }
+
+        public Builder<E> createMasterRowPredicate(CreateMasterRowPredicate createMasterRowPredicate) {
+            this.createMasterRowPredicate = createMasterRowPredicate;
+            return this;
+        }
+
 
         public QueryBuilder<E> build() {
             this.validateBeforeBuild();
@@ -1617,5 +1700,10 @@ public class QueryBuilder<E> {
                 }
             }
         }
+    }
+
+    @FunctionalInterface
+    public interface CreateMasterRowPredicate {
+        Predicate apply(CriteriaBuilder cb, Root<?> detailRoot, Map<String, Object> masterRow);
     }
 }
