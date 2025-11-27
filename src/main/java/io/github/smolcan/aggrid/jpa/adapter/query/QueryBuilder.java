@@ -1536,7 +1536,7 @@ public class QueryBuilder<E> {
         
         private boolean masterDetail;
         private Class<?> detailClass;
-        private boolean masterDetailLazy;
+        private boolean masterDetailLazy = true;
         private String masterDetailRowDataFieldName;
         private Map<String, ColDef> detailColDefs;
         private String detailMasterReferenceField;

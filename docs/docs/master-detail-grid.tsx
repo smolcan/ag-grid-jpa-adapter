@@ -115,6 +115,7 @@ const MasterDetailGrid = () => {
                 ],
             },
             getDetailRowData: (params: GetDetailRowDataParams) => {
+                // params.successCallback(params.data.detailRowData);
                 fetch(`${API_URL}/docs/master-detail/getDetailRowData`, {
                     method: 'POST',
                     headers: {
