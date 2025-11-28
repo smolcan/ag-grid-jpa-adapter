@@ -13,6 +13,7 @@ import GridLoadingMessage from './grid-loading-message';
 import MasterDetailGrid from './master-detail-grid';
 import MasterDetailEagerGrid from './master-detail-eager-grid'
 import MasterDetailDynamicRowsGrid from './master-detail-dynamic-rows-grid'
+import MasterDetailTreeDataGrid from './master-detail-tree-data-grid'
 
 
 <GridLoadingMessage>
@@ -195,4 +196,15 @@ If you enable masterDetail, you must provide either the static definition (`mast
 
 <GridLoadingMessage>
     <MasterDetailDynamicRowsGrid></MasterDetailDynamicRowsGrid>
+</GridLoadingMessage>
+
+
+## Combining Tree Data with Master Detail
+
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/master-detail-tree-data-grid.tsx)
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MasterDetailService.java)
+
+
+<GridLoadingMessage>
+    <MasterDetailTreeDataGrid></MasterDetailTreeDataGrid>
 </GridLoadingMessage>
