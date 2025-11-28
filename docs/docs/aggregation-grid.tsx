@@ -60,14 +60,14 @@ const AggregationGrid = () => {
         },
         {
             headerName: 'Submitter ID',
-            field: 'submitterId',
+            field: 'submitter.id',
             cellDataType: 'number',
             initialAggFunc: 'count',
             filter: 'agNumberColumnFilter'
         },
         {
             headerName: 'Submitter Deal ID',
-            field: 'submitterDealId',
+            field: 'submitterDeal.id',
             cellDataType: 'number',
             initialAggFunc: 'max',
             filter: 'agNumberColumnFilter'

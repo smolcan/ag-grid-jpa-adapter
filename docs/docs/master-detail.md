@@ -6,6 +6,13 @@ sidebar_position: 10
 
 The adapter supports AG Grid's [Master / Detail](https://www.ag-grid.com/react-data-grid/master-detail/) view, allowing you to nest grids inside rows.
 
+import GridLoadingMessage from './grid-loading-message';
+import MasterDetailGrid from './master-detail-grid';
+
+<GridLoadingMessage>
+    <MasterDetailGrid></MasterDetailGrid>
+</GridLoadingMessage>
+
 ## Enabling Master Detail
 
 To enable Master/Detail, set `.masterDetail(true)` in the builder. 
@@ -143,14 +150,3 @@ QueryBuilder.builder(Vehicle.class, em)
 :::warning Validation 
 If you enable masterDetail, you must provide either the static definition (detailClass/detailColDefs) OR the dynamic definition (dynamicDetailClass/dynamicDetailColDefs). 
 :::
-
-[//]: # (import GridLoadingMessage from './grid-loading-message';)
-
-[//]: # (import MasterDetailGrid from './master-detail-grid';)
-
-[//]: # ()
-[//]: # (<GridLoadingMessage>)
-
-[//]: # (    <MasterDetailGrid></MasterDetailGrid>)
-
-[//]: # (</GridLoadingMessage>)

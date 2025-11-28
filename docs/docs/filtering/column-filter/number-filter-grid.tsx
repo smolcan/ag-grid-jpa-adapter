@@ -40,7 +40,7 @@ const NumberFilterGrid = () => {
         },
         {
             headerName: 'Submitter ID',
-            field: 'submitterId',
+            field: 'submitter.id',
             cellDataType: 'number',
             filter: 'agNumberColumnFilter',
             filterParams: {
@@ -49,7 +49,7 @@ const NumberFilterGrid = () => {
         },
         {
             headerName: 'Submitter Deal ID',
-            field: 'submitterDealId',
+            field: 'submitterDeal.id',
             cellDataType: 'number',
             filter: 'agNumberColumnFilter',
             filterParams: {

@@ -11,20 +11,24 @@ import {
 import { useColorMode } from '@docusaurus/theme-common';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
+// Register AG Grid modules
 ModuleRegistry.registerModules([
-    ServerSideRowModelModule, 
+    ServerSideRowModelModule,
     ClientSideRowModelModule,
-    ValidationModule, ColumnAutoSizeModule, MasterDetailModule]);
+    ValidationModule,
+    ColumnAutoSizeModule,
+    MasterDetailModule
+]);
 
 const MasterDetailGrid = () => {
 
     const { siteConfig } = useDocusaurusContext();
     const { API_URL } = siteConfig.customFields;
 
-    // const API_URL = process.env.REACT_APP_API_URL;
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const { colorMode } = useColorMode();
 
+    // Theme configuration based on Docusaurus mode
     const theme = useMemo(() =>
         themeQuartz.withParams({
             backgroundColor: colorMode === 'dark' ? "#1f2836" : "#ffffff",
@@ -38,26 +42,21 @@ const MasterDetailGrid = () => {
             headerFontSize: 14
         }), [colorMode]);
 
+    // MASTER Columns (Submitter Entity)
     const columnDefs = useMemo(() => [
         {
-            cellRenderer: "agGroupCellRenderer",
-            headerName: 'Trade ID',
-            field: 'tradeId',
+            field: 'id',
+            headerName: 'Submitter ID',
+            cellRenderer: "agGroupCellRenderer", // Important! This allows expansion
             cellDataType: 'number',
         },
         {
-            headerName: 'Product',
-            field: 'product',
+            field: 'name',
+            headerName: 'Submitter Name',
             cellDataType: 'text'
         },
-        {
-            headerName: 'Portfolio',
-            field: 'portfolio',
-            cellDataType: 'text'
-        },
-
     ] as ColDef[], []);
-    
+
 
     const defaultColDef = useMemo(() => ({
         resizable: true,
@@ -65,6 +64,7 @@ const MasterDetailGrid = () => {
         flex: 1,
     } as ColDef), []);
 
+    // Master Datasource
     const serverSideDatasource: IServerSideDatasource = useMemo(() => ({
         getRows: (params) => {
             fetch(`${API_URL}/docs/master-detail/getRows`, {
@@ -76,7 +76,7 @@ const MasterDetailGrid = () => {
             })
                 .then(async response => {
                     if (!response.ok) {
-                        const errorText = await response.text(); // Read plain text from Spring Boot
+                        const errorText = await response.text();
                         throw new Error(errorText || `HTTP error! status: ${response.status}`);
                     }
                     return response.json();
@@ -91,13 +91,14 @@ const MasterDetailGrid = () => {
                     params.fail();
                 });
         }
-    }), []);
+    }), [API_URL]);
 
-    const detailCellRendererParams = (params: ICellRendererParams) => {
-        
-        let colDefs: ColDef[];
-        if (params.data.product.includes('1') || params.data.product.includes('2') || params.data.product.includes('3')) {
-            colDefs = [
+    // Detail Configuration
+    const detailCellRendererParams = useMemo(() => {
+        return (params: ICellRendererParams): IDetailCellRendererParams => {
+
+            // DETAIL Columns (Trade Entity)
+            const detailColDefs: ColDef[] = [
                 {
                     headerName: 'Trade ID',
                     field: 'tradeId',
@@ -108,53 +109,52 @@ const MasterDetailGrid = () => {
                     field: 'product',
                     cellDataType: 'text'
                 },
-            ];
-        } else {
-            colDefs = [
-                {
-                    headerName: 'Trade ID',
-                    field: 'tradeId',
-                    cellDataType: 'number',
-                },
                 {
                     headerName: 'Portfolio',
                     field: 'portfolio',
                     cellDataType: 'text'
-                },
+                }
             ];
-        }
-        
-        
-        return {
-            detailGridOptions: {
-                columnDefs: colDefs,
-            },
-            getDetailRowData: (params: GetDetailRowDataParams) => {
-                fetch(`${API_URL}/docs/master-detail/getDetailRowData`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(params.data)
-                })
-                    .then(async response => {
-                        if (!response.ok) {
-                            const errorText = await response.text(); // Read plain text from Spring Boot
-                            throw new Error(errorText || `HTTP error! status: ${response.status}`);
-                        }
-                        return response.json();
+
+            return {
+                // Configure the Detail Grid
+                detailGridOptions: {
+                    columnDefs: detailColDefs,
+                    defaultColDef: {
+                        flex: 1,
+                    }
+                },
+                // API Call for Detail Rows
+                getDetailRowData: (params: GetDetailRowDataParams) => {
+                    // params.data contains the Master Row (Submitter)
+                    fetch(`${API_URL}/docs/master-detail/getDetailRowData`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(params.data)
                     })
-                    .then(data => {
-                        setErrorMessage(null);
-                        params.successCallback(data);
-                    })
-                    .catch(error => {
-                        console.error('Error fetching data:', error);
-                        setErrorMessage(error.message || 'Failed to fetch data');
-                    });
-            }
-        } as IDetailCellRendererParams;
-    };
+                        .then(async response => {
+                            if (!response.ok) {
+                                const errorText = await response.text();
+                                throw new Error(errorText || `HTTP error! status: ${response.status}`);
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            setErrorMessage(null);
+                            params.successCallback(data);
+                        })
+                        .catch(error => {
+                            console.error('Error fetching detail data:', error);
+                            // Note: getDetailRowData doesn't have a failCallback in standard interface usually, 
+                            // but error handling is good practice
+                            setErrorMessage(error.message || 'Failed to fetch detail data');
+                        });
+                }
+            } as IDetailCellRendererParams;
+        };
+    }, [API_URL]);
 
     const onGridReady = (params: GridReadyEvent) => {
         params.api.sizeColumnsToFit();
@@ -162,7 +162,7 @@ const MasterDetailGrid = () => {
 
     return (
         <div style={{
-            backgroundColor: colorMode == 'dark' ? '#1a1c1d' : '#ffffff',
+            backgroundColor: colorMode === 'dark' ? '#1a1c1d' : '#ffffff',
             marginBottom: '1rem',
             borderRadius: '8px',
             fontFamily: 'system-ui, -apple-system, sans-serif',
@@ -188,8 +188,11 @@ const MasterDetailGrid = () => {
                     defaultColDef={defaultColDef}
                     serverSideDatasource={serverSideDatasource}
                     onGridReady={onGridReady}
+
+                    // Master/Detail Specific Props
                     masterDetail={true}
                     detailCellRendererParams={detailCellRendererParams}
+
                     rowModelType={"serverSide"}
                     theme={theme}
                     animateRows={true}

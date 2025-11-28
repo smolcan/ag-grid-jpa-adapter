@@ -117,7 +117,7 @@ const CustomFilterGrid: React.FC = () => {
             filter: CustomNumberFilter,
         },
         {
-            field: 'submitterDealId',
+            field: 'submitterDeal.id',
             headerName: 'Submitter Deal Id',
             sortable: true,
             cellDataType: 'number',

@@ -61,12 +61,12 @@ const AdvancedFilterGrid = () => {
         },
         {
             headerName: 'Submitter ID',
-            field: 'submitterId',
+            field: 'submitter.id',
             cellDataType: 'number'
         },
         {
             headerName: 'Submitter Deal ID',
-            field: 'submitterDealId',
+            field: 'submitterDeal.id',
             cellDataType: 'number'
         },
         {

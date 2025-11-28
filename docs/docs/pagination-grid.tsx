@@ -44,7 +44,7 @@ const PaginationGrid = () => {
         },
         {
             headerName: 'Submitter ID',
-            field: 'submitterId',
+            field: 'submitter.id',
             cellDataType: 'number',
             filter: 'agNumberColumnFilter',
         },

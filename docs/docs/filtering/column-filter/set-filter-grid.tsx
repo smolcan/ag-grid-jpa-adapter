@@ -68,7 +68,7 @@ const SetFilterGrid = () => {
         },
         {
             headerName: 'Submitter Id',
-            field: 'submitterId',
+            field: 'submitter.id',
             cellDataType: 'number',
             filter: 'agSetColumnFilter',
             filterParams: {
