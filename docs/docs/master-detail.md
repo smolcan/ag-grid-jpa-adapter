@@ -189,6 +189,10 @@ QueryBuilder.builder(Vehicle.class, em)
 If you enable masterDetail, you must provide either the static definition (`masterDetailParams`) OR the dynamic definition (`dynamicMasterDetailParams`). 
 :::
 
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/master-detail-dynamic-rows-grid.tsx)
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MasterDetailService.java)
+
+
 <GridLoadingMessage>
     <MasterDetailDynamicRowsGrid></MasterDetailDynamicRowsGrid>
 </GridLoadingMessage>
