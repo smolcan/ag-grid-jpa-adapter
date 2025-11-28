@@ -6,8 +6,12 @@ sidebar_position: 10
 
 The adapter supports AG Grid's [Master / Detail](https://www.ag-grid.com/react-data-grid/master-detail/) view, allowing you to nest grids inside rows.
 
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/master-detail-grid.tsx)
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MasterDetailService.java)
+
 import GridLoadingMessage from './grid-loading-message';
 import MasterDetailGrid from './master-detail-grid';
+import MasterDetailEagerGrid from './master-detail-eager-grid'
 
 <GridLoadingMessage>
     <MasterDetailGrid></MasterDetailGrid>
@@ -66,6 +70,14 @@ In this mode, detail data is not sent with the master rows.
 When a user expands a row in AG Grid, the grid sends a separate server-side request. 
 You should expose a separate endpoint that calls `getDetailRowData(masterRow)`.
 
+
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/master-detail-grid.tsx)
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MasterDetailService.java)
+
+<GridLoadingMessage>
+    <MasterDetailGrid></MasterDetailGrid>
+</GridLoadingMessage>
+
 ### Eager Loading
 
 `masterDetailLazy(false)`
@@ -105,6 +117,13 @@ JSON Response example:
   }
 ]
 ```
+
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/master-detail-eager-grid.tsx)
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MasterDetailService.java)
+
+<GridLoadingMessage>
+    <MasterDetailEagerGrid></MasterDetailEagerGrid>
+</GridLoadingMessage>
 
 ## Dynamic Detail Definitions
 
