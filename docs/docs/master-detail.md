@@ -104,7 +104,7 @@ JSON Response example:
 For advanced use cases, the structure of the detail grid can change based on the data in the master row. For example, 
 a "Vehicle" master row might show "Car Details" or "Boat Details" depending on the vehicle type.
 
-You can provide functions to resolve the class and columns dynamically at runtime using `dynamicDetailClass` and `dynamicColDefs`.
+You can provide functions to resolve the class and columns dynamically at runtime using `dynamicDetailClass` and `dynamicDetailColDefs`.
 
 :::info 
 Runtime Resolution These functions receive the masterRow (as a Map) as an argument, allowing you to inspect values to make decisions. 
@@ -123,7 +123,7 @@ QueryBuilder.builder(Vehicle.class, em)
     })
     
     // Dynamic Column Definitions
-    .dynamicColDefs(masterRow -> {
+    .dynamicDetailColDefs(masterRow -> {
         String type = (String) masterRow.get("type");
         if ("CAR".equals(type)) {
             return List.of(
@@ -141,7 +141,7 @@ QueryBuilder.builder(Vehicle.class, em)
 ```
 
 :::warning Validation 
-If you enable masterDetail, you must provide either the static definition (detailClass/detailColDefs) OR the dynamic definition (dynamicDetailClass/dynamicColDefs). 
+If you enable masterDetail, you must provide either the static definition (detailClass/detailColDefs) OR the dynamic definition (dynamicDetailClass/dynamicDetailColDefs). 
 :::
 
 [//]: # (import GridLoadingMessage from './grid-loading-message';)

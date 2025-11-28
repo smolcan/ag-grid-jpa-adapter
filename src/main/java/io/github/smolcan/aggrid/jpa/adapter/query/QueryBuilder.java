@@ -85,7 +85,7 @@ public class QueryBuilder<E> {
     private final Class<?> detailClass;
     private final Function<Map<String, Object>, Class<?>> dynamicDetailClass;
     private final Map<String, ColDef> detailColDefs;
-    private final Function<Map<String, Object>, List<ColDef>> dynamicColDefs;
+    private final Function<Map<String, Object>, List<ColDef>> dynamicDetailColDefs;
     private final String detailMasterReferenceField;
     private final String detailMasterIdField;
     private final CreateMasterRowPredicate createMasterRowPredicate;
@@ -119,7 +119,7 @@ public class QueryBuilder<E> {
         this.detailClass = builder.detailClass;
         this.dynamicDetailClass = builder.dynamicDetailClass;
         this.detailColDefs = builder.detailColDefs;
-        this.dynamicColDefs = builder.dynamicColDefs;
+        this.dynamicDetailColDefs = builder.dynamicDetailColDefs;
         this.detailMasterReferenceField = builder.detailMasterReferenceField;
         this.detailMasterIdField = builder.detailMasterIdField;
         this.createMasterRowPredicate = builder.createMasterRowPredicate;
@@ -289,8 +289,8 @@ public class QueryBuilder<E> {
         Class<?> detailClass = this.dynamicDetailClass != null
                 ? this.dynamicDetailClass.apply(masterRow)
                 : this.detailClass;
-        Collection<ColDef> detailColDefs = this.dynamicColDefs != null
-                ? this.dynamicColDefs.apply(masterRow)
+        Collection<ColDef> detailColDefs = this.dynamicDetailColDefs != null
+                ? this.dynamicDetailColDefs.apply(masterRow)
                 : this.detailColDefs.values();
         
         CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
@@ -1595,7 +1595,7 @@ public class QueryBuilder<E> {
         private boolean masterDetailLazy = true;
         private String masterDetailRowDataFieldName;
         private Map<String, ColDef> detailColDefs;
-        private Function<Map<String, Object>, List<ColDef>> dynamicColDefs;
+        private Function<Map<String, Object>, List<ColDef>> dynamicDetailColDefs;
         private String detailMasterReferenceField;
         private String detailMasterIdField;
         private CreateMasterRowPredicate createMasterRowPredicate;
@@ -1731,8 +1731,8 @@ public class QueryBuilder<E> {
             return this;
         }
         
-        public Builder<E> dynamicColDefs(Function<Map<String, Object>, List<ColDef>> dynamicColDefs) {
-            this.dynamicColDefs = dynamicColDefs;
+        public Builder<E> dynamicDetailColDefs(Function<Map<String, Object>, List<ColDef>> dynamicDetailColDefs) {
+            this.dynamicDetailColDefs = dynamicDetailColDefs;
             return this;
         }
         
@@ -1804,7 +1804,7 @@ public class QueryBuilder<E> {
                 masterDetailErrorMessages.add("When masterDetail is set to true, detailClass or dynamicDetailClass must be provided");
             }
             if (this.detailColDefs == null || this.detailColDefs.isEmpty()) {
-                if (dynamicColDefs == null) {
+                if (this.dynamicDetailColDefs == null) {
                     masterDetailErrorMessages.add("When masterDetail is set to true, detailColDefs or detailColDefs must be provided");
                 }
             }
