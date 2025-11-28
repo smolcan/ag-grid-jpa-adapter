@@ -12,6 +12,8 @@ The adapter supports AG Grid's [Master / Detail](https://www.ag-grid.com/react-d
 import GridLoadingMessage from './grid-loading-message';
 import MasterDetailGrid from './master-detail-grid';
 import MasterDetailEagerGrid from './master-detail-eager-grid'
+import MasterDetailDynamicRowsGrid from './master-detail-dynamic-rows-grid'
+
 
 <GridLoadingMessage>
     <MasterDetailGrid></MasterDetailGrid>
@@ -19,42 +21,47 @@ import MasterDetailEagerGrid from './master-detail-eager-grid'
 
 ## Enabling Master Detail
 
-To enable Master/Detail, set `.masterDetail(true)` in the builder. 
-You must configure **what** to display (the detail entity class and columns) and **how** to link the detail records to the master record.
+To enable Master/Detail, set `.masterDetail(true)` in the builder.
+
+Unlike standard configuration, Master/Detail settings are grouped into a `MasterDetailParams` object. You must configure **what** to display (the detail entity class and columns) and **how** to link the detail records to the master record.
 
 ### Configuration Parameters
 
 | Method | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
 | `masterDetail` | `boolean` | **Yes** | Enables the functionality. |
-| `detailClass` | `Class<?>` | **Yes** | The entity class for the detail grid. |
-| `detailColDefs` | `ColDef...` | **Yes** | Column definitions for the detail grid. |
 | `primaryFieldName` | `String` | **Yes** | The ID field name of the **Master** entity. |
+| `masterDetailParams` | `MasterDetailParams` | **Yes*** | Configuration object containing detail class, columns, and joining logic. |
+
+*\*Required unless using dynamic params.*
 
 ### Relationship Mapping
 
-You must define how the adapter finds the detail records for a specific master row. Provide **one** of the following:
+Inside `MasterDetailParams`, you must define how the adapter finds the detail records for a specific master row. Provide **one** of the following:
 
 1.  **Reference Field (`detailMasterReferenceField`):** Use if the Detail entity has a `@ManyToOne` mapping to the Master.
 2.  **ID Field (`detailMasterIdField`):** Use if the Detail entity only holds the raw Foreign Key ID.
 3.  **Custom Predicate (`createMasterRowPredicate`):** Use for complex joining logic.
+
 
 ```java
 QueryBuilder.builder(MasterEntity.class, em)
     .masterDetail(true)
     .primaryFieldName("id") // Master ID
     
-    // Define Detail Structure
-    .detailClass(DetailEntity.class)
-    .detailColDefs(
-        ColDef.builder().field("detailId").build(),
-        ColDef.builder().field("amount").build()
+    // Group Detail Configuration
+    .masterDetailParams(
+        QueryBuilder.MasterDetailParams.builder()
+            .detailClass(DetailEntity.class)
+            .detailColDefs(
+                ColDef.builder().field("detailId").build(),
+                ColDef.builder().field("amount").build()
+            )
+            // Define Relationship (Choose One)
+            .detailMasterReferenceField("parentEntity") 
+            // .detailMasterIdField("parentId")
+            .build()
     )
-    
-    // Define Relationship (Choose One)
-    .detailMasterReferenceField("parentEntity") 
-    // .detailMasterIdField("parentId")
-    
     .build();
 ```
 
@@ -92,7 +99,7 @@ For example, if your grid page size is 100, the adapter will execute **101 datab
 :::
 
 Requirements:
-1. You must provide `.masterDetailRowDataFieldName(String)`.
+1. You must provide `.masterDetailRowDataFieldName(String)` on the main builder.
 2. This field name must not exist in the `detailColDefs`.
 
 ```java
@@ -100,7 +107,17 @@ QueryBuilder.builder(MasterEntity.class, em)
     .masterDetail(true)
     .masterDetailLazy(false) // Turn off lazy loading
     .masterDetailRowDataFieldName("detailRows") // JSON key for nested list
-    // ... other config
+    .primaryFieldName("id")
+    
+    .masterDetailParams(
+        QueryBuilder.MasterDetailParams.builder()
+            .detailClass(DetailEntity.class)
+            .detailColDefs(
+                 ColDef.builder().field("detailId").build()
+            )
+            .detailMasterReferenceField("parentEntity")
+            .build()
+    )
     .build();
 ```
 
@@ -127,13 +144,13 @@ JSON Response example:
 
 ## Dynamic Detail Definitions
 
-For advanced use cases, the structure of the detail grid can change based on the data in the master row. For example, 
-a "Vehicle" master row might show "Car Details" or "Boat Details" depending on the vehicle type.
+For advanced use cases, the structure of the detail grid can change based on the data in the master row. 
+For example, a "Vehicle" master row might show "Car Details" or "Boat Details" depending on the vehicle type.
 
-You can provide functions to resolve the class and columns dynamically at runtime using `dynamicDetailClass` and `dynamicDetailColDefs`.
+You can provide a function to resolve the `MasterDetailParams` dynamically at runtime using `dynamicMasterDetailParams`.
 
-:::info 
-Runtime Resolution These functions receive the masterRow (as a Map) as an argument, allowing you to inspect values to make decisions. 
+:::info Runtime 
+Resolution This function receives the masterRow (as a Map) as an argument, allowing you to inspect values to decide which Detail Class, Columns, and Relationships to use. 
 :::
 
 ```java
@@ -141,31 +158,37 @@ QueryBuilder.builder(Vehicle.class, em)
     .masterDetail(true)
     .primaryFieldName("id")
     
-    // Dynamic Class Resolution
-    .dynamicDetailClass(masterRow -> {
+    // Dynamic Configuration
+    .dynamicMasterDetailParams(masterRow -> {
         String type = (String) masterRow.get("type");
-        if ("CAR".equals(type)) return CarDetail.class;
-        return BoatDetail.class;
-    })
-    
-    // Dynamic Column Definitions
-    .dynamicDetailColDefs(masterRow -> {
-        String type = (String) masterRow.get("type");
+        
         if ("CAR".equals(type)) {
-            return List.of(
-                ColDef.builder().field("wheels").build(),
-                ColDef.builder().field("engine").build()
-            );
+            return QueryBuilder.MasterDetailParams.builder()
+                    .detailClass(CarDetail.class)
+                    .detailColDefs(
+                        ColDef.builder().field("wheels").build(),
+                        ColDef.builder().field("engine").build()
+                    )
+                    .detailMasterReferenceField("vehicle")
+                    .build();
         } else {
-             return List.of(
-                ColDef.builder().field("propeller").build(),
-                ColDef.builder().field("sails").build()
-            );
+             return QueryBuilder.MasterDetailParams.builder()
+                    .detailClass(BoatDetail.class)
+                    .detailColDefs(
+                        ColDef.builder().field("propeller").build(),
+                        ColDef.builder().field("sails").build()
+                    )
+                    .detailMasterReferenceField("vehicle")
+                    .build();
         }
     })
     .build();
 ```
 
 :::warning Validation 
-If you enable masterDetail, you must provide either the static definition (detailClass/detailColDefs) OR the dynamic definition (dynamicDetailClass/dynamicDetailColDefs). 
+If you enable masterDetail, you must provide either the static definition (`masterDetailParams`) OR the dynamic definition (`dynamicMasterDetailParams`). 
 :::
+
+<GridLoadingMessage>
+    <MasterDetailDynamicRowsGrid></MasterDetailDynamicRowsGrid>
+</GridLoadingMessage>
