@@ -1041,6 +1041,9 @@ public class QueryBuilder<E> {
      * Determines if the received map structure is column filter
      * if so, should have this structure
      * columnName: {filterModel}
+     * 
+     * @param filterModel: filter model as Map
+     * @return whether filter model is column filter or not
      */
     protected boolean isColumnFilter(Map<String, Object> filterModel) {
         if (filterModel == null) {
@@ -1386,6 +1389,8 @@ public class QueryBuilder<E> {
 
     /**
      * For each pivoting column fetch distinct values
+     * @param cb        criteria builder
+     * @param request   request
      * @return map where key is column name and value is distinct column values
      */
     protected Map<String, List<Object>> getPivotValues(CriteriaBuilder cb, ServerSideGetRowsRequest request) {
@@ -1409,15 +1414,15 @@ public class QueryBuilder<E> {
     }
 
     /**
-     * Creates pivot pairs from pivot values <br/>
-     * For example, for input: <br/>
+     * <p>Creates pivot pairs from pivot values</p>
+     * <p>For example, for input:</p>
      * <code>
      *     {
      *         book: [Book1, Book2],
      *         product: [Product1, Product2]
      *     }
-     * </code> <br/>
-     * Output will be: <br/>
+     * </code>
+     * <p>Output will be:</p>
      * <code>
      *     [
      *       [(book, Book1), (book, Book2)], 
