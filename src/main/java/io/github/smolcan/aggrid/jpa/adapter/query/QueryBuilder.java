@@ -60,40 +60,40 @@ import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.getPath;
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class QueryBuilder<E> {
-    private static final DateTimeFormatter DATE_FORMATTER_FOR_DATE_ADVANCED_FILTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final String AUTO_GROUP_COLUMN_NAME = "ag-Grid-AutoColumn";
+    protected static final DateTimeFormatter DATE_FORMATTER_FOR_DATE_ADVANCED_FILTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    protected static final String AUTO_GROUP_COLUMN_NAME = "ag-Grid-AutoColumn";
 
-    private final Class<E> entityClass;
-    private final String primaryFieldName;
-    private final EntityManager entityManager;
-    private final String serverSidePivotResultFieldSeparator;
-    private final boolean enableAdvancedFilter;
-    private final Integer pivotMaxGeneratedColumns;
-    private final boolean paginateChildRows;
-    private final boolean groupAggFiltering;
-    private final boolean suppressAggFilteredOnly;
-    private final boolean suppressFieldDotNotation;
+    protected final Class<E> entityClass;
+    protected final String primaryFieldName;
+    protected final EntityManager entityManager;
+    protected final String serverSidePivotResultFieldSeparator;
+    protected final boolean enableAdvancedFilter;
+    protected final Integer pivotMaxGeneratedColumns;
+    protected final boolean paginateChildRows;
+    protected final boolean groupAggFiltering;
+    protected final boolean suppressAggFilteredOnly;
+    protected final boolean suppressFieldDotNotation;
 
-    private final boolean treeData;
-    private final String isServerSideGroupFieldName;
-    private final String treeDataParentReferenceField;
-    private final String treeDataParentIdField;
-    private final String treeDataChildrenField;
+    protected final boolean treeData;
+    protected final String isServerSideGroupFieldName;
+    protected final String treeDataParentReferenceField;
+    protected final String treeDataParentIdField;
+    protected final String treeDataChildrenField;
 
-    private final boolean masterDetail;
-    private final boolean masterDetailLazy;
-    private final String masterDetailRowDataFieldName;
-    private final MasterDetailParams masterDetailParams;
-    private final Function<Map<String, Object>, MasterDetailParams> dynamicMasterDetailParams;
-    
+    protected final boolean masterDetail;
+    protected final boolean masterDetailLazy;
+    protected final String masterDetailRowDataFieldName;
+    protected final MasterDetailParams masterDetailParams;
+    protected final Function<Map<String, Object>, MasterDetailParams> dynamicMasterDetailParams;
 
-    private final Map<String, ColDef> colDefs;
+
+    protected final Map<String, ColDef> colDefs;
     
     public static <E> Builder<E> builder(Class<E> entityClass, EntityManager entityManager) {
         return new Builder<>(entityClass, entityManager);
     }
     
-    private QueryBuilder(Builder<E> builder) {
+    protected QueryBuilder(Builder<E> builder) {
         this.entityClass = builder.entityClass;
         this.entityManager = builder.entityManager;
         this.primaryFieldName = builder.primaryFieldName;
@@ -940,7 +940,7 @@ public class QueryBuilder<E> {
      * @throws IllegalArgumentException if a filter references a non-existent or non-filterable column
      */
     @SuppressWarnings("unchecked")
-    private WherePredicateMetadata filterToWherePredicate(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
+    protected WherePredicateMetadata filterToWherePredicate(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
         Map<String, Object> filterModel = request.getFilterModel();
         
         if (!this.isColumnFilter(filterModel)) {
@@ -1042,7 +1042,7 @@ public class QueryBuilder<E> {
      * if so, should have this structure
      * columnName: {filterModel}
      */
-    private boolean isColumnFilter(Map<String, Object> filterModel) {
+    protected boolean isColumnFilter(Map<String, Object> filterModel) {
         if (filterModel == null) {
             return false;
         }
@@ -1074,7 +1074,7 @@ public class QueryBuilder<E> {
      * @throws NullPointerException If the input {@code filter} map is {@code null}.
      */
     @SuppressWarnings("unchecked")
-    private AdvancedFilterModel recognizeAdvancedFilter(Map<String, Object> filter) {
+    protected AdvancedFilterModel recognizeAdvancedFilter(Map<String, Object> filter) {
         Objects.requireNonNull(filter);
         if (!this.enableAdvancedFilter) {
             throw new IllegalArgumentException("Can not perform advanced filtering, enableAdvancedFilter is set to false!");
@@ -1341,7 +1341,7 @@ public class QueryBuilder<E> {
      * @throws OnPivotMaxColumnsExceededException when number of columns to be generated from pivot values is bigger than limit  
      * @return pivoting context
      */
-    public PivotingContext createPivotingContext(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request) throws OnPivotMaxColumnsExceededException {
+    protected PivotingContext createPivotingContext(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request) throws OnPivotMaxColumnsExceededException {
 
         PivotingContext pivotingContext = new PivotingContext();
         if (!request.isPivotMode() || request.getPivotCols().isEmpty()) {
@@ -1388,7 +1388,7 @@ public class QueryBuilder<E> {
      * For each pivoting column fetch distinct values
      * @return map where key is column name and value is distinct column values
      */
-    private Map<String, List<Object>> getPivotValues(CriteriaBuilder cb, ServerSideGetRowsRequest request) {
+    protected Map<String, List<Object>> getPivotValues(CriteriaBuilder cb, ServerSideGetRowsRequest request) {
         Map<String, List<Object>> pivotValues = new LinkedHashMap<>(request.getPivotCols().size());
         for (ColumnVO column : request.getPivotCols()) {
             String field = column.getField();
@@ -1428,7 +1428,7 @@ public class QueryBuilder<E> {
      * @param pivotValues   pivot values
      * @return              pivot pairs
      */
-    private List<Set<Pair<String, Object>>> createPivotPairs(Map<String, List<Object>> pivotValues) {
+    protected List<Set<Pair<String, Object>>> createPivotPairs(Map<String, List<Object>> pivotValues) {
         List<Set<Pair<String, Object>>> pivotPairs = new ArrayList<>(pivotValues.size());
         for (var entry : pivotValues.entrySet()) {
             String column = entry.getKey();
@@ -1452,7 +1452,7 @@ public class QueryBuilder<E> {
      * @param pivotedName                           pivoted column name
      * @return                                      original name of the column
      */
-    private String originalColNameFromPivoted(String pivotedName) {
+    protected String originalColNameFromPivoted(String pivotedName) {
         return pivotedName.substring(pivotedName.lastIndexOf(this.serverSidePivotResultFieldSeparator) + 1);
     }
 
@@ -1467,7 +1467,7 @@ public class QueryBuilder<E> {
      * @return The product of distinct counts for all pivot columns.
      *         Returns 0 if pivot mode is disabled or no pivot columns are defined in the request.
      */
-    private long countPivotColumnsToBeGenerated(CriteriaBuilder cb, ServerSideGetRowsRequest request) {
+    protected long countPivotColumnsToBeGenerated(CriteriaBuilder cb, ServerSideGetRowsRequest request) {
         if (!request.isPivotMode() || request.getPivotCols().isEmpty()) {
             return 0;
         }
@@ -1489,7 +1489,7 @@ public class QueryBuilder<E> {
         return this.entityManager.createQuery(mainQuery).getSingleResult();
     }
 
-    private Map<String, Expression<?>> createPivotingExpressions(CriteriaBuilder cb, Root<?> root, ServerSideGetRowsRequest request, List<List<Pair<String, Object>>> cartesianProduct) {
+    protected Map<String, Expression<?>> createPivotingExpressions(CriteriaBuilder cb, Root<?> root, ServerSideGetRowsRequest request, List<List<Pair<String, Object>>> cartesianProduct) {
         Map<String, Expression<?>> pivotingExpressions = new LinkedHashMap<>();
 
         cartesianProduct.forEach(pairs -> {
