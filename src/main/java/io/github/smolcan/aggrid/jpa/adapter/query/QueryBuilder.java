@@ -16,6 +16,7 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.AdvancedFilter
 import io.github.smolcan.aggrid.jpa.adapter.response.LoadSuccessParams;
 import io.github.smolcan.aggrid.jpa.adapter.query.metadata.PivotingContext;
 import io.github.smolcan.aggrid.jpa.adapter.utils.Pair;
+import io.github.smolcan.aggrid.jpa.adapter.utils.TriFunction;
 import io.github.smolcan.aggrid.jpa.adapter.utils.TypeValueSynchronizer;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Tuple;
@@ -72,6 +73,8 @@ public class QueryBuilder<E> {
     protected final boolean paginateChildRows;
     protected final boolean groupAggFiltering;
     protected final boolean suppressAggFilteredOnly;
+    protected final boolean isExternalFilterPresent;
+    protected final TriFunction<CriteriaBuilder, Root<E>, Object, Predicate> doesExternalFilterPass;
     protected final boolean suppressFieldDotNotation;
 
     protected final boolean treeData;
@@ -103,6 +106,8 @@ public class QueryBuilder<E> {
         this.paginateChildRows = builder.paginateChildRows;
         this.groupAggFiltering = builder.groupAggFiltering;
         this.suppressAggFilteredOnly = builder.groupAggFiltering || builder.suppressAggFilteredOnly;
+        this.isExternalFilterPresent = builder.isExternalFilterPresent;
+        this.doesExternalFilterPass = builder.doesExternalFilterPass;
         this.suppressFieldDotNotation = builder.suppressFieldDotNotation;
         this.treeData = builder.treeData;
         this.isServerSideGroupFieldName = builder.isServerSideGroupFieldName;
@@ -593,6 +598,18 @@ public class QueryBuilder<E> {
                         WherePredicateMetadata
                                 .builder(treeParentPredicate)
                                 .isTreeDataPredicate(true)
+                                .build()
+                );
+            }
+        }
+        
+        // external filter
+        if (this.isExternalFilterPresent) {
+            Predicate externalFilterPredicate = this.doesExternalFilterPass.apply(cb, root, request.getExternalFilter());
+            if (externalFilterPredicate != null) {
+                wherePredicateMetadata.add(
+                        WherePredicateMetadata.builder(externalFilterPredicate)
+                                .isExternalFilterPredicate(true)
                                 .build()
                 );
             }
@@ -1578,6 +1595,8 @@ public class QueryBuilder<E> {
         private boolean paginateChildRows;
         private boolean groupAggFiltering;
         private boolean suppressAggFilteredOnly;
+        private boolean isExternalFilterPresent;
+        private TriFunction<CriteriaBuilder, Root<E>, Object, Predicate> doesExternalFilterPass;
         private boolean suppressFieldDotNotation;
         
         private boolean treeData;
@@ -1656,6 +1675,17 @@ public class QueryBuilder<E> {
             this.suppressAggFilteredOnly = suppressAggFilteredOnly;
             return this;
         }
+        
+        public Builder<E> isExternalFilterPresent(boolean isExternalFilterPresent) {
+            this.isExternalFilterPresent = isExternalFilterPresent;
+            return this;
+        }
+        
+        public Builder<E> doesExternalFilterPass(TriFunction<CriteriaBuilder, Root<E>, Object, Predicate> doesExternalFilterPass) {
+            this.doesExternalFilterPass = doesExternalFilterPass;
+            return this;
+        }
+        
         
         public Builder<E> groupAggFiltering(boolean groupAggFiltering) {
             this.groupAggFiltering = groupAggFiltering;
@@ -1743,6 +1773,12 @@ public class QueryBuilder<E> {
                     }
                 }
             }
+            
+            if (this.isExternalFilterPresent) {
+                if (this.doesExternalFilterPass == null) {
+                    throw new IllegalStateException("When isExternalFilterPresent is set to true, doesExternalFilterPass function must be provided");
+                }
+            }
         }
         
         private void validateTreeDataArgs() {
@@ -1766,11 +1802,6 @@ public class QueryBuilder<E> {
             }
         }
     }
-
-    @FunctionalInterface
-    public interface CreateMasterRowPredicate {
-        Predicate apply(CriteriaBuilder cb, Root<?> detailRoot, Map<String, Object> masterRow);
-    }
     
     public static class MasterDetailParams {
         
@@ -1778,7 +1809,7 @@ public class QueryBuilder<E> {
         private final Map<String, ColDef> detailColDefs;
         private final String detailMasterReferenceField;
         private final String detailMasterIdField;
-        private final CreateMasterRowPredicate createMasterRowPredicate;
+        private final TriFunction<CriteriaBuilder, Root<?>, Map<String, Object>, Predicate> createMasterRowPredicate;
         
         public static Builder builder() {
             return new Builder();
@@ -1797,7 +1828,7 @@ public class QueryBuilder<E> {
             private Map<String, ColDef> detailColDefs;
             private String detailMasterReferenceField;
             private String detailMasterIdField;
-            private CreateMasterRowPredicate createMasterRowPredicate;
+            private TriFunction<CriteriaBuilder, Root<?>, Map<String, Object>, Predicate> createMasterRowPredicate;
             
             private Builder() {}
 
@@ -1832,7 +1863,7 @@ public class QueryBuilder<E> {
                 return this;
             }
 
-            public Builder createMasterRowPredicate(CreateMasterRowPredicate createMasterRowPredicate) {
+            public Builder createMasterRowPredicate(TriFunction<CriteriaBuilder, Root<?>, Map<String, Object>, Predicate> createMasterRowPredicate) {
                 this.createMasterRowPredicate = createMasterRowPredicate;
                 return this;
             }
@@ -1879,7 +1910,7 @@ public class QueryBuilder<E> {
             return detailMasterIdField;
         }
 
-        public CreateMasterRowPredicate getCreateMasterRowPredicate() {
+        public TriFunction<CriteriaBuilder, Root<?>, Map<String, Object>, Predicate> getCreateMasterRowPredicate() {
             return createMasterRowPredicate;
         }
     }
