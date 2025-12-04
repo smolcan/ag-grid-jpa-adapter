@@ -25,6 +25,8 @@ public class ServerSideGetRowsRequest {
     private Map<String, Object> filterModel;
     // if sorting, what the sort model is
     private List<SortModelItem> sortModel = Collections.emptyList();
+    // external filter value
+    private Object externalFilter;
 
     public ServerSideGetRowsRequest() {
     }
@@ -111,5 +113,13 @@ public class ServerSideGetRowsRequest {
 
     public void setSortModel(List<SortModelItem> sortModel) {
         this.sortModel = sortModel;
+    }
+
+    public Object getExternalFilter() {
+        return externalFilter;
+    }
+
+    public void setExternalFilter(Object externalFilter) {
+        this.externalFilter = externalFilter;
     }
 }

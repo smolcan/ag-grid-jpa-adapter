@@ -30,6 +30,7 @@ public class WherePredicateMetadata {
     private final boolean isColumnFilterPredicate;
     private final boolean isAdvancedFilterPredicate;
     private final AdvancedFilterModel advancedFilterModel;
+    private final boolean isExternalFilterPredicate;
 
     private WherePredicateMetadata(Builder builder) {
         this.predicate = builder.predicate;
@@ -42,6 +43,7 @@ public class WherePredicateMetadata {
         this.isColumnFilterPredicate = builder.isColumnFilterPredicate;
         this.isAdvancedFilterPredicate = builder.isAdvancedFilterPredicate;
         this.advancedFilterModel = builder.advancedFilterModel;
+        this.isExternalFilterPredicate = builder.isExternalFilterPredicate;
     }
 
     public Predicate getPredicate() {
@@ -76,6 +78,14 @@ public class WherePredicateMetadata {
         return isTreeDataPredicate;
     }
 
+    public boolean isMasterDetailPredicate() {
+        return isMasterDetailPredicate;
+    }
+
+    public boolean isExternalFilterPredicate() {
+        return isExternalFilterPredicate;
+    }
+
     public AdvancedFilterModel getAdvancedFilterModel() {
         return advancedFilterModel;
     }
@@ -99,6 +109,7 @@ public class WherePredicateMetadata {
         private boolean isColumnFilterPredicate;
         private boolean isAdvancedFilterPredicate;
         private AdvancedFilterModel advancedFilterModel;
+        private boolean isExternalFilterPredicate;
         
         public Builder(Predicate predicate) {
             Objects.requireNonNull(predicate);
@@ -153,6 +164,11 @@ public class WherePredicateMetadata {
         
         public Builder isMasterDetailPredicate(boolean isMasterDetailPredicate) {
             this.isMasterDetailPredicate = isMasterDetailPredicate;
+            return this;
+        }
+        
+        public Builder isExternalFilterPredicate(boolean isExternalFilterPredicate) {
+            this.isExternalFilterPredicate = isExternalFilterPredicate;
             return this;
         }
 
