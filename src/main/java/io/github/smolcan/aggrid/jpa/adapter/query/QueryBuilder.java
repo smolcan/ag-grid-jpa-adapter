@@ -366,11 +366,17 @@ public class QueryBuilder<E> {
     }
 
     /**
-     * 
-     * @param cb
-     * @param root
-     * @param quickFilter
-     * @return
+     * Creates a predicate for the "Quick Filter" logic (multi-word search).
+     * <p>
+     * This method splits the search string into individual words. For a row to match,
+     * <b>every word</b> from the search query must be found in at least one of the
+     * configured searchable fields.
+     * </p>
+     *
+     * @param cb          the {@link CriteriaBuilder} used to construct the query
+     * @param root        the {@link Root} entity
+     * @param quickFilter the raw search string input
+     * @return the constructed {@link Predicate}, or {@code null} if the filter is empty
      */
     protected Predicate createQuickFilterPredicate(CriteriaBuilder cb, Root<E> root, String quickFilter) {
         if (quickFilter == null || quickFilter.isEmpty()) {
