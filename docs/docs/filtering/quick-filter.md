@@ -6,6 +6,10 @@ sidebar_position: 7
 
 Filter rows by comparing against the data in specified columns.
 
+:::warning
+This feature is officially not supported for server-side row model in Official Ag-Grid documentation
+:::
+
 ## Configuration
 
 To enable quick filtering, you must set `.isQuickFilterPresent(true)` and define which fields should be searched using `.quickFilterSearchInFields()`.
