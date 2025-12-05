@@ -29,6 +29,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -76,6 +77,14 @@ public class QueryBuilder<E> {
     protected final boolean isExternalFilterPresent;
     protected final TriFunction<CriteriaBuilder, Root<E>, Object, Predicate> doesExternalFilterPass;
     protected final boolean suppressFieldDotNotation;
+    
+    protected final boolean isQuickFilterPresent;
+    protected final Function<String, List<String>> quickFilterParser;
+    protected final TriFunction<CriteriaBuilder, Root<E>, List<String>, Predicate> quickFilterMatcher;
+    protected final List<String> quickFilterSearchInFields;
+    protected final boolean quickFilterTrimInput;
+    protected final boolean quickFilterCaseSensitive;
+    protected final BiFunction<CriteriaBuilder, Expression<String>, Expression<String>> quickFilterTextFormatter;
 
     protected final boolean treeData;
     protected final String isServerSideGroupFieldName;
@@ -109,6 +118,13 @@ public class QueryBuilder<E> {
         this.isExternalFilterPresent = builder.isExternalFilterPresent;
         this.doesExternalFilterPass = builder.doesExternalFilterPass;
         this.suppressFieldDotNotation = builder.suppressFieldDotNotation;
+        this.isQuickFilterPresent = builder.isQuickFilterPresent;
+        this.quickFilterParser = builder.quickFilterParser;
+        this.quickFilterMatcher = builder.quickFilterMatcher;
+        this.quickFilterSearchInFields = builder.quickFilterSearchInFields;
+        this.quickFilterTrimInput = builder.quickFilterTrimInput;
+        this.quickFilterCaseSensitive = builder.quickFilterCaseSensitive;
+        this.quickFilterTextFormatter = builder.quickFilterTextFormatter;
         this.treeData = builder.treeData;
         this.isServerSideGroupFieldName = builder.isServerSideGroupFieldName;
         this.treeDataParentReferenceField = builder.treeDataParentReferenceField;
@@ -347,6 +363,69 @@ public class QueryBuilder<E> {
         }
 
         return masterRowPredicate;
+    }
+
+    /**
+     * 
+     * @param cb
+     * @param root
+     * @param quickFilter
+     * @return
+     */
+    protected Predicate createQuickFilterPredicate(CriteriaBuilder cb, Root<E> root, String quickFilter) {
+        if (quickFilter == null || quickFilter.isEmpty()) {
+            return null;
+        }
+        
+        // parse quick filter value to words
+        List<String> words = this.quickFilterParser.apply(quickFilter);
+        if (words == null || words.isEmpty()) {
+            return null;
+        }
+        if (this.quickFilterMatcher != null) {
+            return quickFilterMatcher.apply(cb, root, words);
+        }
+        
+        // predicates for each row
+        List<Predicate> wordsPredicates = new ArrayList<>(words.size());
+        for (String word : words) {
+            Expression<String> wordExpression = cb.literal(word);
+            
+            // transform word expression according to quick filter config
+            if (this.quickFilterTrimInput) {
+                wordExpression = cb.trim(wordExpression);
+            }
+            if (this.quickFilterTextFormatter != null) {
+                wordExpression = this.quickFilterTextFormatter.apply(cb, wordExpression);
+            } else if (!this.quickFilterCaseSensitive) {
+                wordExpression = cb.lower(wordExpression);
+            }
+            
+            List<Predicate> rowPredicatesForWord = new ArrayList<>(this.quickFilterSearchInFields.size());
+            for (String field : this.quickFilterSearchInFields) {
+                Expression<String> path = getPath(root, field).as(String.class);
+
+                // transform path expression according to quick filter config
+                if (this.quickFilterTrimInput) {
+                    path = cb.trim(path);
+                }
+                if (this.quickFilterTextFormatter != null) {
+                    path = this.quickFilterTextFormatter.apply(cb, path);
+                } else if (!this.quickFilterCaseSensitive) {
+                    path = cb.lower(path);
+                }
+                
+                Predicate rowWordPredicate = cb.like(path, cb.concat(cb.concat("%", wordExpression), "%"));
+                rowPredicatesForWord.add(rowWordPredicate);
+            }
+
+            // A word matches the row if the string value of any of the columns contains the word (OR)
+            Predicate wordPredicate = cb.or(rowPredicatesForWord.toArray(new Predicate[0]));
+            wordsPredicates.add(wordPredicate);
+        }
+        
+        // All words must match the row for it to be included (AND)
+        return cb.and(wordsPredicates.toArray(new Predicate[0]));
     }
 
     /**
@@ -610,6 +689,18 @@ public class QueryBuilder<E> {
                 wherePredicateMetadata.add(
                         WherePredicateMetadata.builder(externalFilterPredicate)
                                 .isExternalFilterPredicate(true)
+                                .build()
+                );
+            }
+        }
+        
+        // quick filter
+        if (this.isQuickFilterPresent) {
+            Predicate quickFilterPredicate = this.createQuickFilterPredicate(cb, root, request.getQuickFilter());
+            if (quickFilterPredicate != null) {
+                wherePredicateMetadata.add(
+                        WherePredicateMetadata.builder(quickFilterPredicate)
+                                .isQuickFilterPredicate(true)
                                 .build()
                 );
             }
@@ -1584,6 +1675,7 @@ public class QueryBuilder<E> {
     
     public static class Builder<E> {
         private static final String DEFAULT_SERVER_SIDE_PIVOT_RESULT_FIELD_SEPARATOR = "_";
+        private static final Function<String, List<String>> DEFAULT_QUICK_FILTER_PARSER = (input) -> Arrays.asList(input.trim().split("\\s+")); 
         
         private final Class<E> entityClass;
         private final EntityManager entityManager;
@@ -1598,6 +1690,14 @@ public class QueryBuilder<E> {
         private boolean isExternalFilterPresent;
         private TriFunction<CriteriaBuilder, Root<E>, Object, Predicate> doesExternalFilterPass;
         private boolean suppressFieldDotNotation;
+
+        protected boolean isQuickFilterPresent;
+        protected Function<String, List<String>> quickFilterParser = DEFAULT_QUICK_FILTER_PARSER;
+        protected TriFunction<CriteriaBuilder, Root<E>, List<String>, Predicate> quickFilterMatcher;
+        protected List<String> quickFilterSearchInFields;
+        protected boolean quickFilterTrimInput;
+        protected boolean quickFilterCaseSensitive;
+        protected BiFunction<CriteriaBuilder, Expression<String>, Expression<String>> quickFilterTextFormatter;
         
         private boolean treeData;
         private String isServerSideGroupFieldName;
@@ -1668,6 +1768,46 @@ public class QueryBuilder<E> {
 
         public Builder<E> suppressFieldDotNotation(boolean suppressFieldDotNotation) {
             this.suppressFieldDotNotation = suppressFieldDotNotation;
+            return this;
+        }
+
+        public Builder<E> isQuickFilterPresent(boolean isQuickFilterPresent) {
+            this.isQuickFilterPresent = isQuickFilterPresent;
+            return this;
+        }
+
+        public Builder<E> quickFilterParser(Function<String, List<String>> quickFilterParser) {
+            this.quickFilterParser = quickFilterParser;
+            return this;
+        }
+
+        public Builder<E> quickFilterMatcher(TriFunction<CriteriaBuilder, Root<E>, List<String>, Predicate> quickFilterMatcher) {
+            this.quickFilterMatcher = quickFilterMatcher;
+            return this;
+        }
+
+        public Builder<E> quickFilterSearchInFields(List<String> quickFilterSearchInFields) {
+            this.quickFilterSearchInFields = quickFilterSearchInFields;
+            return this;
+        }
+
+        public Builder<E> quickFilterSearchInFields(String... quickFilterSearchInFields) {
+            this.quickFilterSearchInFields = Arrays.asList(quickFilterSearchInFields);
+            return this;
+        }
+
+        public Builder<E> quickFilterTrimInput(boolean quickFilterTrimInput) {
+            this.quickFilterTrimInput = quickFilterTrimInput;
+            return this;
+        }
+
+        public Builder<E> quickFilterCaseSensitive(boolean quickFilterCaseSensitive) {
+            this.quickFilterCaseSensitive = quickFilterCaseSensitive;
+            return this;
+        }
+
+        public Builder<E> quickFilterTextFormatter(BiFunction<CriteriaBuilder, Expression<String>, Expression<String>> quickFilterTextFormatter) {
+            this.quickFilterTextFormatter = quickFilterTextFormatter;
             return this;
         }
         
@@ -1777,6 +1917,18 @@ public class QueryBuilder<E> {
             if (this.isExternalFilterPresent) {
                 if (this.doesExternalFilterPass == null) {
                     throw new IllegalStateException("When isExternalFilterPresent is set to true, doesExternalFilterPass function must be provided");
+                }
+            }
+            
+            if (this.isQuickFilterPresent) {
+                if (this.quickFilterParser == null) {
+                    throw new IllegalStateException("When isQuickFilterPresent is set to true, quickFilterParser function must be provided");
+                }
+                
+                if (this.quickFilterMatcher == null) {
+                    if (this.quickFilterSearchInFields == null || this.quickFilterSearchInFields.isEmpty()) {
+                        throw new IllegalStateException("When isQuickFilterPresent is set to true, quickFilterSearchInFields function must be provided");
+                    }
                 }
             }
         }

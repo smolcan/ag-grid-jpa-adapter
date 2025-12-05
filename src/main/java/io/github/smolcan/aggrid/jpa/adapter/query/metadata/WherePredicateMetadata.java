@@ -31,6 +31,7 @@ public class WherePredicateMetadata {
     private final boolean isAdvancedFilterPredicate;
     private final AdvancedFilterModel advancedFilterModel;
     private final boolean isExternalFilterPredicate;
+    private final boolean isQuickFilterPredicate;
 
     private WherePredicateMetadata(Builder builder) {
         this.predicate = builder.predicate;
@@ -44,6 +45,7 @@ public class WherePredicateMetadata {
         this.isAdvancedFilterPredicate = builder.isAdvancedFilterPredicate;
         this.advancedFilterModel = builder.advancedFilterModel;
         this.isExternalFilterPredicate = builder.isExternalFilterPredicate;
+        this.isQuickFilterPredicate = builder.isQuickFilterPredicate;
     }
 
     public Predicate getPredicate() {
@@ -90,6 +92,10 @@ public class WherePredicateMetadata {
         return advancedFilterModel;
     }
 
+    public boolean isQuickFilterPredicate() {
+        return isQuickFilterPredicate;
+    }
+
     public static Builder builder(Predicate predicate) {
         return new Builder(predicate);
     }
@@ -110,6 +116,7 @@ public class WherePredicateMetadata {
         private boolean isAdvancedFilterPredicate;
         private AdvancedFilterModel advancedFilterModel;
         private boolean isExternalFilterPredicate;
+        private boolean isQuickFilterPredicate;
         
         public Builder(Predicate predicate) {
             Objects.requireNonNull(predicate);
@@ -169,6 +176,11 @@ public class WherePredicateMetadata {
         
         public Builder isExternalFilterPredicate(boolean isExternalFilterPredicate) {
             this.isExternalFilterPredicate = isExternalFilterPredicate;
+            return this;
+        }
+
+        public Builder isQuickFilterPredicate(boolean isQuickFilterPredicate) {
+            this.isQuickFilterPredicate = isQuickFilterPredicate;
             return this;
         }
 
