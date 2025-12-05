@@ -389,7 +389,7 @@ public class QueryBuilder<E> {
             return null;
         }
         if (this.quickFilterMatcher != null) {
-            return quickFilterMatcher.apply(cb, root, words);
+            return this.quickFilterMatcher.apply(cb, root, words);
         }
         
         // predicates for each row
@@ -401,12 +401,13 @@ public class QueryBuilder<E> {
             if (this.quickFilterTrimInput) {
                 wordExpression = cb.trim(wordExpression);
             }
-            if (this.quickFilterTextFormatter != null) {
-                wordExpression = this.quickFilterTextFormatter.apply(cb, wordExpression);
-            } else if (!this.quickFilterCaseSensitive) {
+            if (!this.quickFilterCaseSensitive) {
                 wordExpression = cb.lower(wordExpression);
             }
-            
+            if (this.quickFilterTextFormatter != null) {
+                wordExpression = this.quickFilterTextFormatter.apply(cb, wordExpression);
+            }
+
             List<Predicate> rowPredicatesForWord = new ArrayList<>(this.quickFilterSearchInFields.size());
             for (String field : this.quickFilterSearchInFields) {
                 Expression<String> path = getPath(root, field).as(String.class);
@@ -415,10 +416,11 @@ public class QueryBuilder<E> {
                 if (this.quickFilterTrimInput) {
                     path = cb.trim(path);
                 }
+                if (!this.quickFilterCaseSensitive) {
+                    path = cb.lower(path);
+                }
                 if (this.quickFilterTextFormatter != null) {
                     path = this.quickFilterTextFormatter.apply(cb, path);
-                } else if (!this.quickFilterCaseSensitive) {
-                    path = cb.lower(path);
                 }
                 
                 Predicate rowWordPredicate = cb.like(path, cb.concat(cb.concat("%", wordExpression), "%"));
