@@ -28,7 +28,15 @@ QueryBuilder.builder(Trade.class, entityManager)
     // 3. Optional configuration
     .quickFilterTrimInput(true)       // Trim spaces from input
     .quickFilterCaseSensitive(false)  // Ignore case (default behavior)
-    .quickFilterTextFormatter(...)    // custom text formatting applied before matching
+    .quickFilterTextFormatter((cb, stringExpr) -> {
+                    Expression<String> newExpression = stringExpr;
+                    // Remove accents
+                    newExpression = cb.function("TRANSLATE", String.class, newExpression,
+                            cb.literal("áéíóúÁÉÍÓÚüÜñÑ"),
+                            cb.literal("aeiouAEIOUuUnN"));
+
+                    return newExpression;
+                }) // custom text formatting applied before matching (in this case, unaccent)
     .build();
 ```
 
@@ -62,15 +70,10 @@ If the default strategy (checking if words exist in columns using `LIKE %word%`)
 This function receives the CriteriaBuilder, Root, and the list of parsed words and returns Predicate.
 
 ```java
-.quickFilterTextFormatter((cb, stringExpr) -> {
-                    Expression<String> newExpression = stringExpr;
-                    // Remove accents
-                    newExpression = cb.function("TRANSLATE", String.class, newExpression,
-                            cb.literal("áéíóúÁÉÍÓÚüÜñÑ"),
-                            cb.literal("aeiouAEIOUuUnN"));
-
-                    return newExpression;
-                })
+.quickFilterMatcher((cb, root, words) -> {
+    // Custom logic: Row matches if 'product' starts with the first word
+    return cb.like(root.get("product"), words.get(0) + "%");
+})
 ```
 
 
