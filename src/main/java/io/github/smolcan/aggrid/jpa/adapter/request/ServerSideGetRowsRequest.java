@@ -27,6 +27,8 @@ public class ServerSideGetRowsRequest {
     private List<SortModelItem> sortModel = Collections.emptyList();
     // external filter value
     private Object externalFilter;
+    // quick filter value
+    private String quickFilter;
 
     public ServerSideGetRowsRequest() {
     }
@@ -121,5 +123,13 @@ public class ServerSideGetRowsRequest {
 
     public void setExternalFilter(Object externalFilter) {
         this.externalFilter = externalFilter;
+    }
+
+    public String getQuickFilter() {
+        return quickFilter;
+    }
+
+    public void setQuickFilter(String quickFilter) {
+        this.quickFilter = quickFilter;
     }
 }
