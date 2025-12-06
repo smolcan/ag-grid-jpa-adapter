@@ -14,6 +14,11 @@ This feature is officially not supported for server-side row model in Official A
 
 To enable quick filtering, you must set `.isQuickFilterPresent(true)` and define which fields should be searched using `.quickFilterSearchInFields()`.
 
+:::warning Database Compatibility
+Including non-string fields in `quickFilterSearchInFields` may result in runtime exceptions on some databases.
+Always test this feature against your database engine.
+:::
+
 You can also fine-tune text handling with optional parameters like trimming, case sensitivity, or custom formatters.
 
 
