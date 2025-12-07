@@ -179,9 +179,7 @@ public class QueryBuilder<E> {
         List<Tuple> data = this.apply(query, queryContext);
         List<Map<String, Object>> resData = this.tupleToMap(data);
         if (this.masterDetail && !this.masterDetailLazy) {
-            for (Map<String, Object> res : resData) {
-                res.put(this.masterDetailRowDataFieldName, this.getDetailRowData(res));
-            }
+            this.attachDetailRowDataToMasters(resData);
         }
         
         LoadSuccessParams loadSuccessParams = new LoadSuccessParams();
@@ -323,6 +321,73 @@ public class QueryBuilder<E> {
         TypedQuery<Tuple> typedQuery = this.entityManager.createQuery(query);
         List<Tuple> data = typedQuery.getResultList();
         return this.tupleToMap(data);
+    }
+
+    /**
+     * Efficiently fetches and attaches detail rows to the provided list of master rows.
+     * <p>
+     * This method avoids the "N+1 Select Problem" by executing a single query with an {@code IN} clause
+     * to fetch all relevant details for the current page, then groups and assigns them in memory.
+     * <p>
+     * If dynamic configuration is active, it falls back to iterative fetching.
+     *
+     * @param masters the list of master row data maps to be populated
+     */
+    protected void attachDetailRowDataToMasters(List<Map<String, Object>> masters) {
+        if (masters == null || masters.isEmpty()) {
+            return;
+        }
+
+        // dynamic params, N+1
+        if (this.dynamicMasterDetailParams != null) {
+            for (Map<String, Object> row : masters) {
+                row.put(this.masterDetailRowDataFieldName, this.getDetailRowData(row));
+            }
+            return;
+        }
+        
+        CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
+        CriteriaQuery<Tuple> query = cb.createTupleQuery();
+        Root<?> detailRoot = query.from(this.masterDetailParams.getDetailClass());
+        
+        List<Selection<?>> detailSelections = this.masterDetailParams.getDetailColDefs().values().stream()
+                .map(colDef -> getPath(detailRoot, colDef.getField()).alias(colDef.getField()))
+                .collect(Collectors.toList());
+        // master rows map by primary field (as string)
+        Map<String, Map<String, Object>> masterRowsGroupedByPrimaryField = masters.stream()
+                .collect(Collectors.toMap(
+                        v -> String.valueOf(v.get(this.primaryFieldName)),
+                        Function.identity(),
+                        (existing, replacement) -> existing
+                ));
+        
+        Set<Object> masterIds = masters.stream()
+                .map(v -> v.get(this.primaryFieldName))
+                .collect(Collectors.toSet());
+        
+        // helper selections for master id
+        String masterPrimaryFieldAlias = "__fk_helper__";
+        Path<?> masterPrimaryFieldPath;
+        if (this.masterDetailParams.getDetailMasterReferenceField() != null) {
+            masterPrimaryFieldPath = detailRoot.get(this.masterDetailParams.getDetailMasterReferenceField()).get(this.primaryFieldName);
+        } else {
+            masterPrimaryFieldPath = detailRoot.get(this.masterDetailParams.getDetailMasterIdField());
+        }
+        detailSelections.add(masterPrimaryFieldPath.alias(masterPrimaryFieldAlias));
+        
+        query.multiselect(detailSelections);
+        query.where(masterPrimaryFieldPath.in(masterIds));
+
+        List<Tuple> detailTuples = this.entityManager.createQuery(query).getResultList();
+        Map<String, List<Map<String, Object>>> detailsGroupedByMaster = this.tupleToMap(detailTuples).stream()
+                .collect(Collectors.groupingBy(v -> String.valueOf(v.get(masterPrimaryFieldAlias))));
+        
+        masterRowsGroupedByPrimaryField.forEach((masterIdStr, masterRow) -> {
+            List<Map<String, Object>> detailRows = detailsGroupedByMaster.getOrDefault(masterIdStr, new ArrayList<>());
+            
+            detailRows.forEach(dr -> dr.remove(masterPrimaryFieldAlias));
+            masterRow.put(this.masterDetailRowDataFieldName, detailRows);
+        });
     }
 
     /**
@@ -995,7 +1060,8 @@ public class QueryBuilder<E> {
 
         List<Map<String, Object>> result = new ArrayList<>(tuples.size());
         for (Tuple tuple : tuples) {
-            Map<String, Object> map = new HashMap<>(columnCount);
+            // when master detail eager, 1 more element will be in columns (collection of detail records)
+            Map<String, Object> map = new HashMap<>(columnCount + ((this.masterDetail && !this.masterDetailLazy) ? 1 : 0));
 
             for (int i = 0; i < columnCount; i++) {
                 String alias = aliases[i];
@@ -1034,7 +1100,7 @@ public class QueryBuilder<E> {
                 }
 
                 // simple scenario
-                map.put(alias, tuple.get(i));
+                map.put(alias, value);
             }
             result.add(map);
         }
