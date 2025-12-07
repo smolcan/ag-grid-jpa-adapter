@@ -14,6 +14,7 @@ import MasterDetailGrid from './master-detail-grid';
 import MasterDetailEagerGrid from './master-detail-eager-grid'
 import MasterDetailDynamicRowsGrid from './master-detail-dynamic-rows-grid'
 import MasterDetailTreeDataGrid from './master-detail-tree-data-grid'
+import MasterDetailCustomDetailConditionGrid from './master-detail-custom-detail-condition-grid'
 
 
 <GridLoadingMessage>
@@ -147,6 +148,49 @@ JSON Response example:
 
 <GridLoadingMessage>
     <MasterDetailEagerGrid></MasterDetailEagerGrid>
+</GridLoadingMessage>
+
+## Custom Detail Condition
+
+If standard ID or Reference mapping is insufficient (e.g., for composite keys or complex conditional joining), you can define exact linking logic using `createMasterRowPredicate`.
+
+This function provides access to the JPA `CriteriaBuilder`, the detail entity `Root`, and the raw `masterRow` data map, allowing you to construct any valid JPA Predicate to filter the detail records.
+
+```java
+QueryBuilder.builder(Trade.class, entityManager)
+                .colDefs(...)
+                .masterDetail(true)
+                .primaryFieldName("id")
+                .masterDetailParams(
+                        QueryBuilder.MasterDetailParams.builder()
+                                .detailClass(...)
+                                .detailColDefs(...)
+                                .createMasterRowPredicate((cb, detailRoot, masterRow) -> {
+                                    // detail will have all the trades that have the same submitter
+                                    var submitterObj = (Map<String, Object>) masterRow.get("submitter");
+                                    if (submitterObj == null || submitterObj.isEmpty()) {
+                                        return cb.or();
+                                    }
+
+                                    Long submitterId = Optional.ofNullable(submitterObj.get("id")).map(String::valueOf).map(Long::parseLong).orElse(null);
+                                    Path<?> path = Utils.getPath(detailRoot, "submitter.id");
+                                    if (submitterId == null) {
+                                        return cb.isNull(path);
+                                    } else {
+                                        return cb.equal(path, submitterId);
+                                    }
+                                })
+                                .build()
+                )
+
+                .build();
+```
+
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/master-detail-custom-detail-condition-grid.tsx)
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MasterDetailService.java)
+
+<GridLoadingMessage>
+    <MasterDetailCustomDetailConditionGrid></MasterDetailCustomDetailConditionGrid>
 </GridLoadingMessage>
 
 ## Dynamic Detail Definitions
