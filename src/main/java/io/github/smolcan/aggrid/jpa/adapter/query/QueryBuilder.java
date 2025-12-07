@@ -338,8 +338,8 @@ public class QueryBuilder<E> {
             return;
         }
 
-        // dynamic params, N+1
-        if (this.dynamicMasterDetailParams != null) {
+        // dynamic params or custom detail function, N+1
+        if (this.dynamicMasterDetailParams != null || (this.masterDetailParams != null && this.masterDetailParams.createMasterRowPredicate != null)) {
             for (Map<String, Object> row : masters) {
                 row.put(this.masterDetailRowDataFieldName, this.getDetailRowData(row));
             }
