@@ -93,10 +93,16 @@ You should expose a separate endpoint that calls `getDetailRowData(masterRow)`.
 In this mode, the adapter fetches detail rows immediately for every master row returned and embeds them directly into the response JSON. 
 This reduces HTTP requests but increases payload size and backend load.
 
-:::warning Performance Impact
-Enabling eager loading triggers the **N+1 problem**. The adapter executes a separate database query to fetch details for **each** master row returned.
+:::info Batch Fetching Optimization
+By default, the adapter optimizes eager loading using a **Batch Fetching** strategy. It executes exactly **2 database queries** per request, regardless of page size:
+1.  One query to fetch the Master rows.
+2.  One query to fetch all Detail rows for those masters (using an `IN` clause).
+    :::
 
-For example, if your grid page size is 100, the adapter will execute **101 database queries** (1 for master rows + 100 for details). Use this mode with caution on large datasets.
+:::warning Performance Fallback (N+1)
+The optimization above is disabled if you use **`dynamicMasterDetailParams`** or a custom **`createMasterRowPredicate`**.
+
+In these dynamic scenarios, the adapter must fall back to the **N+1 strategy**, executing a separate database query for **each** master row returned. Use dynamic configuration with caution on large page sizes.
 :::
 
 Requirements:
