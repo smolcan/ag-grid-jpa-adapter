@@ -297,6 +297,10 @@ public class QueryBuilder<E> {
      * @return a list of maps representing the detail rows
      */
     public List<Map<String, Object>> getDetailRowData(Map<String, Object> masterRow) {
+        if (!this.masterDetail) {
+            throw new IllegalStateException("Please set masterDetail property to true to use detail row data");
+        }
+        
         // find params for detail grid
         MasterDetailParams masterDetailParams = this.dynamicMasterDetailParams != null
                 ? this.dynamicMasterDetailParams.apply(masterRow)   // dynamic
