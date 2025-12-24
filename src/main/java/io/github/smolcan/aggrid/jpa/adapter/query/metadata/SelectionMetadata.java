@@ -21,6 +21,7 @@ public class SelectionMetadata {
     private final boolean isPivotingSelection;
     private final boolean isAggregationSelection;
     private final boolean isServerSideGroupSelection;
+    private final boolean isChildCountSelection;
 
     private SelectionMetadata(Builder builder) {
         this.selection = builder.selection;
@@ -28,6 +29,7 @@ public class SelectionMetadata {
         this.isPivotingSelection = builder.isPivotingSelection;
         this.isAggregationSelection = builder.isAggregationSelection;
         this.isServerSideGroupSelection = builder.isServerSideGroupSelection;
+        this.isChildCountSelection = builder.isChildCountSelection;
     }
 
     public static Builder builder(Selection<?> selection) {
@@ -53,6 +55,10 @@ public class SelectionMetadata {
     public boolean isServerSideGroupSelection() {
         return isServerSideGroupSelection;
     }
+    
+    public boolean isChildCountSelection() {
+        return isChildCountSelection;
+    }
 
     public static class Builder {
         private Selection<?> selection;
@@ -60,6 +66,7 @@ public class SelectionMetadata {
         private boolean isPivotingSelection;
         private boolean isAggregationSelection;
         private boolean isServerSideGroupSelection;
+        private boolean isChildCountSelection;
 
         public Builder(Selection<?> selection) {
             Objects.requireNonNull(selection);
@@ -89,6 +96,11 @@ public class SelectionMetadata {
         
         public Builder isServerSideGroupSelection(boolean isServerSideGroupSelection) {
             this.isServerSideGroupSelection = isServerSideGroupSelection;
+            return this;
+        }
+        
+        public Builder isChildCountSelection(boolean isChildCountSelection) {
+            this.isChildCountSelection = isChildCountSelection;
             return this;
         }
 

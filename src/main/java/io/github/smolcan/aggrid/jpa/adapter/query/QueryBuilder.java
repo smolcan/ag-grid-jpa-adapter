@@ -77,6 +77,8 @@ public class QueryBuilder<E> {
     protected final boolean isExternalFilterPresent;
     protected final TriFunction<CriteriaBuilder, Root<E>, Object, Predicate> doesExternalFilterPass;
     protected final boolean suppressFieldDotNotation;
+    protected final boolean getChildCount;
+    protected final String getChildCountFieldName;
     
     protected final boolean isQuickFilterPresent;
     protected final Function<String, List<String>> quickFilterParser;
@@ -118,6 +120,8 @@ public class QueryBuilder<E> {
         this.isExternalFilterPresent = builder.isExternalFilterPresent;
         this.doesExternalFilterPass = builder.doesExternalFilterPass;
         this.suppressFieldDotNotation = builder.suppressFieldDotNotation;
+        this.getChildCount = builder.getChildCount;
+        this.getChildCountFieldName = builder.getChildCountFieldName;
         this.isQuickFilterPresent = builder.isQuickFilterPresent;
         this.quickFilterParser = builder.quickFilterParser;
         this.quickFilterMatcher = builder.quickFilterMatcher;
@@ -618,6 +622,16 @@ public class QueryBuilder<E> {
                         .build();
                 selections.add(groupSelectionMetadata);
             }
+            // child count
+            if (this.getChildCount) {
+                Selection<Long> childCountSelection = cb.count(root).alias(this.getChildCountFieldName);
+                selections.add(
+                        SelectionMetadata.builder(childCountSelection)
+                                .isChildCountSelection(true)
+                                .build()
+                );
+            }
+            
 
             if (queryContext.getPivotingContext().isPivoting()) {
                 // pivoting
@@ -1768,6 +1782,8 @@ public class QueryBuilder<E> {
         private boolean isExternalFilterPresent;
         private TriFunction<CriteriaBuilder, Root<E>, Object, Predicate> doesExternalFilterPass;
         private boolean suppressFieldDotNotation;
+        protected boolean getChildCount;
+        protected String getChildCountFieldName;
 
         protected boolean isQuickFilterPresent;
         protected Function<String, List<String>> quickFilterParser = DEFAULT_QUICK_FILTER_PARSER;
@@ -1893,6 +1909,16 @@ public class QueryBuilder<E> {
             this.suppressAggFilteredOnly = suppressAggFilteredOnly;
             return this;
         }
+
+        public Builder<E> getChildCount(boolean getChildCount) {
+            this.getChildCount = getChildCount;
+            return this;
+        }
+
+        public Builder<E> getChildCountFieldName(String getChildCountFieldName) {
+            this.getChildCountFieldName = getChildCountFieldName;
+            return this;
+        }
         
         public Builder<E> isExternalFilterPresent(boolean isExternalFilterPresent) {
             this.isExternalFilterPresent = isExternalFilterPresent;
@@ -1989,6 +2015,15 @@ public class QueryBuilder<E> {
                     } else if (this.dynamicMasterDetailParams == null && this.masterDetailParams.detailColDefs.containsKey(this.masterDetailRowDataFieldName)) {
                         throw new IllegalStateException("masterDetailRowDataFieldName '" + this.masterDetailRowDataFieldName + "' collides with existing detailColDef");
                     }
+                }
+            }
+            
+            if (this.getChildCount) {
+                if (this.getChildCountFieldName == null) {
+                    throw new IllegalStateException("When getChildCount is set to true, provide field name in which it should be stored in");
+                }
+                if (this.colDefs.containsKey(this.getChildCountFieldName)) {
+                    throw new IllegalStateException("getChildCountFieldName collides with existing colDef");
                 }
             }
             
