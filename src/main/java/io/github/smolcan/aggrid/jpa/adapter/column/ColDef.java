@@ -7,6 +7,7 @@ import io.github.smolcan.aggrid.jpa.adapter.request.AggregationFunction;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Column definition, tries to be same as in frontend
@@ -18,7 +19,7 @@ public class ColDef {
     private final boolean enableRowGroup;
     private final boolean enableValue;
     private final boolean enablePivot;
-    private final Set<AggregationFunction> allowedAggFuncs;
+    private final Set<String> allowedAggFuncs;
     private final IFilter<?, ?> filter;
 
     private ColDef(Builder builder) {
@@ -39,7 +40,7 @@ public class ColDef {
         return sortable;
     }
 
-    public Set<AggregationFunction> getAllowedAggFuncs() {
+    public Set<String> getAllowedAggFuncs() {
         return allowedAggFuncs;
     }
 
@@ -72,7 +73,7 @@ public class ColDef {
         // Set to `true` if you want to be able to aggregate by this column
         private boolean enableValue = false;
         private boolean enablePivot = false;
-        private Set<AggregationFunction> allowedAggFuncs = Set.of(AggregationFunction.values());
+        private Set<String> allowedAggFuncs;
         
         private IFilter<?, ?> filter = new AgTextColumnFilter();
 
@@ -116,6 +117,11 @@ public class ColDef {
         }
         
         public Builder allowedAggFuncs(AggregationFunction ...functions) {
+            this.allowedAggFuncs = Arrays.stream(functions).map(Enum::name).collect(Collectors.toSet());
+            return this;
+        }
+        
+        public Builder allowedAggFuncs(String ...functions) {
             this.allowedAggFuncs = new HashSet<>(Arrays.asList(functions));
             return this;
         }

@@ -20,6 +20,8 @@ ColDef priceColumn = ColDef.builder()
     .field("price")
     .enableValue(true)
     .allowedAggFuncs(AggregationFunction.avg, AggregationFunction.count)
+    // or just use string names
+    // .allowedAggFuncs("avg", "count")
     .build();
 ```
 
@@ -27,6 +29,7 @@ ColDef priceColumn = ColDef.builder()
 
 import GridLoadingMessage from './grid-loading-message';
 import AggregationGrid from './aggregation-grid';
+import AggregationCustomFunctionGrid from './aggregation-custom-function-grid';
 import AggregationGridGroupFiltering from './aggregation-grid-group-filtering';
 import AggregationGridSuppressFilteredOnly from './aggregation-grid-suppress-filtered-only';
 
@@ -38,6 +41,30 @@ import AggregationGridSuppressFilteredOnly from './aggregation-grid-suppress-fil
 **⚠️ Disclaimer**
 Currently aggregation functions `first` and `last` are not supported in JPA. Using these functions will result in runtime exception.
 Supported functions are: `avg`, `sum`, `min`, `max`, `count`.
+
+## Custom Aggregation Functions
+
+In addition to the built-in functions, the adapter allows you to register custom aggregation functions or overwrite existing ones. 
+This is particularly useful for leveraging database-specific functions (e.g., statistical functions) that are not part of the standard JPA set.
+
+Custom functions are registered within the `QueryBuilder` using the `.registerCustomAggFunction()` method.
+The following example demonstrates registering functions specifically for the H2 database.
+
+```java
+QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
+    .colDefs(colDefs)
+    // Registering custom aggregation functions
+    .registerCustomAggFunction("bool_and", (cb, expr) -> cb.function("BOOL_AND", Boolean.class, expr))
+    .registerCustomAggFunction("stddev_pop", (cb, expr) -> cb.function("STDDEV_POP", BigDecimal.class, expr))
+    .registerCustomAggFunction("stddev_samp", (cb, expr) -> cb.function("STDDEV_SAMP", BigDecimal.class, expr))
+    .build();
+```
+
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/aggregation-custom-function-grid.tsx)
+
+<GridLoadingMessage>
+    <AggregationCustomFunctionGrid></AggregationCustomFunctionGrid>
+</GridLoadingMessage>
 
 ## Aggregation - Filtering
 Filtering can be configured to impact aggregate values in the grid.

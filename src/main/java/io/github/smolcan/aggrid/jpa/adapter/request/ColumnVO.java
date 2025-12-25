@@ -4,9 +4,9 @@ public class ColumnVO {
     private String id;
     private String displayName;
     private String field;
-    private AggregationFunction aggFunc;
+    private String aggFunc;
 
-    public ColumnVO(String id, String displayName, String field, AggregationFunction aggFunc) {
+    public ColumnVO(String id, String displayName, String field, String aggFunc) {
         this.id = id;
         this.displayName = displayName;
         this.field = field;
@@ -41,11 +41,11 @@ public class ColumnVO {
         this.field = field;
     }
 
-    public AggregationFunction getAggFunc() {
+    public String getAggFunc() {
         return aggFunc;
     }
 
-    public void setAggFunc(AggregationFunction aggFunc) {
+    public void setAggFunc(String aggFunc) {
         this.aggFunc = aggFunc;
     }
 }

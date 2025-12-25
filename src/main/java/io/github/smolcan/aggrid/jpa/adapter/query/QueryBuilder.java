@@ -75,6 +75,7 @@ public class QueryBuilder<E> {
     protected final boolean groupAggFiltering;
     protected final boolean suppressAggFilteredOnly;
     protected final boolean isExternalFilterPresent;
+    protected final Map<String, BiFunction<CriteriaBuilder, Expression<?>, Expression<?>>> aggFuncs;
     protected final TriFunction<CriteriaBuilder, Root<E>, Object, Predicate> doesExternalFilterPass;
     protected final boolean suppressFieldDotNotation;
     protected final boolean getChildCount;
@@ -118,6 +119,7 @@ public class QueryBuilder<E> {
         this.groupAggFiltering = builder.groupAggFiltering;
         this.suppressAggFilteredOnly = builder.groupAggFiltering || builder.suppressAggFilteredOnly;
         this.isExternalFilterPresent = builder.isExternalFilterPresent;
+        this.aggFuncs = builder.aggFuncs;
         this.doesExternalFilterPass = builder.doesExternalFilterPass;
         this.suppressFieldDotNotation = builder.suppressFieldDotNotation;
         this.getChildCount = builder.getChildCount;
@@ -648,37 +650,12 @@ public class QueryBuilder<E> {
             } else {
                 // aggregated columns
                 for (ColumnVO columnVO : request.getValueCols()) {
-                    Expression<?> aggregatedField;
-                    switch (columnVO.getAggFunc()) {
-                        case avg: {
-                            aggregatedField = cb.avg((Expression) getPath(root, columnVO.getField()));
-                            break;
-                        }
-                        case sum: {
-                            aggregatedField = cb.sum((Expression) getPath(root, columnVO.getField()));
-                            break;
-                        }
-                        case min: {
-                            aggregatedField = cb.least((Expression) getPath(root, columnVO.getField()));
-                            break;
-                        }
-                        case max: {
-                            aggregatedField = cb.greatest((Expression) getPath(root, columnVO.getField()));
-                            break;
-                        }
-                        case count: {
-                            aggregatedField = cb.count(getPath(root, columnVO.getField()));
-                            break;
-                        }
-                        default: {
-                            throw new IllegalArgumentException("unsupported aggregation function: " + columnVO.getAggFunc());
-                        }
-                    }
-                    Selection<?> aggregatedFieldSelection = aggregatedField.alias(columnVO.getField());
-                    
+                    Expression<?> path = getPath(root, columnVO.getField());
+                    var aggregateFunction = this.aggFuncs.get(columnVO.getAggFunc());
+                    Expression<?> aggregatedField = aggregateFunction.apply(cb, path);
                     selections.add(
                             SelectionMetadata
-                                    .builder(aggregatedFieldSelection)
+                                    .builder(aggregatedField.alias(columnVO.getField()))
                                     .isAggregationSelection(true)
                                     .build()
                     );
@@ -1423,11 +1400,30 @@ public class QueryBuilder<E> {
                 ));
             }
 
+            // validate that agg functions exist in global aggFuncs map
+            List<ColumnVO> valueColsWithNonExistentAggFuncs = request.getValueCols()
+                    .stream()
+                    .filter(valueCol -> valueCol.getAggFunc() != null)
+                    .filter(valueCol -> !this.aggFuncs.containsKey(valueCol.getAggFunc()))
+                    .collect(Collectors.toList());
+            if (!valueColsWithNonExistentAggFuncs.isEmpty()) {
+                for (ColumnVO col : valueColsWithNonExistentAggFuncs) {
+                    errors.add(new InvalidRequestException.ValidationError(
+                            "valueCols",
+                            String.format("Aggregation function '%s' for column '%s' does not exist.",
+                                    col.getAggFunc(),
+                                    col.getField()),
+                            col
+                    ));
+                }
+            }
+
             // validate agg functions
             List<ColumnVO> valueColsNotAllowedAggregations = request.getValueCols()
                     .stream()
                     .filter(valueCol -> this.colDefs.containsKey(valueCol.getField()))
                     .filter(valueCol -> this.colDefs.get(valueCol.getField()).isEnableValue())
+                    .filter(valueCol -> this.colDefs.get(valueCol.getField()).getAllowedAggFuncs() != null)
                     .filter(valueCol -> !this.colDefs.get(valueCol.getField()).getAllowedAggFuncs().contains(valueCol.getAggFunc()))
                     .collect(Collectors.toList());
             if (!valueColsNotAllowedAggregations.isEmpty()) {
@@ -1730,32 +1726,8 @@ public class QueryBuilder<E> {
                         Objects.requireNonNull(caseExpression);
 
                         // wrap case expression onto aggregation
-                        Expression<?> aggregatedField;
-                        switch (columnVO.getAggFunc()) {
-                            case avg: {
-                                aggregatedField = cb.avg((Expression<? extends Number>) caseExpression);
-                                break;
-                            }
-                            case sum: {
-                                aggregatedField = cb.sum((Expression<? extends Number>) caseExpression);
-                                break;
-                            }
-                            case min: {
-                                aggregatedField = cb.least((Expression) caseExpression);
-                                break;
-                            }
-                            case max: {
-                                aggregatedField = cb.greatest((Expression) caseExpression);
-                                break;
-                            }
-                            case count: {
-                                aggregatedField = cb.count(caseExpression);
-                                break;
-                            }
-                            default: {
-                                throw new IllegalArgumentException("unsupported aggregation function: " + columnVO.getAggFunc());
-                            }
-                        }
+                        var aggregateFunction = this.aggFuncs.get(columnVO.getAggFunc());
+                        Expression<?> aggregatedField = aggregateFunction.apply(cb, caseExpression);
 
                         String columnName = alias + this.serverSidePivotResultFieldSeparator + columnVO.getField();
                         pivotingExpressions.put(columnName, aggregatedField);
@@ -1780,6 +1752,8 @@ public class QueryBuilder<E> {
         private boolean groupAggFiltering;
         private boolean suppressAggFilteredOnly;
         private boolean isExternalFilterPresent;
+        private final Map<String, BiFunction<CriteriaBuilder, Expression<?>, Expression<?>>> aggFuncs = Arrays.stream(AggregationFunction.values())
+                .collect(Collectors.toMap(Enum::name, AggregationFunction::getCreateAggregateFunction));
         private TriFunction<CriteriaBuilder, Root<E>, Object, Predicate> doesExternalFilterPass;
         private boolean suppressFieldDotNotation;
         protected boolean getChildCount;
@@ -1985,6 +1959,11 @@ public class QueryBuilder<E> {
             this.dynamicMasterDetailParams = dynamicMasterDetailParams;
             return this;
         }
+        
+        public Builder<E> registerCustomAggFunction(String name, BiFunction<CriteriaBuilder, Expression<?>, Expression<?>> function) {
+            this.aggFuncs.put(name, function);
+            return this;
+        }
 
         public QueryBuilder<E> build() {
             this.validateBeforeBuild();
@@ -1995,6 +1974,27 @@ public class QueryBuilder<E> {
             // colDefs args validation
             if (this.colDefs == null || this.colDefs.isEmpty()) {
                 throw new IllegalArgumentException("colDefs cannot be null or empty");
+            }
+            // validate col defs aggregation functions
+            List<ColDef> colDefsWithUnrecognizedAggFunctions = this.colDefs.values().stream()
+                    .filter(cd -> cd.getAllowedAggFuncs() != null)
+                    .filter(cd -> cd.getAllowedAggFuncs().stream().anyMatch(f -> !this.aggFuncs.containsKey(f)))
+                    .collect(Collectors.toList());
+            if (!colDefsWithUnrecognizedAggFunctions.isEmpty()) {
+                String details = colDefsWithUnrecognizedAggFunctions.stream()
+                        .map(cd -> {
+                            List<String> unknownFuncs = cd.getAllowedAggFuncs().stream()
+                                    .filter(f -> !this.aggFuncs.containsKey(f))
+                                    .collect(Collectors.toList());
+                            return String.format(
+                                    "Column '%s': %s",
+                                    cd.getField(),
+                                    unknownFuncs
+                            );
+                        })
+                        .collect(Collectors.joining("; "));
+                
+                throw new IllegalStateException("Found unrecognized aggregation functions: " + details);
             }
             
             // tree data arguments validation
