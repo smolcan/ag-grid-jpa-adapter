@@ -1,9 +1,9 @@
 <h1 align="center"><strong>JPA Adapter for AG Grid Server-Side Mode</strong></h1>
 <div align="center">
-  <a href="https://central.sonatype.com/artifact/io.github.smolcan/ag-grid-jpa-adapter"><img src="https://img.shields.io/maven-central/v/io.github.smolcan/ag-grid-jpa-adapter?strategy=highestVersion&style=flat" alt="Version"></a>
-  <a href="https://github.com/smolcan/ag-grid-jpa-adapter?tab=MIT-1-ov-file#readme"><img src="https://img.shields.io/github/license/smolcan/ag-grid-jpa-adapter" alt="License"></a>
-  <a href="https://github.com/smolcan/ag-grid-jpa-adapter/graphs/contributors"><img src="https://img.shields.io/github/contributors/smolcan/ag-grid-jpa-adapter?style=flat" alt="Contributors"></a>
-  <a href="https://github.com/smolcan/ag-grid-jpa-adapter/stargazers"><img src="https://img.shields.io/github/stars/smolcan/ag-grid-jpa-adapter?style=flat" alt="Stars"></a>
+  <a href="https://central.sonatype.com/artifact/io.github.smolcan/ag-grid-jpa-adapter" target="_blank"><img src="https://img.shields.io/maven-central/v/io.github.smolcan/ag-grid-jpa-adapter?strategy=highestVersion&style=flat" alt="Version"></a>
+  <a href="https://github.com/smolcan/ag-grid-jpa-adapter?tab=MIT-1-ov-file#readme" target="_blank"><img src="https://img.shields.io/github/license/smolcan/ag-grid-jpa-adapter" alt="License"></a>
+  <a href="https://github.com/smolcan/ag-grid-jpa-adapter/graphs/contributors" target="_blank"><img src="https://img.shields.io/github/contributors/smolcan/ag-grid-jpa-adapter?style=flat" alt="Contributors"></a>
+  <a href="https://github.com/smolcan/ag-grid-jpa-adapter/stargazers" target="_blank"><img src="https://img.shields.io/github/stars/smolcan/ag-grid-jpa-adapter?style=flat" alt="Stars"></a>
 </div>
 
 <p align="center">
@@ -15,7 +15,7 @@
 
 <p align="center">
 A lightweight Java Maven library for integrating
-<strong><a href="https://ag-grid.com/angular-data-grid/server-side-model/">AG Grid Server-Side Mode</a></strong>
+<strong><a href="https://ag-grid.com/angular-data-grid/server-side-model/" target="_blank">AG Grid Server-Side Mode</a></strong>
 with backend applications using <strong>JPA</strong>.
 </p>
 
