@@ -7,10 +7,10 @@
 </div>
 
 <p align="center">
-   <a href="https://smolcan.github.io/ag-grid-jpa-adapter/"><strong>Explore Docs >></strong></a>
+   <a href="https://smolcan.github.io/ag-grid-jpa-adapter/" target="_blank"><strong>Explore Docs >></strong></a>
 </p>
 <p align="center">
-   <a href="https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend"><strong>Showcase >></strong></a>
+   <a href="https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend" target="_blank"><strong>Showcase >></strong></a>
 </p>
 
 <p align="center">
