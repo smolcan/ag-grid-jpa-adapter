@@ -53,6 +53,12 @@ ColDef colDef = ColDef.builder()
 ## Set Filter Model
 Set filter model is represented by [SetFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/model/simple/SetFilterModel.java) class.
 
+## Supplying Filter Values
+Since the Server-Side Row Model does not have all data loaded in the browser, 
+you must provide the list of unique values for the set filter manually.
+
+The adapter provides the `supplySetFilterValues` method, which automatically 
+fetches distinct sorted values from the database for a given column.
 
 ## Grid using Server Side Set Filter
 - `Product` uses default set filter
