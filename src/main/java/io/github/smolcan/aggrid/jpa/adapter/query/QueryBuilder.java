@@ -10,6 +10,7 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.column.*;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.DateFilterParams;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.NumberFilterParams;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextFilterParams;
+import io.github.smolcan.aggrid.jpa.adapter.filter.provided.AgSetColumnFilter;
 import io.github.smolcan.aggrid.jpa.adapter.query.metadata.*;
 import io.github.smolcan.aggrid.jpa.adapter.request.*;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.AdvancedFilterModel;
@@ -331,6 +332,35 @@ public class QueryBuilder<E> {
         TypedQuery<Tuple> typedQuery = this.entityManager.createQuery(query);
         List<Tuple> data = typedQuery.getResultList();
         return this.tupleToMap(data);
+    }
+
+    /**
+     * Supplies a list of unique values for an AG Grid Set Filter for the specified field.
+     * Fetches distinct values from the database and returns them sorted in ascending order.
+     *
+     * @param field the name of the field to retrieve unique values for.
+     * @return a sorted list of distinct values present in the database.
+     */
+    public List<Object> supplySetFilterValues(String field) {
+        ColDef colDef = this.colDefs.get(field);
+        if (colDef == null) {
+            throw new IllegalArgumentException(String.format("Column definition for field '%s' not found.", field));
+        }
+        if (colDef.getFilter() == null) {
+            throw new IllegalStateException(String.format("Filter not enabled for field '%s'.", field));
+        }
+
+        CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
+        CriteriaQuery<Object> query = cb.createQuery(Object.class);
+        Root<E> root = query.from(this.entityClass);
+        Path<?> path = getPath(root, colDef.getField());
+        
+        // select
+        query.select(path).distinct(true);
+        // order by asc
+        query.orderBy(cb.asc(path));
+        
+        return this.entityManager.createQuery(query).getResultList();
     }
 
     /**

@@ -52,7 +52,29 @@ const MultiFilterGrid = () => {
                     {
                         filter: 'agSetColumnFilter',
                         filterParams: {
-                            values: ['Product 1', 'Product 2', 'Product 3', 'Product 4', 'Product 5', 'Product 6', 'Product 7', 'Product 8', 'Product 9', 'Product 10'],
+                            values: params => {
+                                const field = params.colDef.field;
+                                fetch(`${API_URL}/docs/filtering/column-filter/multi-filter/supplySetFilterValues/${field}`, {
+                                    method: 'GET',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                })
+                                    .then(async response => {
+                                        if (!response.ok) {
+                                            const errorText = await response.text(); // Read plain text from Spring Boot
+                                            throw new Error(errorText || `HTTP error! status: ${response.status}`);
+                                        }
+                                        return response.json();
+                                    })
+                                    .then(data => {
+                                        params.success(data)
+                                    })
+                                    .catch(error => {
+                                        console.error('Error fetching data:', error);
+                                        setErrorMessage(error.message || 'Failed to fetch data');
+                                    });
+                            }
                         } as SetFilterParams,
                     },
                 ],
@@ -72,21 +94,30 @@ const MultiFilterGrid = () => {
                     {
                         filter: 'agSetColumnFilter',
                         filterParams: {
-                            values: function() {
-                                const count = 50;
-                                const daysBack = 365;
-
-                                const dates = new Set();
-                                while (dates.size < count) {
-                                    const offset = Math.floor(Math.random() * daysBack);
-                                    const date = new Date();
-                                    date.setDate(date.getDate() - offset);
-                                    const formatted = date.toISOString().split('T')[0]; // Format: YYYY-MM-DD
-                                    dates.add(formatted);
-                                }
-                                return Array.from(dates);
-                            }(),
-                        }
+                            values: params => {
+                                const field = params.colDef.field;
+                                fetch(`${API_URL}/docs/filtering/column-filter/multi-filter/supplySetFilterValues/${field}`, {
+                                    method: 'GET',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                })
+                                    .then(async response => {
+                                        if (!response.ok) {
+                                            const errorText = await response.text(); // Read plain text from Spring Boot
+                                            throw new Error(errorText || `HTTP error! status: ${response.status}`);
+                                        }
+                                        return response.json();
+                                    })
+                                    .then(data => {
+                                        params.success(data)
+                                    })
+                                    .catch(error => {
+                                        console.error('Error fetching data:', error);
+                                        setErrorMessage(error.message || 'Failed to fetch data');
+                                    });
+                            }
+                        } as SetFilterParams,
                     },
                 ]
             } as MultiFilterParams,

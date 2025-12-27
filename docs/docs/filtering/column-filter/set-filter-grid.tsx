@@ -45,7 +45,29 @@ const SetFilterGrid = () => {
             cellDataType: 'text',
             filter: 'agSetColumnFilter',
             filterParams: {
-                values: ['Product 1', 'Product 2', 'Product 3', 'Product 4', 'Product 5', 'Product 6', 'Product 7', 'Product 8', 'Product 9', 'Product 10'],
+                values: params => {
+                    const field = params.colDef.field;
+                    fetch(`${API_URL}/docs/filtering/column-filter/set-filter/supplySetFilterValues/${field}`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                    })
+                    .then(async response => {
+                        if (!response.ok) {
+                            const errorText = await response.text(); // Read plain text from Spring Boot
+                            throw new Error(errorText || `HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        params.success(data)
+                    })
+                    .catch(error => {
+                        console.error('Error fetching data:', error);
+                        setErrorMessage(error.message || 'Failed to fetch data');
+                    });
+                }
             } as SetFilterParams,
         },
         {
@@ -54,7 +76,29 @@ const SetFilterGrid = () => {
             cellDataType: 'text',
             filter: 'agSetColumnFilter',
             filterParams: {
-                values: ['Portfolio 1', 'portfolio 2', 'Portfolio 3', 'PORTFOLIO 4', 'Portfolio 5', 'Portfolio 6', 'Portfolio 7', 'Portfolio 8', 'Portfolio 9', 'Portfolio 10'],
+                values: params => {
+                    const field = params.colDef.field;
+                    fetch(`${API_URL}/docs/filtering/column-filter/set-filter/supplySetFilterValues/${field}`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                    })
+                    .then(async response => {
+                        if (!response.ok) {
+                            const errorText = await response.text(); // Read plain text from Spring Boot
+                            throw new Error(errorText || `HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        params.success(data)
+                    })
+                    .catch(error => {
+                        console.error('Error fetching data:', error);
+                        setErrorMessage(error.message || 'Failed to fetch data');
+                    });
+                }
             } as SetFilterParams,
         },
         {
@@ -63,7 +107,29 @@ const SetFilterGrid = () => {
             cellDataType: 'text',
             filter: 'agSetColumnFilter',
             filterParams: {
-                values: ['Bóok 1', 'Bóók 2', 'Boók 3'],
+                values: params => {
+                    const field = params.colDef.field;
+                    fetch(`${API_URL}/docs/filtering/column-filter/set-filter/supplySetFilterValues/${field}`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                    })
+                    .then(async response => {
+                        if (!response.ok) {
+                            const errorText = await response.text(); // Read plain text from Spring Boot
+                            throw new Error(errorText || `HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        params.success([...data].map((v: string) => v.replaceAll('o', 'ó')));
+                    })
+                    .catch(error => {
+                        console.error('Error fetching data:', error);
+                        setErrorMessage(error.message || 'Failed to fetch data');
+                    });
+                }
             } as SetFilterParams,
         },
         {
@@ -72,7 +138,29 @@ const SetFilterGrid = () => {
             cellDataType: 'number',
             filter: 'agSetColumnFilter',
             filterParams: {
-                values: [10, 20, 30, 40, 50, 60, 70],
+                values: params => {
+                    const field = params.colDef.field;
+                    fetch(`${API_URL}/docs/filtering/column-filter/set-filter/supplySetFilterValues/${field}`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                    })
+                    .then(async response => {
+                        if (!response.ok) {
+                            const errorText = await response.text(); // Read plain text from Spring Boot
+                            throw new Error(errorText || `HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        params.success(data)
+                    })
+                    .catch(error => {
+                        console.error('Error fetching data:', error);
+                        setErrorMessage(error.message || 'Failed to fetch data');
+                    });
+                }
             }
         },
         {
@@ -81,20 +169,29 @@ const SetFilterGrid = () => {
             cellDataType: 'dateString',
             filter: 'agSetColumnFilter',
             filterParams: {
-                values: function() {
-                    const count = 50;
-                    const daysBack = 365;
-                    
-                    const dates = new Set();
-                    while (dates.size < count) {
-                        const offset = Math.floor(Math.random() * daysBack);
-                        const date = new Date();
-                        date.setDate(date.getDate() - offset);
-                        const formatted = date.toISOString().split('T')[0]; // Format: YYYY-MM-DD
-                        dates.add(formatted);
-                    }
-                    return Array.from(dates);
-                }(),
+                values: params => {
+                    const field = params.colDef.field;
+                    fetch(`${API_URL}/docs/filtering/column-filter/set-filter/supplySetFilterValues/${field}`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                    })
+                    .then(async response => {
+                        if (!response.ok) {
+                            const errorText = await response.text(); // Read plain text from Spring Boot
+                            throw new Error(errorText || `HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        params.success(data)
+                    })
+                    .catch(error => {
+                        console.error('Error fetching data:', error);
+                        setErrorMessage(error.message || 'Failed to fetch data');
+                    });
+                },
             }
         },
         {
@@ -103,7 +200,29 @@ const SetFilterGrid = () => {
             cellDataType: 'boolean',
             filter: 'agSetColumnFilter',
             filterParams: {
-                values: [true, false, undefined],
+                values: params => {
+                    const field = params.colDef.field;
+                    fetch(`${API_URL}/docs/filtering/column-filter/set-filter/supplySetFilterValues/${field}`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                    })
+                    .then(async response => {
+                        if (!response.ok) {
+                            const errorText = await response.text(); // Read plain text from Spring Boot
+                            throw new Error(errorText || `HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        params.success(data)
+                    })
+                    .catch(error => {
+                        console.error('Error fetching data:', error);
+                        setErrorMessage(error.message || 'Failed to fetch data');
+                    });
+                },
             }
         },
 
