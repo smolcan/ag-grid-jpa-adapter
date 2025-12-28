@@ -7,14 +7,16 @@ sidebar_position: 9
 
 To enable Tree Data, set `.treeData(true)` and configure the field mappings needed to traverse the hierarchy.
 
-| Method | Type | Required | Description                                                                                                                                                                                                                                  |
-| :--- | :--- | :--- |:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `treeData` | `boolean` | **Yes** | Enables Tree Data mode.                                                                                                                                                                                                                      |
-| `primaryFieldName` | `String` | **Yes** | Name of the entity's unique ID field. Matches field used in [getServerSideGroupKey](https://www.ag-grid.com/react-data-grid/server-side-model-tree-data/#reference-serverSideRowModel-getServerSideGroupKey) callback.                       |
-| `isServerSideGroupFieldName` | `String` | **Yes** | Name of the virtual boolean field indicating if a row has children. Matches field used in [isServerSideGroup](https://www.ag-grid.com/react-data-grid/server-side-model-tree-data/#reference-serverSideRowModel-isServerSideGroup) callback. |
+| Method | Type | Required      | Description                                                                                                                                                                                                                                  |
+| :--- | :--- |:--------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `treeData` | `boolean` | **Yes**       | Enables Tree Data mode.                                                                                                                                                                                                                      |
+| `primaryFieldName` | `String` | **Yes**       | Name of the entity's unique ID field. Matches field used in [getServerSideGroupKey](https://www.ag-grid.com/react-data-grid/server-side-model-tree-data/#reference-serverSideRowModel-getServerSideGroupKey) callback.                       |
+| `isServerSideGroupFieldName` | `String` | **Yes**       | Name of the virtual boolean field indicating if a row has children. Matches field used in [isServerSideGroup](https://www.ag-grid.com/react-data-grid/server-side-model-tree-data/#reference-serverSideRowModel-isServerSideGroup) callback. |
 | `treeDataParentReferenceField` | `String` | *Conditional* | Name of the parent entity field. **Required** if not using `treeDataParentIdField`.                                                                                                                                                          |
 | `treeDataParentIdField` | `String` | *Conditional* | Name of the raw parent ID column. **Required** if not using `treeDataParentReferenceField`.                                                                                                                                                  |
-| `treeDataChildrenField` | `String` | No | Name of the child collection field.                                                                                                                                                                                                          |
+| `treeDataChildrenField` | `String` | No            | Name of the child collection field.                                                                                                                                                                                                          |
+| `treeDataDataPathFieldName` | `String` | No            | The name of the column storing the path string. Use if you want to utilize standard tree filtering.                                                                                                                                          |
+| `treeDataDataPathSeparator` | `String` | No            | The string separator used in your path. For example, in path `1/2/3`, this would be `/`.                                                                                                                                                     |
 
 Example:
 
@@ -47,6 +49,7 @@ this.queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
 
 import GridLoadingMessage from './grid-loading-message';
 import TreeDataGrid from './tree-data-grid';
+import TreeDataFilteringGrid from './tree-data-filtering-grid';
 
 <GridLoadingMessage>
     <TreeDataGrid></TreeDataGrid>
@@ -54,4 +57,38 @@ import TreeDataGrid from './tree-data-grid';
 
 ## Filtering Tree Data
 
-WIP, WILL BE IMPLEMENTED IN THE FUTURE
+When filtering Tree Data in Server-Side Row Model, the adapter follows the standard AG Grid filtering logic.
+
+A group will be included if:
+1. it has any children that pass the filter, or
+2. it has a parent that passes the filter, or
+3. its own data passes the filter
+
+To make this work, you must have data path as column in your table and provide its name and separator.
+
+:::info
+Note that this will work with all filter types: Column filters, Advanced filters, External filters and Quick filters.
+:::
+
+```java
+this.queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
+    .colDefs(
+        // colDefs
+    )
+    
+    .treeData(true)
+    // other params
+    
+    // field name is dataPath and separator is '/'
+    .treeDataDataPathFieldName("dataPath")
+    .treeDataDataPathSeparator("/")
+    
+    .build();
+```
+
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/tree-data-filtering-grid.tsx)
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/TreeDataService.java)
+
+<GridLoadingMessage>
+    <TreeDataFilteringGrid></TreeDataFilteringGrid>
+</GridLoadingMessage>

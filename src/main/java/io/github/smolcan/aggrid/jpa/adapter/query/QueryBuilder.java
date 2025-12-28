@@ -10,7 +10,6 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.column.*;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.DateFilterParams;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.NumberFilterParams;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextFilterParams;
-import io.github.smolcan.aggrid.jpa.adapter.filter.provided.AgSetColumnFilter;
 import io.github.smolcan.aggrid.jpa.adapter.query.metadata.*;
 import io.github.smolcan.aggrid.jpa.adapter.request.*;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.AdvancedFilterModel;
@@ -95,6 +94,8 @@ public class QueryBuilder<E> {
     protected final String treeDataParentReferenceField;
     protected final String treeDataParentIdField;
     protected final String treeDataChildrenField;
+    protected final String treeDataDataPathFieldName;
+    protected final String treeDataDataPathSeparator;
 
     protected final boolean masterDetail;
     protected final boolean masterDetailLazy;
@@ -137,6 +138,8 @@ public class QueryBuilder<E> {
         this.treeDataParentReferenceField = builder.treeDataParentReferenceField;
         this.treeDataParentIdField = builder.treeDataParentIdField;
         this.treeDataChildrenField = builder.treeDataChildrenField;
+        this.treeDataDataPathFieldName = builder.treeDataDataPathFieldName;
+        this.treeDataDataPathSeparator = builder.treeDataDataPathSeparator;
         this.masterDetail = builder.masterDetail;
         this.masterDetailLazy = builder.masterDetailLazy;
         this.masterDetailRowDataFieldName = builder.masterDetailRowDataFieldName;
@@ -177,7 +180,7 @@ public class QueryBuilder<E> {
         queryContext.setPivotingContext(this.createPivotingContext(cb, root, request));
         
         this.select(cb, root, request, queryContext);
-        this.where(cb, root, request, queryContext);
+        this.where(cb, query, root, request, queryContext);
         this.groupBy(cb, root, request, queryContext);
         this.having(cb, request, queryContext);
         this.orderBy(cb, request, queryContext);
@@ -253,7 +256,7 @@ public class QueryBuilder<E> {
             
             queryContext.setPivotingContext(this.createPivotingContext(cb, subqueryRoot, request));
             this.select(cb, subqueryRoot, request, queryContext);
-            this.where(cb, subqueryRoot, request, queryContext);
+            this.where(cb, query, subqueryRoot, request, queryContext);
             this.groupBy(cb, subqueryRoot, request, queryContext);
             this.having(cb, request, queryContext);
             
@@ -282,7 +285,7 @@ public class QueryBuilder<E> {
         } else {
             // no groups, count rows
             this.select(cb, root, request, queryContext);
-            this.where(cb, root, request, queryContext);
+            this.where(cb, query, root, request, queryContext);
             
             query.select(cb.count(root));
             if (!queryContext.getWherePredicates().isEmpty()) {
@@ -709,11 +712,12 @@ public class QueryBuilder<E> {
      * Additional filter predicates are generated from the filter model and added as well.
      *
      * @param cb           the {@link CriteriaBuilder} used to create predicates
+     * @param query         query
      * @param root         the root entity in the criteria query
      * @param request      the AG Grid server-side row request containing group keys and filters
      * @param queryContext the query context to populate with predicate metadata
      */
-    protected void where(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
+    protected void where(CriteriaBuilder cb, CriteriaQuery<?> query, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
         List<WherePredicateMetadata> wherePredicateMetadata = new ArrayList<>();
 
         // must add where statement for every group column that also has a key (was expanded)
@@ -734,50 +738,6 @@ public class QueryBuilder<E> {
                     .groupCol(groupCol)
                     .build();
             wherePredicateMetadata.add(groupPredicateInfo);
-        }
-        
-        
-        if (this.treeData) {
-            if (request.getGroupKeys().isEmpty()) {
-                // only parent records
-                Predicate treeRootPredicate;
-                if (this.treeDataParentReferenceField != null) {
-                    treeRootPredicate = cb.isNull(root.get(this.treeDataParentReferenceField));
-                } else {
-                    treeRootPredicate = cb.isNull(root.get(this.treeDataParentIdField));
-                }
-                
-                wherePredicateMetadata.add(
-                        WherePredicateMetadata
-                                .builder(treeRootPredicate)
-                                .isTreeDataPredicate(true)
-                                .build()
-                );
-            } else {
-                // filter by parent record
-                String parentKey = request.getGroupKeys().get(request.getGroupKeys().size() - 1);
-                
-                Predicate treeParentPredicate;
-                if (this.treeDataParentReferenceField != null) {
-                    Path<?> parentIdPath = root.get(this.treeDataParentReferenceField).get(this.primaryFieldName);
-                    // try to synchronize col and key to same data type to prevent errors
-                    // for example, group key is date as string, but field is date, need to parse to date and then compare
-                    TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(parentIdPath, parentKey);
-                    treeParentPredicate = cb.equal(synchronizedValueType.getSynchronizedPath(), synchronizedValueType.getSynchronizedValue());
-                } else {
-                    // try to synchronize col and key to same data type to prevent errors
-                    // for example, group key is date as string, but field is date, need to parse to date and then compare
-                    TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(root.get(this.treeDataParentIdField), parentKey);
-                    treeParentPredicate =  cb.equal(synchronizedValueType.getSynchronizedPath(), synchronizedValueType.getSynchronizedValue());
-                }
-
-                wherePredicateMetadata.add(
-                        WherePredicateMetadata
-                                .builder(treeParentPredicate)
-                                .isTreeDataPredicate(true)
-                                .build()
-                );
-            }
         }
         
         // external filter
@@ -809,8 +769,204 @@ public class QueryBuilder<E> {
             WherePredicateMetadata filterPredicate = this.filterToWherePredicate(cb, root, request, queryContext);
             wherePredicateMetadata.add(filterPredicate);
         }
+
+        // create predicate for tree-data parent
+        if (this.treeData) {
+            Predicate treePredicate;
+            if (request.getGroupKeys().isEmpty()) {
+                // only parent records
+                Predicate treeRootPredicate;
+                if (this.treeDataParentReferenceField != null) {
+                    treeRootPredicate = cb.isNull(root.get(this.treeDataParentReferenceField));
+                } else {
+                    treeRootPredicate = cb.isNull(root.get(this.treeDataParentIdField));
+                }
+                
+                treePredicate = treeRootPredicate;
+            } else {
+                // filter by parent record
+                String parentKey = request.getGroupKeys().get(request.getGroupKeys().size() - 1);
+
+                Predicate treeParentPredicate;
+                if (this.treeDataParentReferenceField != null) {
+                    Path<?> parentIdPath = root.get(this.treeDataParentReferenceField).get(this.primaryFieldName);
+                    // try to synchronize col and key to same data type to prevent errors
+                    // for example, group key is date as string, but field is date, need to parse to date and then compare
+                    TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(parentIdPath, parentKey);
+                    treeParentPredicate = cb.equal(synchronizedValueType.getSynchronizedPath(), synchronizedValueType.getSynchronizedValue());
+                } else {
+                    // try to synchronize col and key to same data type to prevent errors
+                    // for example, group key is date as string, but field is date, need to parse to date and then compare
+                    TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(root.get(this.treeDataParentIdField), parentKey);
+                    treeParentPredicate =  cb.equal(synchronizedValueType.getSynchronizedPath(), synchronizedValueType.getSynchronizedValue());
+                }
+
+                treePredicate = treeParentPredicate;
+            }
+            
+            if (this.treeDataDataPathFieldName != null) {
+                // A group will be included if:
+                // 1. it has a parent that passes the filter, or
+                // 2. its own data passes the filter, or
+                // 3. it has any children that pass the filter
+                
+                // 1. first check if parent passes the filter
+                Predicate parentPredicate = this.createTreeDataParentMatchPredicate(cb, query, request, queryContext);
+                // 2. check if its own data passes the filter (recycle the old predicates)
+                Predicate ownDataPredicate = cb.and(
+                        wherePredicateMetadata.stream()
+                                .map(WherePredicateMetadata::getPredicate)
+                                .toArray(Predicate[]::new)
+                );
+                // 3. check if any children pass the filter
+                Predicate childrenPredicate = this.createTreeDataChildrenMatchPredicate(cb, query, root, request, queryContext);
+
+                Predicate treeDataFilteringPredicate = cb.or(parentPredicate, ownDataPredicate, childrenPredicate);
+                // clear the old ones
+                wherePredicateMetadata.clear();
+                // add current level to predicate
+                wherePredicateMetadata.add(
+                        WherePredicateMetadata
+                                .builder(treePredicate)
+                                .isTreeDataPredicate(true)
+                                .build()
+                );
+                // add tree filtering to predicates
+                wherePredicateMetadata.add(
+                        WherePredicateMetadata
+                                .builder(treeDataFilteringPredicate)
+                                .isTreeDataPredicate(true)
+                                .build()
+                );
+            } else {
+                // data path not specified, basic filtering
+                wherePredicateMetadata.add(
+                        WherePredicateMetadata
+                                .builder(treePredicate)
+                                .isTreeDataPredicate(true)
+                                .build()
+                );
+            }
+        }
         
         queryContext.setWherePredicates(wherePredicateMetadata);
+    }
+
+    /**
+     * Creates predicate that checks if any parent in the current path matches the filter criteria.
+     *
+     * @param cb The builder used to create the database conditions.
+     * @param query The main query object used to create a subquery.
+     * @param request The grid request containing the active filters and group keys.
+     * @param queryContext Helper for tracking query state and parameters.
+     * @return A condition (Predicate) that is true if at least one parent matches the filters.
+     */
+    protected Predicate createTreeDataParentMatchPredicate(CriteriaBuilder cb, CriteriaQuery<?> query, ServerSideGetRowsRequest request, QueryContext queryContext) {
+        if (request.getGroupKeys().isEmpty()) {
+            // no parents, no parents match
+            return cb.disjunction();
+        }
+        
+        Subquery<Integer> parentMatchSubquery = query.subquery(Integer.class);
+        Root<E> parentRoot = parentMatchSubquery.from(this.entityClass);
+        
+        // generate parent id predicate: id = 1 or id = 2....
+        Predicate parentPrimaryKeyPredicate = cb.or(
+                request.getGroupKeys().stream()
+                        .map(k -> {
+                            TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(parentRoot.get(this.primaryFieldName), k);
+                            return cb.equal(synchronizedValueType.getSynchronizedPath(), synchronizedValueType.getSynchronizedValue());
+                        })
+                        .toArray(Predicate[]::new)
+        );
+        
+        // generate filter predicates
+        List<Predicate> predicates = new ArrayList<>(3);
+        // external filter
+        if (this.isExternalFilterPresent) {
+            Predicate externalFilterPredicate = this.doesExternalFilterPass.apply(cb, parentRoot, request.getExternalFilter());
+            if (externalFilterPredicate != null) {
+                predicates.add(externalFilterPredicate);
+            }
+        }
+        // quick filter
+        if (this.isQuickFilterPresent) {
+            Predicate quickFilterPredicate = this.createQuickFilterPredicate(cb, parentRoot, request.getQuickFilter());
+            if (quickFilterPredicate != null) {
+                predicates.add(quickFilterPredicate);
+            }
+        }
+        // filter where
+        if (request.getFilterModel() != null && !request.getFilterModel().isEmpty()) {
+            Predicate filterPredicate = this.filterToWherePredicate(cb, parentRoot, request, queryContext).getPredicate();
+            if (filterPredicate != null) {
+                predicates.add(filterPredicate);
+            }
+        }
+        
+        parentMatchSubquery
+                .select(cb.literal(1))
+                .where(
+                    parentPrimaryKeyPredicate, 
+                    cb.and(predicates.toArray(Predicate[]::new))
+                );
+        
+        return cb.exists(parentMatchSubquery);
+    }
+
+
+    /**
+     * Creates predicate that checks if any child further down the tree matches the filter criteria.
+     *
+     * @param cb The builder used to create the database conditions.
+     * @param query The main query object used to create a subquery.
+     * @param root The current row being checked.
+     * @param request The grid request containing the active filters.
+     * @param queryContext Helper for tracking query state and parameters.
+     * @return A condition (Predicate) that is true if at least one descendant matches the filters.
+     */
+    protected Predicate createTreeDataChildrenMatchPredicate(CriteriaBuilder cb, CriteriaQuery<?> query, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
+        Subquery<Integer> childrenMatchSubquery = query.subquery(Integer.class);
+        Root<E> childrenRoot = childrenMatchSubquery.from(this.entityClass);
+
+        // generate children predicate: path starts with parent path
+        Predicate childrenPathPredicate = cb.like(
+                childrenRoot.get(this.treeDataDataPathFieldName),
+                cb.concat(root.get(this.treeDataDataPathFieldName), this.treeDataDataPathSeparator + "%")
+        );
+        
+        // generate filter predicates
+        List<Predicate> predicates = new ArrayList<>(3);
+        // external filter
+        if (this.isExternalFilterPresent) {
+            Predicate externalFilterPredicate = this.doesExternalFilterPass.apply(cb, childrenRoot, request.getExternalFilter());
+            if (externalFilterPredicate != null) {
+                predicates.add(externalFilterPredicate);
+            }
+        }
+        // quick filter
+        if (this.isQuickFilterPresent) {
+            Predicate quickFilterPredicate = this.createQuickFilterPredicate(cb, childrenRoot, request.getQuickFilter());
+            if (quickFilterPredicate != null) {
+                predicates.add(quickFilterPredicate);
+            }
+        }
+        // filter where
+        if (request.getFilterModel() != null && !request.getFilterModel().isEmpty()) {
+            Predicate filterPredicate = this.filterToWherePredicate(cb, childrenRoot, request, queryContext).getPredicate();
+            if (filterPredicate != null) {
+                predicates.add(filterPredicate);
+            }
+        }
+
+        childrenMatchSubquery
+                .select(cb.literal(1))
+                .where(
+                        childrenPathPredicate,
+                        cb.and(predicates.toArray(Predicate[]::new))
+                );
+
+        return cb.exists(childrenMatchSubquery);
     }
 
 
@@ -1802,6 +1958,8 @@ public class QueryBuilder<E> {
         private String treeDataParentReferenceField;
         private String treeDataParentIdField;
         private String treeDataChildrenField;
+        private String treeDataDataPathFieldName;
+        private String treeDataDataPathSeparator;
         
         private boolean masterDetail;
         private boolean masterDetailLazy = true;
@@ -1964,6 +2122,16 @@ public class QueryBuilder<E> {
             this.treeDataChildrenField = treeDataChildrenField;
             return this;
         }
+
+        public Builder<E> treeDataDataPathFieldName(String treeDataDataPathFieldName) {
+            this.treeDataDataPathFieldName = treeDataDataPathFieldName;
+            return this;
+        }
+
+        public Builder<E> treeDataDataPathSeparator(String treeDataDataPathSeparator) {
+            this.treeDataDataPathSeparator = treeDataDataPathSeparator;
+            return this;
+        }
         
         public Builder<E> masterDetail(boolean masterDetail) {
             this.masterDetail = masterDetail;
@@ -2090,6 +2258,10 @@ public class QueryBuilder<E> {
 
             if (this.treeDataParentReferenceField == null && this.treeDataParentIdField == null) {
                 treeDataErrorMessages.add("When treeData is set to true, either treeDataParentReferenceField or treeDataParentIdField must be provided");
+            }
+            
+            if ((this.treeDataDataPathFieldName == null) != (this.treeDataDataPathSeparator == null)) {
+                treeDataErrorMessages.add("When treeData is set to true and you want to use tree data filtering, both treeDataDataPathFieldName and treeDataDataPathSeparator must be provided");
             }
 
             if (!treeDataErrorMessages.isEmpty()) {
