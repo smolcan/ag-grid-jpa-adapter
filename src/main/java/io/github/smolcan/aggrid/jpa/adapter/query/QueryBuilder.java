@@ -261,7 +261,7 @@ public class QueryBuilder<E> {
             this.having(cb, request, queryContext);
             
             // select the group column in subquery
-            subquery.select((Expression) getPath(subqueryRoot, countingGroupCol));
+            subquery.select((Expression) getPath(subqueryRoot, countingGroupCol)).distinct(true);
             // where
             if (!queryContext.getWherePredicates().isEmpty()) {
                 Predicate[] predicates = queryContext.getWherePredicates().stream().map(WherePredicateMetadata::getPredicate).toArray(Predicate[]::new);
