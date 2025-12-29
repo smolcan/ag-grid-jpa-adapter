@@ -6,20 +6,12 @@ sidebar_position: 10
 
 The adapter supports AG Grid's [Master / Detail](https://www.ag-grid.com/react-data-grid/master-detail/) view, allowing you to nest grids inside rows.
 
-- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/master-detail-grid.tsx)
-- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MasterDetailService.java)
-
 import GridLoadingMessage from './grid-loading-message';
 import MasterDetailGrid from './master-detail-grid';
 import MasterDetailEagerGrid from './master-detail-eager-grid'
 import MasterDetailDynamicRowsGrid from './master-detail-dynamic-rows-grid'
 import MasterDetailTreeDataGrid from './master-detail-tree-data-grid'
 import MasterDetailCustomDetailConditionGrid from './master-detail-custom-detail-condition-grid'
-
-
-<GridLoadingMessage serviceUrls={['/docs/master-detail/getRows', '/docs/master-detail/getDetailRowData']}>
-    <MasterDetailGrid></MasterDetailGrid>
-</GridLoadingMessage>
 
 ## Enabling Master Detail
 
