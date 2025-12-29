@@ -1,5 +1,5 @@
 import React, { useState, useEffect, ReactNode } from 'react';
-import { format } from 'sql-formatter';
+import { formatDialect, sql } from 'sql-formatter';
 import { useColorMode } from '@docusaurus/theme-common';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
@@ -89,10 +89,12 @@ const GridLoadingMessage: React.FC<GridWrapperProps> = ({ children, serviceUrls 
         };
     }, [serviceUrls]); // Re-bind if the list of URLs changes
 
-    const formatSql = (sql: string) => {
+    const formatSql = (sqlString: string) => {
         try {
-            return format(sql, { language: 'postgresql' });
-        } catch (e) { return sql; }
+            return formatDialect(sqlString, {dialect: sql});
+        } catch (e) {
+            return sqlString; 
+        }
     };
 
     return (
