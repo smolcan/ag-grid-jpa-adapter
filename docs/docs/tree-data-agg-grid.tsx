@@ -121,6 +121,7 @@ const TreeDataAggGrid = () => {
                     columnDefs={columnDefs}
                     defaultColDef={defaultColDef}
                     serverSideDatasource={serverSideDatasource}
+                    cacheBlockSize={30}
                     treeData={true}
                     isServerSideGroup={(dataItem) => {
                         return dataItem['hasChildren'];

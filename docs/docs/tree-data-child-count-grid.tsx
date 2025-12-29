@@ -136,6 +136,7 @@ const TreeDataChildCountGrid = () => {
                     getServerSideGroupKey={(dataItem) => {
                         return dataItem['tradeId'];
                     }}
+                    cacheBlockSize={30}
                     onGridReady={onGridReady}
                     rowModelType="serverSide"
                     theme={theme}
