@@ -179,7 +179,7 @@ public class QueryBuilder<E> {
         // if pivoting, load all information needed for pivoting into pivoting context
         queryContext.setPivotingContext(this.createPivotingContext(cb, root, request));
         
-        this.select(cb, root, request, queryContext);
+        this.select(cb, query, root, request, queryContext);
         this.where(cb, query, root, request, queryContext);
         this.groupBy(cb, root, request, queryContext);
         this.having(cb, request, queryContext);
@@ -255,7 +255,7 @@ public class QueryBuilder<E> {
             Root<E> subqueryRoot = subquery.from(this.entityClass);
             
             queryContext.setPivotingContext(this.createPivotingContext(cb, subqueryRoot, request));
-            this.select(cb, subqueryRoot, request, queryContext);
+            this.select(cb, subquery, subqueryRoot, request, queryContext);
             this.where(cb, query, subqueryRoot, request, queryContext);
             this.groupBy(cb, subqueryRoot, request, queryContext);
             this.having(cb, request, queryContext);
@@ -284,7 +284,7 @@ public class QueryBuilder<E> {
             return this.entityManager.createQuery(query).getSingleResult();
         } else {
             // no groups, count rows
-            this.select(cb, root, request, queryContext);
+            this.select(cb, query, root, request, queryContext);
             this.where(cb, query, root, request, queryContext);
             
             query.select(cb.count(root));
@@ -593,7 +593,7 @@ public class QueryBuilder<E> {
      * @param request      the AG Grid server-side row request containing grouping and aggregation info
      * @param queryContext the query context to populate with selection metadata
      */
-    protected void select(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
+    protected void select(CriteriaBuilder cb, AbstractQuery<?> query, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
         // select
         List<SelectionMetadata> selections;
         
@@ -614,7 +614,7 @@ public class QueryBuilder<E> {
             
             // if treeData, add expression for isServerSideGroup field
             if (this.treeData) {
-                Selection<Boolean> isServerSideGroupSelection;
+                Expression<Boolean> isServerSideGroupSelection;
                 if (this.treeDataChildrenField != null) {
                     isServerSideGroupSelection = cb.isNotEmpty(root.get(this.treeDataChildrenField));
                 } else {
@@ -643,6 +643,35 @@ public class QueryBuilder<E> {
                                 .isServerSideGroupSelection(true)
                                 .build()
                 );
+                
+                
+                if (this.treeDataDataPathFieldName != null) {
+                    // aggregation columns
+                    if (!request.getValueCols().isEmpty()) {
+                        // remove non-aggregation versions
+                        selections.removeIf(s -> request.getValueCols().stream().anyMatch(vc -> vc.getField().equals(s.getSelection().getAlias())));
+                        // add aggregation expressions
+                        for (ColumnVO aggColumn : request.getValueCols()) {
+                            Expression<?> aggExpression = this.createTreeDataAggregationExpression(cb, query, root, isServerSideGroupSelection, aggColumn, request, queryContext);
+                            selections.add(
+                                    SelectionMetadata
+                                            .builder(aggExpression.alias(aggColumn.getField()))
+                                            .isAggregationSelection(true)
+                                            .build()
+                            );
+                        }
+                    }
+                    // add child counts
+                    if (this.getChildCount) {
+                        Expression<?> countExpression = this.createTreeDataGetChildCountExpression(cb, query, root, isServerSideGroupSelection, request, queryContext);
+                        selections.add(
+                                SelectionMetadata
+                                        .builder(countExpression.alias(this.getChildCountFieldName))
+                                        .isChildCountSelection(true)
+                                        .build()
+                        );
+                    }
+                }
             }
         } else {
             selections = new ArrayList<>();
@@ -850,6 +879,124 @@ public class QueryBuilder<E> {
         }
         
         queryContext.setWherePredicates(wherePredicateMetadata);
+    }
+
+
+    /**
+     * Creates an expression that counts how many children match the node has (respecting filters).
+     * Used to show the total number of items hidden inside a non-leaf node.
+     * When node is leaf node, the expression returns null.
+     *
+     * @param cb The criteria builder.
+     * @param query The main query.
+     * @param root The current row (parent) being processed.
+     * @param hasChildrenPredicate A condition checking if the current row is a leaf node or not.
+     * @param request request.
+     * @param queryContext query context.
+     * @return expression returning the child count for non-leaf nodes, or null otherwise.
+     */
+    protected Expression<?> createTreeDataGetChildCountExpression(
+            CriteriaBuilder cb, AbstractQuery<?> query, Root<E> root, Expression<Boolean> hasChildrenPredicate, 
+            ServerSideGetRowsRequest request, QueryContext queryContext) {
+        
+        Subquery<Long> countChildrenSubquery = query.subquery(Long.class);
+        Root<E> countChildrenRoot = countChildrenSubquery.from(this.entityClass);
+
+        countChildrenSubquery.select(cb.count(countChildrenRoot));
+
+        List<Predicate> predicates = new ArrayList<>();
+        Predicate childrenPathPredicate = cb.like(
+                countChildrenRoot.get(this.treeDataDataPathFieldName),
+                cb.concat(root.get(this.treeDataDataPathFieldName), this.treeDataDataPathSeparator + "%")
+        );
+        predicates.add(childrenPathPredicate);
+
+        if (!this.suppressAggFilteredOnly) {
+            // external filter
+            if (this.isExternalFilterPresent) {
+                Predicate externalFilterPredicate = this.doesExternalFilterPass.apply(cb, countChildrenRoot, request.getExternalFilter());
+                if (externalFilterPredicate != null) {
+                    predicates.add(externalFilterPredicate);
+                }
+            }
+            // quick filter
+            if (this.isQuickFilterPresent) {
+                Predicate quickFilterPredicate = this.createQuickFilterPredicate(cb, countChildrenRoot, request.getQuickFilter());
+                if (quickFilterPredicate != null) {
+                    predicates.add(quickFilterPredicate);
+                }
+            }
+            // filter where
+            if (request.getFilterModel() != null && !request.getFilterModel().isEmpty()) {
+                Predicate filterPredicate = this.filterToWherePredicate(cb, countChildrenRoot, request, queryContext).getPredicate();
+                if (filterPredicate != null) {
+                    predicates.add(filterPredicate);
+                }
+            }
+        }
+        countChildrenSubquery.where(cb.and(predicates.toArray(Predicate[]::new)));
+
+        return cb.selectCase().when(hasChildrenPredicate, countChildrenSubquery);  // count when non-leaf node
+    }
+
+    /**
+     * Creates an expression that aggregates values from all matching children.
+     * When node is leaf node, the expression returns the row's own value for that column.
+     *
+     * @param cb The criteria builder.
+     * @param query The main query.
+     * @param root The current row being processed.
+     * @param hasChildrenPredicate A condition checking if the current row is a leaf node or not.
+     * @param aggColumn The definition of the column and aggregation function.
+     * @param request request.
+     * @param queryContext query context.
+     * @return expression returning the aggregated value for non-leaf nodes, or the own value otherwise.
+     */
+    protected Expression<?> createTreeDataAggregationExpression(
+            CriteriaBuilder cb, AbstractQuery<?> query, Root<E> root, Expression<Boolean> hasChildrenPredicate, 
+            ColumnVO aggColumn, ServerSideGetRowsRequest request, 
+            QueryContext queryContext) {
+        Subquery<?> treeAggregationSubquery = query.subquery(Object.class);
+        Root<E> treeAggregationRoot = treeAggregationSubquery.from(this.entityClass);
+
+        Expression<?> aggregationSelection = this.aggFuncs.get(aggColumn.getAggFunc()).apply(cb, getPath(treeAggregationRoot, aggColumn.getField()));
+        treeAggregationSubquery.select((Expression) aggregationSelection);
+
+        List<Predicate> predicates = new ArrayList<>();
+        Predicate childrenPathPredicate = cb.like(
+                treeAggregationRoot.get(this.treeDataDataPathFieldName),
+                cb.concat(root.get(this.treeDataDataPathFieldName), this.treeDataDataPathSeparator + "%")
+        );
+        predicates.add(childrenPathPredicate);
+
+        if (!this.suppressAggFilteredOnly) {
+            // external filter
+            if (this.isExternalFilterPresent) {
+                Predicate externalFilterPredicate = this.doesExternalFilterPass.apply(cb, treeAggregationRoot, request.getExternalFilter());
+                if (externalFilterPredicate != null) {
+                    predicates.add(externalFilterPredicate);
+                }
+            }
+            // quick filter
+            if (this.isQuickFilterPresent) {
+                Predicate quickFilterPredicate = this.createQuickFilterPredicate(cb, treeAggregationRoot, request.getQuickFilter());
+                if (quickFilterPredicate != null) {
+                    predicates.add(quickFilterPredicate);
+                }
+            }
+            // filter where
+            if (request.getFilterModel() != null && !request.getFilterModel().isEmpty()) {
+                Predicate filterPredicate = this.filterToWherePredicate(cb, treeAggregationRoot, request, queryContext).getPredicate();
+                if (filterPredicate != null) {
+                    predicates.add(filterPredicate);
+                }
+            }
+        }
+        treeAggregationSubquery.where(cb.and(predicates.toArray(Predicate[]::new)));
+        
+        return cb.selectCase()
+                .when(hasChildrenPredicate, treeAggregationSubquery)        // aggregation when non-leaf node
+                .otherwise(getPath(root, aggColumn.getField()));            // no aggregation on leaf nodes
     }
 
     /**

@@ -13,7 +13,7 @@ import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
 ModuleRegistry.registerModules([ServerSideRowModelModule, ValidationModule, ColumnAutoSizeModule, TreeDataModule]);
 
-const TreeDataGrid = () => {
+const TreeDataChildCountGrid = () => {
 
     const { siteConfig } = useDocusaurusContext();
     const { API_URL } = siteConfig.customFields;
@@ -72,7 +72,7 @@ const TreeDataGrid = () => {
 
     const serverSideDatasource: IServerSideDatasource = useMemo(() => ({
         getRows: (params) => {
-            fetch(`${API_URL}/docs/tree-data/getRows`, {
+            fetch(`${API_URL}/docs/tree-data/child-count/getRows`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -141,10 +141,11 @@ const TreeDataGrid = () => {
                     theme={theme}
                     animateRows={true}
                     suppressMenuHide={true}
+                    getChildCount={(dataItem) => dataItem.childCount}
                 />
             </div>
         </div>
     );
 };
 
-export default TreeDataGrid;
+export default TreeDataChildCountGrid;

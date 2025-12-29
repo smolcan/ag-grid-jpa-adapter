@@ -13,7 +13,7 @@ import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
 ModuleRegistry.registerModules([ServerSideRowModelModule, ValidationModule, ColumnAutoSizeModule, TreeDataModule]);
 
-const TreeDataGrid = () => {
+const TreeDataAggGrid = () => {
 
     const { siteConfig } = useDocusaurusContext();
     const { API_URL } = siteConfig.customFields;
@@ -42,24 +42,16 @@ const TreeDataGrid = () => {
             cellDataType: 'number',
         },
         {
-            headerName: 'Product',
-            field: 'product',
-            cellDataType: 'text'
-        },
-        {
-            headerName: 'Portfolio',
-            field: 'portfolio',
-            cellDataType: 'text'
-        },
-        {
             headerName: 'Current Value',
             field: 'currentValue',
             cellDataType: 'number',
+            aggFunc: 'min',
         },
         {
             headerName: 'Previous Value',
             field: 'previousValue',
-            cellDataType: 'number', 
+            cellDataType: 'number',
+            aggFunc: 'max',
         },
         
     ] as ColDef[], []);
@@ -72,7 +64,7 @@ const TreeDataGrid = () => {
 
     const serverSideDatasource: IServerSideDatasource = useMemo(() => ({
         getRows: (params) => {
-            fetch(`${API_URL}/docs/tree-data/getRows`, {
+            fetch(`${API_URL}/docs/tree-data/agg/getRows`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -147,4 +139,4 @@ const TreeDataGrid = () => {
     );
 };
 
-export default TreeDataGrid;
+export default TreeDataAggGrid;
