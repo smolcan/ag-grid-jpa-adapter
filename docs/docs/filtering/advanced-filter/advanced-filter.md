@@ -38,6 +38,6 @@ If a column does not have a filter set in `ColDef`, attempting to apply an Advan
 import GridLoadingMessage from './../../grid-loading-message';
 import AdvancedFilterGrid from './advanced-filter-grid';
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/filtering/advanced-filter/getRows']}>
 <AdvancedFilterGrid></AdvancedFilterGrid>
 </GridLoadingMessage>

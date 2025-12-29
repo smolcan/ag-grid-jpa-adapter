@@ -29,6 +29,6 @@ ColDef priceColumn = ColDef.builder()
 import GridLoadingMessage from './grid-loading-message';
 import SortingGrid from './sorting-grid';
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/sorting/getRows']}>
     <SortingGrid></SortingGrid>
 </GridLoadingMessage>

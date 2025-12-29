@@ -47,6 +47,6 @@ fetch('/api/rows', {
 import GridLoadingMessage from './../grid-loading-message';
 import ExternalFilterGrid from './external-filter-grid';
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/filtering/external-filter/getRows']}>
 <ExternalFilterGrid></ExternalFilterGrid>
 </GridLoadingMessage>

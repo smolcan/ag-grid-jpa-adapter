@@ -70,6 +70,6 @@ If more than one Filter Condition is set, then multiple instances of the model a
 import GridLoadingMessage from './../../grid-loading-message';
 import DateFilterGrid from './date-filter-grid';
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/filtering/column-filter/date-filter/getRows']}>
 <DateFilterGrid></DateFilterGrid>
 </GridLoadingMessage>

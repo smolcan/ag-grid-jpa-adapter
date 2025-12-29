@@ -105,7 +105,7 @@ const AggregationGridGroupFiltering = () => {
                 })
                 .then(data => {
                     setErrorMessage(null);
-                    params.success(data);
+                    params.success(data.data);
                 })
                 .catch(error => {
                     console.error('Error fetching data:', error);

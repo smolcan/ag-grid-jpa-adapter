@@ -65,7 +65,7 @@ If more than one Filter Condition is set, then multiple instances of the model a
 import GridLoadingMessage from './../../grid-loading-message';
 import NumberFilterGrid from './number-filter-grid';
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/filtering/column-filter/number-filter/getRows']}>
 <NumberFilterGrid></NumberFilterGrid>
 </GridLoadingMessage>
 

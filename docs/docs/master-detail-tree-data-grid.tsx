@@ -99,7 +99,7 @@ const MasterDetailTreeDataGrid = () => {
                 })
                 .then(data => {
                     setErrorMessage(null);
-                    params.success(data);
+                    params.success(data.data);
                 })
                 .catch(error => {
                     console.error('Error fetching data:', error);
@@ -129,7 +129,7 @@ const MasterDetailTreeDataGrid = () => {
                         body: JSON.stringify(params.data)
                     })
                         .then(r => r.json())
-                        .then(data => params.successCallback(data))
+                        .then(data => params.successCallback(data.data))
                         .catch(err => console.error(err));
                 }
             } as IDetailCellRendererParams;

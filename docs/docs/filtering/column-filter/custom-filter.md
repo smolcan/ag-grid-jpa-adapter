@@ -108,6 +108,6 @@ ColDef colDef = ColDef.builder()
 import GridLoadingMessage from './../../grid-loading-message';
 import CustomFilterGrid from './custom-filter-grid';
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/filtering/column-filter/custom-filter/getRows']}>
 <CustomFilterGrid></CustomFilterGrid>
 </GridLoadingMessage>

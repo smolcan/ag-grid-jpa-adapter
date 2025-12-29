@@ -5,7 +5,7 @@ import {
     ClientSideRowModelModule,
     ColDef, ColumnAutoSizeModule, GetDetailRowDataParams,
     GridReadyEvent, ICellRendererParams, IDetailCellRendererParams,
-    IServerSideDatasource, MasterDetailModule, ServerSideRowModelModule,
+    IServerSideDatasource, MasterDetailModule, ServerSideRowModelModule, TextFilterModule,
     themeQuartz, ValidationModule
 } from 'ag-grid-enterprise';
 import { useColorMode } from '@docusaurus/theme-common';
@@ -17,7 +17,8 @@ ModuleRegistry.registerModules([
     ClientSideRowModelModule,
     ValidationModule,
     ColumnAutoSizeModule,
-    MasterDetailModule
+    MasterDetailModule,
+    TextFilterModule
 ]);
 
 const MasterDetailCustomDetailConditionGrid = () => {
@@ -91,7 +92,7 @@ const MasterDetailCustomDetailConditionGrid = () => {
                 .then(data => {
                     // Data here ALREADY contains "detailRows" nested array
                     setErrorMessage(null);
-                    params.success(data);
+                    params.success(data.data);
                 })
                 .catch(error => {
                     console.error('Error fetching data:', error);
@@ -147,7 +148,7 @@ const MasterDetailCustomDetailConditionGrid = () => {
                         })
                         .then(data => {
                             setErrorMessage(null);
-                            params.successCallback(data);
+                            params.successCallback(data.data);
                         })
                         .catch(error => {
                             console.error('Error fetching detail data:', error);

@@ -33,7 +33,7 @@ import AggregationCustomFunctionGrid from './aggregation-custom-function-grid';
 import AggregationGridGroupFiltering from './aggregation-grid-group-filtering';
 import AggregationGridSuppressFilteredOnly from './aggregation-grid-suppress-filtered-only';
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/aggregation/getRows']}>
     <AggregationGrid></AggregationGrid>
 </GridLoadingMessage>
 
@@ -62,7 +62,7 @@ QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityMan
 
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/aggregation-custom-function-grid.tsx)
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/aggregation/custom-agg-func/getRows']}>
     <AggregationCustomFunctionGrid></AggregationCustomFunctionGrid>
 </GridLoadingMessage>
 
@@ -84,7 +84,7 @@ QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityMan
 
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/aggregation-grid-suppress-filtered-only.tsx)
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/aggregation/suppress-agg-filtered-only/getRows']}>
     <AggregationGridSuppressFilteredOnly></AggregationGridSuppressFilteredOnly>
 </GridLoadingMessage>
 
@@ -105,6 +105,6 @@ QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityMan
 - The `suppressAggFilteredOnly` grid option will be implicitly enabled.
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/aggregation-grid-group-filtering.tsx)
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/aggregation/group-agg-filtering/getRows']}>
     <AggregationGridGroupFiltering></AggregationGridGroupFiltering>
 </GridLoadingMessage>

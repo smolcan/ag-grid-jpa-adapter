@@ -68,6 +68,6 @@ Multi filter model is represented by [MultiFilterModel](https://github.com/smolc
 import GridLoadingMessage from './../../grid-loading-message';
 import MultiFilterGrid from './multi-filter-grid';
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/filtering/column-filter/multi-filter/getRows', '/docs/filtering/column-filter/multi-filter/supplySetFilterValues']}>
 <MultiFilterGrid></MultiFilterGrid>
 </GridLoadingMessage>

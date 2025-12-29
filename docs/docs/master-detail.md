@@ -17,7 +17,7 @@ import MasterDetailTreeDataGrid from './master-detail-tree-data-grid'
 import MasterDetailCustomDetailConditionGrid from './master-detail-custom-detail-condition-grid'
 
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/master-detail/getRows', '/docs/master-detail/getDetailRowData']}>
     <MasterDetailGrid></MasterDetailGrid>
 </GridLoadingMessage>
 
@@ -83,7 +83,7 @@ You should expose a separate endpoint that calls `getDetailRowData(masterRow)`.
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/master-detail-grid.tsx)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MasterDetailService.java)
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/master-detail/getRows', '/docs/master-detail/getDetailRowData']}>
     <MasterDetailGrid></MasterDetailGrid>
 </GridLoadingMessage>
 
@@ -146,7 +146,7 @@ JSON Response example:
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/master-detail-eager-grid.tsx)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MasterDetailService.java)
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/master-detail/eager/getRows']}>
     <MasterDetailEagerGrid></MasterDetailEagerGrid>
 </GridLoadingMessage>
 
@@ -189,7 +189,7 @@ QueryBuilder.builder(Trade.class, entityManager)
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/master-detail-custom-detail-condition-grid.tsx)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MasterDetailService.java)
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/master-detail/custom-detail-condition/getRows', '/docs/master-detail/custom-detail-condition/getDetailRows']}>
     <MasterDetailCustomDetailConditionGrid></MasterDetailCustomDetailConditionGrid>
 </GridLoadingMessage>
 
@@ -255,6 +255,6 @@ If you enable masterDetail, you must provide either the static definition (`mast
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MasterDetailService.java)
 
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/master-detail/tree/getRows', '/docs/master-detail/tree/getDetailRowData']}>
     <MasterDetailTreeDataGrid></MasterDetailTreeDataGrid>
 </GridLoadingMessage>

@@ -12,7 +12,7 @@ Pivoting breaks down data in an additional dimension.
 import PivotingGrid from './pivoting-grid';
 import GridLoadingMessage from './grid-loading-message';
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/pivoting/getRows']}>
     <PivotingGrid></PivotingGrid>
 </GridLoadingMessage>
 

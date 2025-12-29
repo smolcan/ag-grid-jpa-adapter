@@ -61,7 +61,7 @@ const SetFilterGrid = () => {
                         return response.json();
                     })
                     .then(data => {
-                        params.success(data)
+                        params.success(data.data)
                     })
                     .catch(error => {
                         console.error('Error fetching data:', error);
@@ -92,7 +92,7 @@ const SetFilterGrid = () => {
                         return response.json();
                     })
                     .then(data => {
-                        params.success(data)
+                        params.success(data.data)
                     })
                     .catch(error => {
                         console.error('Error fetching data:', error);
@@ -123,7 +123,7 @@ const SetFilterGrid = () => {
                         return response.json();
                     })
                     .then(data => {
-                        params.success([...data].map((v: string) => v.replaceAll('o', 'ó')));
+                        params.success([...data.data].map((v: string) => v.replaceAll('o', 'ó')));
                     })
                     .catch(error => {
                         console.error('Error fetching data:', error);
@@ -154,7 +154,7 @@ const SetFilterGrid = () => {
                         return response.json();
                     })
                     .then(data => {
-                        params.success(data)
+                        params.success(data.data)
                     })
                     .catch(error => {
                         console.error('Error fetching data:', error);
@@ -185,7 +185,7 @@ const SetFilterGrid = () => {
                         return response.json();
                     })
                     .then(data => {
-                        params.success(data)
+                        params.success(data.data)
                     })
                     .catch(error => {
                         console.error('Error fetching data:', error);
@@ -216,7 +216,7 @@ const SetFilterGrid = () => {
                         return response.json();
                     })
                     .then(data => {
-                        params.success(data)
+                        params.success(data.data)
                     })
                     .catch(error => {
                         console.error('Error fetching data:', error);
@@ -252,7 +252,7 @@ const SetFilterGrid = () => {
                 })
                 .then(data => {
                     setErrorMessage(null);
-                    params.success(data);
+                    params.success(data.data);
                 })
                 .catch(error => {
                     console.error('Error fetching data:', error);

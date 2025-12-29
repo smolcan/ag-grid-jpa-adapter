@@ -73,6 +73,6 @@ fetches distinct sorted values from the database for a given column.
 import GridLoadingMessage from './../../grid-loading-message';
 import SetFilterGrid from './set-filter-grid';
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/filtering/column-filter/set-filter/getRows', '/docs/filtering/column-filter/set-filter/supplySetFilterValues']}>
 <SetFilterGrid></SetFilterGrid>
 </GridLoadingMessage>

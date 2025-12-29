@@ -123,6 +123,6 @@ If more than one Filter Condition is set, then multiple instances of the model a
 import GridLoadingMessage from './../../grid-loading-message';
 import TextFilterGrid from './text-filter-grid';
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/filtering/column-filter/text-filter/getRows']}>
 <TextFilterGrid></TextFilterGrid>
 </GridLoadingMessage>

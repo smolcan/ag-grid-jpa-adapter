@@ -90,6 +90,6 @@ This function receives the CriteriaBuilder, Root, and the list of parsed words a
 import GridLoadingMessage from './../grid-loading-message';
 import QuickFilterGrid from './quick-filter-grid';
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/filtering/quick-filter/getRows']}>
 <QuickFilterGrid></QuickFilterGrid>
 </GridLoadingMessage>

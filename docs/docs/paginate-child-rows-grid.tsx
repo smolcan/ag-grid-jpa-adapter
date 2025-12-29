@@ -105,8 +105,8 @@ const PaginateChildRowsGrid = () => {
                         setErrorMessage(null);
                         refetchRowCount = false;
                         params.success({
-                            ...data,
-                            rowCount: rowCount,
+                            ...data.data,
+                            rowCount: rowCount.data,
                         });
                     })
                     .catch(error => {
@@ -118,7 +118,7 @@ const PaginateChildRowsGrid = () => {
                 dataRequest
                     .then(data => {
                         setErrorMessage(null);
-                        params.success(data);
+                        params.success(data.data);
                     })
                     .catch(error => {
                         console.error('Error fetching data:', error);

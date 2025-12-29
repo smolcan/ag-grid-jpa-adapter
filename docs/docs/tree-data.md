@@ -51,7 +51,7 @@ import GridLoadingMessage from './grid-loading-message';
 import TreeDataGrid from './tree-data-grid';
 import TreeDataFilteringGrid from './tree-data-filtering-grid';
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/tree-data/getRows']}>
     <TreeDataGrid></TreeDataGrid>
 </GridLoadingMessage>
 
@@ -89,6 +89,6 @@ this.queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/tree-data-filtering-grid.tsx)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/TreeDataService.java)
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/tree-data/filtering/getRows']}>
     <TreeDataFilteringGrid></TreeDataFilteringGrid>
 </GridLoadingMessage>

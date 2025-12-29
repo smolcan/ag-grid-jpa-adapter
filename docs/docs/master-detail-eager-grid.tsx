@@ -83,7 +83,7 @@ const EagerMasterDetailGrid = () => {
                 .then(data => {
                     // Data here ALREADY contains "detailRows" nested array
                     setErrorMessage(null);
-                    params.success(data);
+                    params.success(data.data);
                 })
                 .catch(error => {
                     console.error('Error fetching data:', error);

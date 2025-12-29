@@ -17,7 +17,7 @@ Use the `queryBuilder.countRows(request)` method to retrieve this count
 import PaginationGrid from './pagination-grid';
 import GridLoadingMessage from './grid-loading-message';
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/pagination/getRows', '/docs/pagination/countRows']}>
     <PaginationGrid></PaginationGrid>
 </GridLoadingMessage>
 
@@ -41,6 +41,6 @@ Note: When expanding groups in the frontend and `paginateChildRows` is set to `t
 
 import PaginateChildRowsGrid from './paginate-child-rows-grid';
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/pagination/paginate-child-rows/getRows', '/docs/pagination/paginate-child-rows/countRows']}>
     <PaginateChildRowsGrid></PaginateChildRowsGrid>
 </GridLoadingMessage>
