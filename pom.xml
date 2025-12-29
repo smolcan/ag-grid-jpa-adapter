@@ -3,7 +3,7 @@
 
   <groupId>io.github.smolcan</groupId>
   <artifactId>ag-grid-jpa-adapter</artifactId>
-  <version>0.0.32</version>
+  <version>0.0.33-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>ag-grid-jpa-adapter</name>
@@ -17,7 +17,7 @@
     <url>https://github.com/smolcan/ag-grid-jpa-adapter</url>
     <connection>scm:git:git://github.com/smolcan/ag-grid-jpa-adapter.git</connection>
     <developerConnection>scm:git:ssh://git@github.com:/smolcan/ag-grid-jpa-adapter.git</developerConnection>
-    <tag>ag-grid-jpa-adapter-0.0.32</tag>
+    <tag>HEAD</tag>
   </scm>
   <issueManagement>
     <system>GitHub</system>
