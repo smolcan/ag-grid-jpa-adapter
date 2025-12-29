@@ -50,6 +50,7 @@ this.queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
 import GridLoadingMessage from './grid-loading-message';
 import TreeDataGrid from './tree-data-grid';
 import TreeDataFilteringGrid from './tree-data-filtering-grid';
+import TreeDataFilteringAllGrid from './tree-data-filtering-all-grid';
 
 <GridLoadingMessage serviceUrls={['/docs/tree-data/getRows']}>
     <TreeDataGrid></TreeDataGrid>
@@ -66,9 +67,6 @@ A group will be included if:
 
 To make this work, you must have data path as column in your table and provide its name and separator.
 
-:::info
-Note that this will work with all filter types: Column filters, Advanced filters, External filters and Quick filters.
-:::
 
 ```java
 this.queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
@@ -91,4 +89,15 @@ this.queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
 
 <GridLoadingMessage serviceUrls={['/docs/tree-data/filtering/getRows']}>
     <TreeDataFilteringGrid></TreeDataFilteringGrid>
+</GridLoadingMessage>
+
+### Filtering with non-column filters
+
+Tree filtering also works with non-column filter types: Advanced filters, External filters and Quick filters.
+
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/tree-data-filtering-all-grid.tsx)
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/TreeDataService.java)
+
+<GridLoadingMessage serviceUrls={['/docs/tree-data/filtering/all/getRows']}>
+    <TreeDataFilteringAllGrid></TreeDataFilteringAllGrid>
 </GridLoadingMessage>
