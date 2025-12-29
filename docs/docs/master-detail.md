@@ -244,7 +244,7 @@ If you enable masterDetail, you must provide either the static definition (`mast
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MasterDetailService.java)
 
 
-<GridLoadingMessage>
+<GridLoadingMessage serviceUrls={['/docs/master-detail/dynamic/getRows', '/docs/master-detail/dynamic/getDetailRowData']}>
     <MasterDetailDynamicRowsGrid></MasterDetailDynamicRowsGrid>
 </GridLoadingMessage>
 
