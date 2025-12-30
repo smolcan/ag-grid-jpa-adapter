@@ -30,9 +30,6 @@ public class PivotingContext {
     
     private Map<String, Expression<?>> columnNamesToExpression;
     
-    // selections for pivoting
-    private List<Selection<?>> pivotingSelections;
-    
     // pivoting result fields for response
     private List<String> pivotingResultFields;
 
@@ -66,14 +63,6 @@ public class PivotingContext {
 
     public void setCartesianProduct(List<List<Pair<String, Object>>> cartesianProduct) {
         this.cartesianProduct = cartesianProduct;
-    }
-
-    public List<Selection<?>> getPivotingSelections() {
-        return pivotingSelections;
-    }
-
-    public void setPivotingSelections(List<Selection<?>> pivotingSelections) {
-        this.pivotingSelections = pivotingSelections;
     }
     
     public List<String> getPivotingResultFields() {
