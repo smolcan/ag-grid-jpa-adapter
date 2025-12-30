@@ -22,11 +22,11 @@ public class QueryContext<E> {
     private final AbstractQuery<?> query;
     private final Root<E> root;
     
-    private List<SelectionMetadata> selections;
-    private List<WherePredicateMetadata> wherePredicates;
-    private List<GroupingMetadata> grouping;
-    private List<HavingMetadata> having;
-    private List<OrderMetadata> orders;
+    private List<SelectionMetadata> selections = Collections.emptyList();
+    private List<WherePredicateMetadata> wherePredicates = Collections.emptyList();
+    private List<GroupingMetadata> grouping = Collections.emptyList();
+    private List<HavingMetadata> having = Collections.emptyList();
+    private List<OrderMetadata> orders = Collections.emptyList();
     private int firstResult;
     private int maxResults;
     private PivotingContext pivotingContext = new PivotingContext();
