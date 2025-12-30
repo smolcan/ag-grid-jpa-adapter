@@ -1,5 +1,6 @@
 package io.github.smolcan.aggrid.jpa.adapter.query.metadata;
 
+import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Selection;
 
 import java.util.Objects;
@@ -16,7 +17,8 @@ import java.util.Objects;
  */
 public class SelectionMetadata {
     
-    private final Selection<?> selection;
+    private final String alias;
+    private final Expression<?> expression;
     private final boolean isGroupingSelection;
     private final boolean isPivotingSelection;
     private final boolean isAggregationSelection;
@@ -24,7 +26,8 @@ public class SelectionMetadata {
     private final boolean isChildCountSelection;
 
     private SelectionMetadata(Builder builder) {
-        this.selection = builder.selection;
+        this.alias = builder.alias;
+        this.expression = builder.selection;
         this.isGroupingSelection = builder.isGroupingSelection;
         this.isPivotingSelection = builder.isPivotingSelection;
         this.isAggregationSelection = builder.isAggregationSelection;
@@ -32,12 +35,16 @@ public class SelectionMetadata {
         this.isChildCountSelection = builder.isChildCountSelection;
     }
 
-    public static Builder builder(Selection<?> selection) {
-        return new Builder(selection);
+    public static Builder builder(Expression<?> expression, String alias) {
+        return new Builder(expression, alias);
     }
 
-    public Selection<?> getSelection() {
-        return selection;
+    public String getAlias() {
+        return alias;
+    }
+
+    public Expression<?> getExpression() {
+        return expression;
     }
 
     public boolean isGroupingSelection() {
@@ -61,22 +68,19 @@ public class SelectionMetadata {
     }
 
     public static class Builder {
-        private Selection<?> selection;
+        private final String alias;
+        private final Expression<?> selection;
         private boolean isGroupingSelection;
         private boolean isPivotingSelection;
         private boolean isAggregationSelection;
         private boolean isServerSideGroupSelection;
         private boolean isChildCountSelection;
 
-        public Builder(Selection<?> selection) {
+        public Builder(Expression<?> selection, String alias) {
             Objects.requireNonNull(selection);
+            Objects.requireNonNull(alias);
             this.selection = selection;
-        }
-        
-        public Builder selection(Selection<?> selection) {
-            Objects.requireNonNull(selection);
-            this.selection = selection;
-            return this;
+            this.alias = alias;
         }
 
         public Builder isGroupingSelection(boolean isGroupingSelection) {

@@ -32,6 +32,7 @@ import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.cartesianProduct;
 import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.getPath;
@@ -60,7 +61,7 @@ import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.getPath;
  * @param <E> the type of the root JPA entity being queried
  * @author Samuel Molčan
  */
-@SuppressWarnings({"rawtypes", "unchecked"})
+
 public class QueryBuilder<E> {
     protected static final DateTimeFormatter DATE_FORMATTER_FOR_DATE_ADVANCED_FILTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     protected static final String AUTO_GROUP_COLUMN_NAME = "ag-Grid-AutoColumn";
@@ -175,16 +176,16 @@ public class QueryBuilder<E> {
         Root<E> root = query.from(this.entityClass);
         
         // record all the context we put into query
-        QueryContext queryContext = new QueryContext();
+        QueryContext<E> queryContext = new QueryContext<>(cb, query, root);
         // if pivoting, load all information needed for pivoting into pivoting context
-        queryContext.setPivotingContext(this.createPivotingContext(cb, root, request));
+        queryContext.setPivotingContext(this.createPivotingContext(queryContext, request));
         
-        this.select(cb, query, root, request, queryContext);
-        this.where(cb, query, root, request, queryContext);
-        this.groupBy(cb, root, request, queryContext);
-        this.having(cb, query, root, request, queryContext);
-        this.orderBy(cb, request, queryContext);
-        this.limitOffset(request, queryContext);
+        this.select(queryContext, request);
+        this.where(queryContext, request);
+        this.groupBy(queryContext, request);
+        this.having(queryContext, request);
+        this.orderBy(queryContext, request);
+        this.limitOffset(queryContext, request);
         
         List<Tuple> data = this.apply(query, queryContext);
         List<Map<String, Object>> resData = this.tupleToMap(data);
@@ -219,16 +220,14 @@ public class QueryBuilder<E> {
      * @throws OnPivotMaxColumnsExceededException If the number of pivot columns to be generated exceeds the configured limit.
      * @see #getRows(ServerSideGetRowsRequest) For retrieving the actual row data.
      */
-    @SuppressWarnings("unchecked")
     public long countRows(ServerSideGetRowsRequest request) throws OnPivotMaxColumnsExceededException {
         this.validateRequest(request);
 
         CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
         CriteriaQuery<Long> query = cb.createQuery(Long.class);
         Root<E> root = query.from(this.entityClass);
-        
         // record all the context we put into query
-        QueryContext queryContext = new QueryContext();
+        QueryContext<E> queryContext = new QueryContext<>(cb, query, root);
         
         // we count groups when there is grouping
         boolean hasGroupCols = !request.getRowGroupCols().isEmpty();
@@ -253,12 +252,13 @@ public class QueryBuilder<E> {
             // subquery will only select the group column 
             Subquery<?> subquery = query.subquery(getPath(root, countingGroupCol).getJavaType());
             Root<E> subqueryRoot = subquery.from(this.entityClass);
+            QueryContext<E> subqueryContext = new QueryContext<>(cb, subquery, subqueryRoot);
+            subqueryContext.setPivotingContext(this.createPivotingContext(subqueryContext, request));
             
-            queryContext.setPivotingContext(this.createPivotingContext(cb, subqueryRoot, request));
-            this.select(cb, subquery, subqueryRoot, request, queryContext);
-            this.where(cb, query, subqueryRoot, request, queryContext);
-            this.groupBy(cb, subqueryRoot, request, queryContext);
-            this.having(cb, subquery, subqueryRoot, request, queryContext);
+            this.select(subqueryContext, request);
+            this.where(subqueryContext, request);
+            this.groupBy(subqueryContext, request);
+            this.having(subqueryContext, request);
             
             // select the group column in subquery
             subquery.select((Expression) getPath(subqueryRoot, countingGroupCol)).distinct(true);
@@ -269,7 +269,7 @@ public class QueryBuilder<E> {
             }
             // group by
             if (!queryContext.getGrouping().isEmpty()) {
-                subquery.groupBy(queryContext.getGrouping().values().stream().map(GroupingMetadata::getGropingExpression).collect(Collectors.toList()));
+                subquery.groupBy(queryContext.getGrouping().stream().map(GroupingMetadata::getGropingExpression).collect(Collectors.toList()));
             }
             // having
             if (!queryContext.getHaving().isEmpty()) {
@@ -284,8 +284,8 @@ public class QueryBuilder<E> {
             return this.entityManager.createQuery(query).getSingleResult();
         } else {
             // no groups, count rows
-            this.select(cb, query, root, request, queryContext);
-            this.where(cb, query, root, request, queryContext);
+            this.select(queryContext, request);
+            this.where(queryContext, request);
             
             query.select(cb.count(root));
             if (!queryContext.getWherePredicates().isEmpty()) {
@@ -364,6 +364,148 @@ public class QueryBuilder<E> {
         query.orderBy(cb.asc(path));
         
         return this.entityManager.createQuery(query).getResultList();
+    }
+
+    /**
+     * Determines and sets the fields to be selected in the query.
+     * Delegates the selection logic based on the active grid mode. 
+     * Sets the selections into queryContext.
+     * 
+     * @param queryContext the current query state container
+     * @param request the server-side request parameters from the grid
+     */
+    protected void select(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        // select
+        List<SelectionMetadata> selections;
+        if (this.treeData) {
+            // tree data
+            selections = this.selectTreeData(queryContext, request);
+        } else if (this.masterDetail) {
+            // master-detail
+            selections = this.selectMasterDetail(queryContext, request);
+        } else if (queryContext.getPivotingContext().isPivoting()) {
+            // pivoting
+            selections = this.selectPivoting(queryContext, request);
+        } else if (!request.getRowGroupCols().isEmpty()) {
+            // grouping
+            selections = this.selectGrouping(queryContext, request);
+        } else {
+            // basic grid
+            selections = this.selectBasic(queryContext, request);
+        }
+
+        queryContext.setSelections(selections);
+    }
+
+    /**
+     * Constructs the filtering criteria (WHERE clause) for the query.
+     * Delegates filtering criteria creation based on active grid mode.
+     * Sets the filtering criteria into queryContext.
+     * 
+     * @param queryContext  the current query state container
+     * @param request       the server-side request parameters from the grid  
+     */
+    protected void where(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        List<WherePredicateMetadata> wherePredicates;
+        if (this.treeData) {
+            // tree data
+            wherePredicates = this.whereTreeData(queryContext, request);
+        } else if (this.masterDetail) {
+            // master detail
+            wherePredicates = this.whereMasterDetail(queryContext, request);
+        } else if (queryContext.getPivotingContext().isPivoting()) {
+            // pivoting
+            wherePredicates = this.wherePivoting(queryContext, request);
+        } else if (!request.getRowGroupCols().isEmpty()) {
+            // grouping
+            wherePredicates = this.whereGrouping(queryContext, request);
+        } else {
+            // basic grid
+            wherePredicates = this.whereBasic(queryContext, request);
+        }
+
+        queryContext.setWherePredicates(wherePredicates);
+    }
+
+    /**
+     * Creates the grouping rules for the query.
+     * Delegates the grouping rules creation based on active grid mode.
+     * Sets the grouping rules into query context.
+     * 
+     * @param queryContext  the current query state container
+     * @param request       the server-side request parameters from the grid
+     */
+    protected void groupBy(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        List<GroupingMetadata> groupingMetadata;
+
+        if (this.treeData) {
+            // tree data
+            groupingMetadata = this.groupByTreeData(queryContext, request);
+        } else if (this.masterDetail) {
+            // master-detail
+            groupingMetadata = this.groupByMasterDetail(queryContext, request);
+        } else if (queryContext.getPivotingContext().isPivoting()) {
+            // pivoting
+            groupingMetadata = this.groupByPivoting(queryContext, request);
+        } else if (!request.getRowGroupCols().isEmpty()) {
+            // grouping
+            groupingMetadata = this.groupByGrouping(queryContext, request);
+        } else {
+            // basic grid (does not have any grouping)
+            groupingMetadata = List.of();
+        }
+
+        queryContext.setGrouping(groupingMetadata);
+    }
+
+
+    /**
+     * Creates the sort order for the query results.
+     * Delegates sort order creation based on active grid mode.
+     * Sets the sorting rules into query context.
+     *
+     * @param queryContext  the current query state container
+     * @param request       the server-side request parameters from the grid
+     */
+    protected void orderBy(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        List<OrderMetadata> orders;
+        if (this.treeData) {
+            orders = this.orderByBasic(queryContext, request);
+        } else if (this.masterDetail) {
+            orders = this.orderByBasic(queryContext, request);
+        } else if (queryContext.getPivotingContext().isPivoting()) {
+            orders = this.orderByPivoting(queryContext, request);
+        } else if (!request.getRowGroupCols().isEmpty()) {
+            orders = this.orderByGrouping(queryContext, request);
+        } else {
+            orders = this.orderByBasic(queryContext, request);
+        }
+
+        queryContext.setOrders(orders);
+    }
+
+    /**
+     * Creates predicates for the HAVING clause.
+     * Delegates predicate creation based on active query mode.
+     * Sets the having predicates into query context.
+     * 
+     * @param queryContext  the current query state container
+     * @param request       the server-side request parameters from the grid
+     */
+    protected void having(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        List<HavingMetadata> havingPredicates;
+        if (this.treeData) {
+            havingPredicates = List.of();
+        } else if (this.masterDetail) {
+            havingPredicates = List.of();
+        } else if (queryContext.getPivotingContext().isPivoting()) {
+            havingPredicates = this.havingPivoting(queryContext, request);
+        } else if (!request.getRowGroupCols().isEmpty()) {
+            havingPredicates = this.havingGrouping(queryContext, request);
+        } else {
+            havingPredicates = List.of();
+        }
+        queryContext.setHaving(havingPredicates);
     }
 
     /**
@@ -552,9 +694,9 @@ public class QueryBuilder<E> {
      * @param queryContext the context containing metadata for selections, filters, grouping, etc.
      * @return a list of results returned by the executed query
      */
-    protected List<Tuple> apply(CriteriaQuery<Tuple> query, QueryContext queryContext) {
+    protected List<Tuple> apply(CriteriaQuery<Tuple> query, QueryContext<E> queryContext) {
         // select
-        query.multiselect(queryContext.getSelections().values().stream().map(SelectionMetadata::getSelection).collect(Collectors.toList()));
+        query.multiselect(queryContext.getSelections().stream().map(s -> s.getExpression().alias(s.getAlias())).collect(Collectors.toList()));
         // where
         if (!queryContext.getWherePredicates().isEmpty()) {
             Predicate[] predicates = queryContext.getWherePredicates().stream().map(WherePredicateMetadata::getPredicate).toArray(Predicate[]::new);
@@ -562,7 +704,7 @@ public class QueryBuilder<E> {
         }
         // group by
         if (!queryContext.getGrouping().isEmpty()) {
-            query.groupBy(queryContext.getGrouping().values().stream().map(GroupingMetadata::getGropingExpression).collect(Collectors.toList()));
+            query.groupBy(queryContext.getGrouping().stream().map(GroupingMetadata::getGropingExpression).collect(Collectors.toList()));
         }
         // having
         if (!queryContext.getHaving().isEmpty()) {
@@ -580,75 +722,12 @@ public class QueryBuilder<E> {
         
         return typedQuery.getResultList();
     }
-
-    /**
-     * Populates the {@link QueryContext} with appropriate selections based on the request type.
-     *
-     */
-    protected void select(CriteriaBuilder cb, AbstractQuery<?> query, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
-        // select
-        List<SelectionMetadata> selections;
-        if (this.treeData) {
-            // tree data
-            selections = this.selectTreeData(cb, query, root, request, queryContext);
-        } else if (this.masterDetail) {
-            // master-detail
-            selections = this.selectMasterDetail(cb, query, root, request, queryContext);
-        } else if (queryContext.getPivotingContext().isPivoting()) {
-            // pivoting
-            selections = this.selectPivoting(cb, query, root, request, queryContext.getPivotingContext());
-        } else if (!request.getRowGroupCols().isEmpty()) {
-            // grouping
-            selections = this.selectGrouping(cb, query, root, request);
-        } else {
-            // basic grid
-            selections = this.selectBasic(cb, query, root, request);
-        }
-        
-        // set selections to query context
-        Map<String, SelectionMetadata> selectionsWithAliases = selections
-                .stream()
-                .collect(Collectors.toMap(s -> s.getSelection().getAlias(), selection -> selection));
-        
-        queryContext.setSelections(selectionsWithAliases);
-    }
-
-    /**
-     * Constructs and adds {@code WHERE} predicates to the {@link QueryContext} based on the grouping keys
-     * and filter model in the {@link ServerSideGetRowsRequest}.
-     * <p>
-     * For each group column with a corresponding group key, a predicate is created to match the key.
-     * Additional filter predicates are generated from the filter model and added as well.
-     *
-     * @param cb           the {@link CriteriaBuilder} used to create predicates
-     * @param query         query
-     * @param root         the root entity in the criteria query
-     * @param request      the AG Grid server-side row request containing group keys and filters
-     * @param queryContext the query context to populate with predicate metadata
-     */
-    protected void where(CriteriaBuilder cb, CriteriaQuery<?> query, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
-        List<WherePredicateMetadata> wherePredicates;
-        if (this.treeData) {
-            // tree data
-            wherePredicates = this.whereTreeData(cb, query, root, request, queryContext);
-        } else if (this.masterDetail) {
-            // master detail
-            wherePredicates = this.whereMasterDetail(cb, query, root, request);
-        } else if (queryContext.getPivotingContext().isPivoting()) {
-            // pivoting
-            wherePredicates = this.wherePivoting(cb, query, root, request, queryContext.getPivotingContext());
-        } else if (!request.getRowGroupCols().isEmpty()) {
-            // grouping
-            wherePredicates = this.whereGrouping(cb, query, root, request);
-        } else {
-            // basic grid
-            wherePredicates = this.whereBasic(cb, query, root, request);
-        }
-        
-        queryContext.setWherePredicates(wherePredicates);
-    }
     
-    protected List<SelectionMetadata> selectTreeData(CriteriaBuilder cb, AbstractQuery<?> query, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
+    
+    protected List<SelectionMetadata> selectTreeData(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
+        Root<E> root = queryContext.getRoot();
+        
         List<SelectionMetadata> selections = new ArrayList<>();
 
         // add each non-aggregated field to selections as basic selection
@@ -656,9 +735,7 @@ public class QueryBuilder<E> {
                 .filter(cd -> request.getValueCols().stream().noneMatch(vc -> vc.getField().equals(cd.getField()))) // filter out the aggregated ones
                 .forEach(colDef -> {
                     Path<?> field = getPath(root, colDef.getField());
-                    Selection<?> selection = field.alias(colDef.getField());
-
-                    selections.add(SelectionMetadata.builder(selection).build());
+                    selections.add(SelectionMetadata.builder(field, colDef.getField()).build());
                 });
 
         // selection to find out whether it has any children
@@ -686,21 +763,19 @@ public class QueryBuilder<E> {
         }
         selections.add(
                 SelectionMetadata
-                        .builder(isServerSideGroupSelection.alias(this.isServerSideGroupFieldName))
+                        .builder(isServerSideGroupSelection, this.isServerSideGroupFieldName)
                         .isServerSideGroupSelection(true)
                         .build()
         );
         
         // aggregation columns
         if (!request.getValueCols().isEmpty()) {
-            // remove non-aggregation versions
-            selections.removeIf(s -> request.getValueCols().stream().anyMatch(vc -> vc.getField().equals(s.getSelection().getAlias())));
             // add aggregation expressions
             for (ColumnVO aggColumn : request.getValueCols()) {
-                Expression<?> aggExpression = this.createTreeDataAggregationExpression(cb, query, root, isServerSideGroupSelection, aggColumn, request, queryContext);
+                Expression<?> aggExpression = this.createTreeDataAggregationExpression(queryContext, isServerSideGroupSelection, aggColumn, request);
                 selections.add(
                         SelectionMetadata
-                                .builder(aggExpression.alias(aggColumn.getField()))
+                                .builder(aggExpression, aggColumn.getField())
                                 .isAggregationSelection(true)
                                 .build()
                 );
@@ -709,10 +784,10 @@ public class QueryBuilder<E> {
         
         // add child counts
         if (this.getChildCount) {
-            Expression<?> countExpression = this.createTreeDataGetChildCountExpression(cb, query, root, isServerSideGroupSelection, request, queryContext);
+            Expression<?> countExpression = this.createTreeDataGetChildCountExpression(queryContext, isServerSideGroupSelection, request);
             selections.add(
                     SelectionMetadata
-                            .builder(countExpression.alias(this.getChildCountFieldName))
+                            .builder(countExpression, this.getChildCountFieldName)
                             .isChildCountSelection(true)
                             .build()
             );
@@ -721,44 +796,52 @@ public class QueryBuilder<E> {
         return selections;
     }
 
-    protected List<SelectionMetadata> selectMasterDetail(CriteriaBuilder cb, AbstractQuery<?> query, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
+    protected List<SelectionMetadata> selectMasterDetail(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         if (request.getGroupKeys().isEmpty()) {
-            return this.selectBasic(cb, query, root, request);
+            return this.selectBasic(queryContext, request);
         } else {
-            return this.selectGrouping(cb, query, root, request);
+            return this.selectGrouping(queryContext, request);
         }
     }
     
-    protected List<SelectionMetadata> selectPivoting(CriteriaBuilder cb, AbstractQuery<?> query, Root<E> root, ServerSideGetRowsRequest request, PivotingContext pivotingContext) {
+    protected List<SelectionMetadata> selectPivoting(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        Root<E> root = queryContext.getRoot();
+        PivotingContext pivotingContext = queryContext.getPivotingContext();
+        
         List<SelectionMetadata> selections = new ArrayList<>();
         
         // group columns
         for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size() + 1; i++) {
             ColumnVO groupCol = request.getRowGroupCols().get(i);
-            Selection<?> groupSelection = getPath(root, groupCol.getField()).alias(groupCol.getField());
+            Expression<?> groupExpression = getPath(root, groupCol.getField());
 
             SelectionMetadata groupSelectionMetadata = SelectionMetadata
-                    .builder(groupSelection)
+                    .builder(groupExpression, groupCol.getField())
                     .isGroupingSelection(true)
                     .build();
             selections.add(groupSelectionMetadata);
         }
 
         // pivoting selections
-        pivotingContext.getPivotingSelections()
+        pivotingContext.getColumnNamesToExpression()
+                .entrySet()
                 .stream()
-                .map(s -> SelectionMetadata
-                        .builder(s)
-                        .isPivotingSelection(true)
-                        .isAggregationSelection(true)
-                        .build()
+                .map(entry -> 
+                        SelectionMetadata
+                            .builder(entry.getValue(), entry.getKey())
+                            .isPivotingSelection(true)
+                            .isAggregationSelection(true)
+                            .build()
                 )
                 .forEach(selections::add);
         
         return selections;
     }
     
-    protected List<SelectionMetadata> selectGrouping(CriteriaBuilder cb, AbstractQuery<?> query, Root<E> root, ServerSideGetRowsRequest request) {
+    protected List<SelectionMetadata> selectGrouping(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
+        Root<E> root = queryContext.getRoot();
+        
         List<SelectionMetadata> selections = new ArrayList<>();
 
         boolean hasUnexpandedGroups = request.getRowGroupCols().size() > request.getGroupKeys().size();
@@ -766,10 +849,10 @@ public class QueryBuilder<E> {
             // group columns
             for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size() + 1; i++) {
                 ColumnVO groupCol = request.getRowGroupCols().get(i);
-                Selection<?> groupSelection = getPath(root, groupCol.getField()).alias(groupCol.getField());
+                Expression<?> groupExpression = getPath(root, groupCol.getField());
 
                 SelectionMetadata groupSelectionMetadata = SelectionMetadata
-                        .builder(groupSelection)
+                        .builder(groupExpression, groupCol.getField())
                         .isGroupingSelection(true)
                         .build();
                 selections.add(groupSelectionMetadata);
@@ -777,9 +860,9 @@ public class QueryBuilder<E> {
 
             // count children
             if (this.getChildCount) {
-                Selection<Long> childCountSelection = cb.count(root).alias(this.getChildCountFieldName);
+                Expression<Long> childCountExpression = cb.count(root);
                 selections.add(
-                        SelectionMetadata.builder(childCountSelection)
+                        SelectionMetadata.builder(childCountExpression, this.getChildCountFieldName)
                                 .isChildCountSelection(true)
                                 .build()
                 );
@@ -792,7 +875,7 @@ public class QueryBuilder<E> {
                 Expression<?> aggregatedField = aggregateFunction.apply(cb, path);
                 selections.add(
                         SelectionMetadata
-                                .builder(aggregatedField.alias(columnVO.getField()))
+                                .builder(aggregatedField, columnVO.getField())
                                 .isAggregationSelection(true)
                                 .build()
                 );
@@ -802,23 +885,21 @@ public class QueryBuilder<E> {
             // just select columns
             for (ColDef colDef : this.colDefs.values()) {
                 Path<?> field = getPath(root, colDef.getField());
-                Selection<?> selection = field.alias(colDef.getField());
-
-                selections.add(SelectionMetadata.builder(selection).build());
+                selections.add(SelectionMetadata.builder(field, colDef.getField()).build());
             }
         }
         
         return selections;
     }
 
-    protected List<SelectionMetadata> selectBasic(CriteriaBuilder cb, AbstractQuery<?> query, Root<E> root, ServerSideGetRowsRequest request) {
+    protected List<SelectionMetadata> selectBasic(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        Root<E> root = queryContext.getRoot();
         // just select col defs
         return this.colDefs.values()
                 .stream()
                 .map(colDef -> {
                     Path<?> field = getPath(root, colDef.getField());
-                    Selection<?> selection = field.alias(colDef.getField());
-                    return SelectionMetadata.builder(selection).build();
+                    return SelectionMetadata.builder(field, colDef.getField()).build();
                 })
                 .collect(Collectors.toList());
     }
@@ -827,7 +908,11 @@ public class QueryBuilder<E> {
      * Fills the where metadata predicates if when the grid is in tree data mode
      *
      */
-    protected List<WherePredicateMetadata> whereTreeData(CriteriaBuilder cb, AbstractQuery<?> query, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
+    protected List<WherePredicateMetadata> whereTreeData(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        // unwrap from context
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
+        Root<E> root = queryContext.getRoot();
+        
         List<WherePredicateMetadata> wherePredicateMetadata = new ArrayList<>();
         
         // create predicate for current tree level
@@ -878,11 +963,11 @@ public class QueryBuilder<E> {
             // 3. it has any children that pass the filter
 
             // 1. first check if parent passes the filter
-            Predicate parentPredicate = this.createTreeDataParentMatchPredicate(cb, query, request, queryContext);
+            Predicate parentPredicate = this.createTreeDataParentMatchPredicate(queryContext, request);
             // 2. check if its own data passes the filter
-            Predicate ownDataPredicate = this.createTreeDataOwnDataPredicate(cb, query, root, request);
+            Predicate ownDataPredicate = this.createTreeDataOwnDataPredicate(queryContext, request);
             // 3. check if any children pass the filter
-            Predicate childrenPredicate = this.createTreeDataChildrenMatchPredicate(cb, query, root, request, queryContext);
+            Predicate childrenPredicate = this.createTreeDataChildrenMatchPredicate(queryContext, request);
 
             Predicate treeDataFilteringPredicate = cb.or(parentPredicate, ownDataPredicate, childrenPredicate);
             wherePredicateMetadata.add(
@@ -896,17 +981,21 @@ public class QueryBuilder<E> {
         return wherePredicateMetadata;
     }
 
-    protected List<WherePredicateMetadata> whereMasterDetail(CriteriaBuilder cb, AbstractQuery<?> query, Root<E> root, ServerSideGetRowsRequest request) {
+    protected List<WherePredicateMetadata> whereMasterDetail(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         if (request.getGroupKeys().isEmpty()) {
-            return this.whereBasic(cb, query, root, request);
+            return this.whereBasic(queryContext, request);
         } else {
-            return this.whereGrouping(cb, query, root, request);
+            return this.whereGrouping(queryContext, request);
         }
     }
 
-    protected List<WherePredicateMetadata> wherePivoting(CriteriaBuilder cb, AbstractQuery<?> query, Root<E> root, ServerSideGetRowsRequest request, PivotingContext pivotingContext) {
+    protected List<WherePredicateMetadata> wherePivoting(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
+        Root<E> root = queryContext.getRoot();
+        
         List<WherePredicateMetadata> wherePredicates = new ArrayList<>();
 
+        // expanded groups
         for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size(); i++) {
             String groupKey = request.getGroupKeys().get(i);
             String groupCol = request.getRowGroupCols().get(i).getField();
@@ -926,12 +1015,16 @@ public class QueryBuilder<E> {
             wherePredicates.add(groupPredicateInfo);
         }
         
-        // todo: filtering when pivoting in future?
+        // todo: check how where clause for pivoting should work when filtering
         
         return wherePredicates;
     }
 
-    protected List<WherePredicateMetadata> whereGrouping(CriteriaBuilder cb, AbstractQuery<?> query, Root<E> root, ServerSideGetRowsRequest request) {
+    protected List<WherePredicateMetadata> whereGrouping(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
+        AbstractQuery<?> query = queryContext.getQuery();
+        Root<E> root = queryContext.getRoot();
+        
         List<WherePredicateMetadata> wherePredicates = new ArrayList<>();
         
         // where expanded groups predicates
@@ -1053,13 +1146,16 @@ public class QueryBuilder<E> {
             return wherePredicates;
         } else {
             // apply filtering to leaf nodes
-            wherePredicates.addAll(this.whereBasic(cb, query, root, request));
+            wherePredicates.addAll(this.whereBasic(queryContext, request));
         }
 
         return wherePredicates;
     }
 
-    protected List<WherePredicateMetadata> whereBasic(CriteriaBuilder cb, AbstractQuery<?> query, Root<E> root, ServerSideGetRowsRequest request) {
+    protected List<WherePredicateMetadata> whereBasic(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
+        Root<E> root = queryContext.getRoot();
+        
         List<WherePredicateMetadata> wherePredicates = new ArrayList<>();
 
         // external filter
@@ -1106,7 +1202,14 @@ public class QueryBuilder<E> {
         return wherePredicates;
     }
 
-    protected List<HavingMetadata> havingGrouping(CriteriaBuilder cb, AbstractQuery<?> query, Root<E> root, ServerSideGetRowsRequest request) {
+    protected List<HavingMetadata> havingGrouping(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        // no need to have 'having' clause in grouping for now
+        // filtering on aggregated values is done within where clause by subqueries (need to check all levels of tree)
+        return List.of();
+    }
+
+    protected List<HavingMetadata> havingPivoting(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        // todo: check how pivoting having clause should work
         return List.of();
     }
 
@@ -1116,17 +1219,19 @@ public class QueryBuilder<E> {
      * Used to show the total number of items hidden inside a non-leaf node.
      * When node is leaf node, the expression returns null.
      *
-     * @param cb The criteria builder.
-     * @param query The main query.
-     * @param root The current row (parent) being processed.
      * @param hasChildrenPredicate A condition checking if the current row is a leaf node or not.
      * @param request request.
      * @param queryContext query context.
      * @return expression returning the child count for non-leaf nodes, or null otherwise.
      */
     protected Expression<?> createTreeDataGetChildCountExpression(
-            CriteriaBuilder cb, AbstractQuery<?> query, Root<E> root, Expression<Boolean> hasChildrenPredicate, 
-            ServerSideGetRowsRequest request, QueryContext queryContext) {
+            QueryContext<E> queryContext,
+            Expression<Boolean> hasChildrenPredicate, 
+            ServerSideGetRowsRequest request) {
+        
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
+        AbstractQuery<?> query = queryContext.getQuery();
+        Root<E> root = queryContext.getRoot();
         
         Subquery<Long> countChildrenSubquery = query.subquery(Long.class);
         Root<E> countChildrenRoot = countChildrenSubquery.from(this.entityClass);
@@ -1157,7 +1262,12 @@ public class QueryBuilder<E> {
             }
             // filter where
             if (request.getFilterModel() != null && !request.getFilterModel().isEmpty()) {
-                Predicate filterPredicate = this.filterToWherePredicate(cb, countChildrenRoot, request, queryContext).getPredicate();
+                Predicate filterPredicate;
+                if (this.enableAdvancedFilter) {
+                    filterPredicate = this.createAdvancedFilterPredicate(cb, countChildrenRoot, request.getFilterModel());
+                } else {
+                    filterPredicate = this.createColumnFilterPredicate(cb, countChildrenRoot, request.getFilterModel());
+                }
                 if (filterPredicate != null) {
                     predicates.add(filterPredicate);
                 }
@@ -1172,23 +1282,23 @@ public class QueryBuilder<E> {
      * Creates an expression that aggregates values from all matching children.
      * When node is leaf node, the expression returns the row's own value for that column.
      *
-     * @param cb The criteria builder.
-     * @param query The main query.
-     * @param root The current row being processed.
-     * @param hasChildrenPredicate A condition checking if the current row is a leaf node or not.
-     * @param aggColumn The definition of the column and aggregation function.
-     * @param request request.
-     * @param queryContext query context.
      * @return expression returning the aggregated value for non-leaf nodes, or the own value otherwise.
      */
     protected Expression<?> createTreeDataAggregationExpression(
-            CriteriaBuilder cb, AbstractQuery<?> query, Root<E> root, Expression<Boolean> hasChildrenPredicate, 
-            ColumnVO aggColumn, ServerSideGetRowsRequest request, 
-            QueryContext queryContext) {
+            QueryContext<E> queryContext, 
+            Expression<Boolean> hasChildrenPredicate, 
+            ColumnVO aggColumn, 
+            ServerSideGetRowsRequest request
+    ) {
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
+        Root<E> root = queryContext.getRoot();
+        AbstractQuery<?> query = queryContext.getQuery();
+        
         Subquery<?> treeAggregationSubquery = query.subquery(Object.class);
         Root<E> treeAggregationRoot = treeAggregationSubquery.from(this.entityClass);
 
-        Expression<?> aggregationSelection = this.aggFuncs.get(aggColumn.getAggFunc()).apply(cb, getPath(treeAggregationRoot, aggColumn.getField()));
+        var aggregationFunction = this.aggFuncs.get(aggColumn.getAggFunc());
+        Expression<?> aggregationSelection = aggregationFunction.apply(cb, getPath(treeAggregationRoot, aggColumn.getField()));
         treeAggregationSubquery.select((Expression) aggregationSelection);
 
         List<Predicate> predicates = new ArrayList<>();
@@ -1215,7 +1325,12 @@ public class QueryBuilder<E> {
             }
             // filter where
             if (request.getFilterModel() != null && !request.getFilterModel().isEmpty()) {
-                Predicate filterPredicate = this.filterToWherePredicate(cb, treeAggregationRoot, request, queryContext).getPredicate();
+                Predicate filterPredicate;
+                if (this.enableAdvancedFilter) {
+                    filterPredicate = this.createAdvancedFilterPredicate(cb, treeAggregationRoot, request.getFilterModel());
+                } else {
+                    filterPredicate = this.createColumnFilterPredicate(cb, treeAggregationRoot, request.getFilterModel());
+                }
                 if (filterPredicate != null) {
                     predicates.add(filterPredicate);
                 }
@@ -1231,13 +1346,14 @@ public class QueryBuilder<E> {
     /**
      * Creates predicate that checks if any parent in the current path matches the filter criteria.
      *
-     * @param cb The builder used to create the database conditions.
-     * @param query The main query object used to create a subquery.
      * @param request The grid request containing the active filters and group keys.
      * @param queryContext Helper for tracking query state and parameters.
      * @return A condition (Predicate) that is true if at least one parent matches the filters.
      */
-    protected Predicate createTreeDataParentMatchPredicate(CriteriaBuilder cb, AbstractQuery<?> query, ServerSideGetRowsRequest request, QueryContext queryContext) {
+    protected Predicate createTreeDataParentMatchPredicate(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
+        AbstractQuery<?> query = queryContext.getQuery();
+        
         if (request.getGroupKeys().isEmpty()) {
             // no parents, no parents match
             return cb.disjunction();
@@ -1274,7 +1390,12 @@ public class QueryBuilder<E> {
         }
         // filter where
         if (request.getFilterModel() != null && !request.getFilterModel().isEmpty()) {
-            Predicate filterPredicate = this.filterToWherePredicate(cb, parentRoot, request, queryContext).getPredicate();
+            Predicate filterPredicate;
+            if (this.enableAdvancedFilter) {
+                filterPredicate = this.createAdvancedFilterPredicate(cb, parentRoot, request.getFilterModel());
+            } else {
+                filterPredicate = this.createColumnFilterPredicate(cb, parentRoot, request.getFilterModel());
+            }
             if (filterPredicate != null) {
                 predicates.add(filterPredicate);
             }
@@ -1291,7 +1412,10 @@ public class QueryBuilder<E> {
     }
 
 
-    protected Predicate createTreeDataOwnDataPredicate(CriteriaBuilder cb, AbstractQuery<?> query, Root<E> root, ServerSideGetRowsRequest request) {
+    protected Predicate createTreeDataOwnDataPredicate(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
+        Root<E> root = queryContext.getRoot();
+        
         // generate filter predicates
         List<Predicate> predicates = new ArrayList<>(3);
         // external filter
@@ -1330,14 +1454,15 @@ public class QueryBuilder<E> {
     /**
      * Creates predicate that checks if any child further down the tree matches the filter criteria.
      *
-     * @param cb The builder used to create the database conditions.
-     * @param query The main query object used to create a subquery.
-     * @param root The current row being checked.
      * @param request The grid request containing the active filters.
      * @param queryContext Helper for tracking query state and parameters.
      * @return A condition (Predicate) that is true if at least one descendant matches the filters.
      */
-    protected Predicate createTreeDataChildrenMatchPredicate(CriteriaBuilder cb, AbstractQuery<?> query, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
+    protected Predicate createTreeDataChildrenMatchPredicate(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
+        Root<E> root = queryContext.getRoot();
+        AbstractQuery<?> query = queryContext.getQuery();
+        
         Subquery<Integer> childrenMatchSubquery = query.subquery(Integer.class);
         Root<E> childrenRoot = childrenMatchSubquery.from(this.entityClass);
 
@@ -1365,7 +1490,14 @@ public class QueryBuilder<E> {
         }
         // filter where
         if (request.getFilterModel() != null && !request.getFilterModel().isEmpty()) {
-            Predicate filterPredicate = this.filterToWherePredicate(cb, childrenRoot, request, queryContext).getPredicate();
+            Predicate filterPredicate;
+            if (this.enableAdvancedFilter) {
+                // advanced filter
+                filterPredicate = this.createAdvancedFilterPredicate(cb, childrenRoot, request.getFilterModel());
+            } else {
+                // column filter
+                filterPredicate = this.createColumnFilterPredicate(cb, childrenRoot, request.getFilterModel());
+            }
             if (filterPredicate != null) {
                 predicates.add(filterPredicate);
             }
@@ -1381,288 +1513,160 @@ public class QueryBuilder<E> {
         return cb.exists(childrenMatchSubquery);
     }
 
-
-    /**
-     * Adds {@code GROUP BY} expressions to the {@link QueryContext} if the request indicates active grouping.
-     * <p>
-     * Determines whether grouping is needed based on the number of group columns vs. group keys,
-     * and collects grouping metadata for the next unresolved group column.
-     *
-     * @param cb           the {@link CriteriaBuilder}, not used here but provided for consistency
-     * @param root         the root entity in the criteria query
-     * @param request      the AG Grid server-side row request containing group column info
-     * @param queryContext the query context to populate with grouping metadata
-     */
-    protected void groupBy(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
-        // we know data are still grouped if request contains more group columns than group keys
-        boolean hasUnexpandedGroups = request.getRowGroupCols().size() > request.getGroupKeys().size();
-        if (hasUnexpandedGroups) {
-            Map<String, GroupingMetadata> groupingInfo = new LinkedHashMap<>();
-            for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size() + 1; i++) {
-                String groupCol = request.getRowGroupCols().get(i).getField();
-                GroupingMetadata groupingMetadata = GroupingMetadata
-                        .builder(getPath(root, groupCol))
-                        .column(groupCol)
-                        .build();
-                
-                groupingInfo.put(groupCol, groupingMetadata);
-            }
-            
-            queryContext.setGrouping(groupingInfo);
-        }
-    }
-
-    protected List<GroupingMetadata> groupByTreeData(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
+    protected List<GroupingMetadata> groupByTreeData(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         // tree data does not have any grouping
         return List.of();
     }
 
-    protected List<GroupingMetadata> groupByMasterDetail(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
-        List<GroupingMetadata> groupings = new ArrayList<>();
+    protected List<GroupingMetadata> groupByMasterDetail(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        if (request.getRowGroupCols().isEmpty()) {
+            // no grouping
+            return List.of();
+        } else {
+            return this.groupByGrouping(queryContext, request);
+        }
+    }
+
+    protected List<GroupingMetadata> groupByPivoting(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        Root<E> root = queryContext.getRoot();
         
-        // master-detail can be used together with groups
-        boolean hasUnexpandedGroups = request.getRowGroupCols().size() > request.getGroupKeys().size();
-        if (hasUnexpandedGroups) {
-            Map<String, GroupingMetadata> groupingInfo = new LinkedHashMap<>();
-            for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size() + 1; i++) {
-                String groupCol = request.getRowGroupCols().get(i).getField();
-                GroupingMetadata groupingMetadata = GroupingMetadata
-                        .builder(getPath(root, groupCol))
-                        .column(groupCol)
-                        .build();
-                
-                groupings.add(groupingMetadata);
-            }
+        List<GroupingMetadata> groupings = new ArrayList<>();
+        // there is always grouping in pivoting
+        for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size() + 1; i++) {
+            String groupCol = request.getRowGroupCols().get(i).getField();
+            GroupingMetadata groupingMetadata = GroupingMetadata
+                    .builder(getPath(root, groupCol))
+                    .column(groupCol)
+                    .build();
+
+            groupings.add(groupingMetadata);
         }
         
         return groupings;
     }
     
-
-
-    /**
-     * Builds {@code ORDER BY} expressions based on the sorting model in the {@link ServerSideGetRowsRequest}
-     * and the current query mode (pivoting, grouping, or flat).
-     * <p>
-     * Depending on the mode, it generates appropriate sort orders for grouped columns,
-     * aggregated fields, or direct selections, and stores them in the {@link QueryContext}.
-     *
-     * @param cb           the {@link CriteriaBuilder} used to construct order expressions
-     * @param request      the AG Grid server-side row request containing sort model data
-     * @param queryContext the query context to populate with order metadata
-     */
-    protected void orderBy(CriteriaBuilder cb, ServerSideGetRowsRequest request, QueryContext queryContext) {
+    protected List<GroupingMetadata> groupByGrouping(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        Root<E> root = queryContext.getRoot();
         
-        List<Order> orders = new ArrayList<>();
-        
-        // grid is in pivot mode
-        if (queryContext.getPivotingContext().isPivoting()) {
-            // when pivoting, only groups or aggregated values can be sorted
-            List<Order> pivotingGroupsOrders = request.getSortModel()
-                    .stream()
-                    .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))
-                    .filter(model -> queryContext.getGrouping().containsKey(model.getColId()))
-                    .limit(request.getGroupKeys().size() + 1)
-                    .map(sortModel -> {
-                        Expression<?> groupingExpression = queryContext.getGrouping().get(sortModel.getColId()).getGropingExpression();
-                        if (sortModel.getSort() == SortType.asc) {
-                            return cb.asc(groupingExpression);
-                        } else if (sortModel.getSort() == SortType.desc) {
-                            return cb.desc(groupingExpression);
-                        } else {
-                            throw new RuntimeException();
-                        }
-                    })
-                    .collect(Collectors.toList());
-            
-            List<Order> pivotingAggregationOrders = request.getSortModel()
-                    .stream()
-                    .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))
-                    .filter(model -> queryContext.getSelections().containsKey(model.getColId()))
-                    .filter(model -> queryContext.getSelections().get(model.getColId()).isPivotingSelection())
-                    .map(sortModel -> {
-                        Expression<?> pivotingAggregationExpression = (Expression<?>) queryContext.getSelections().get(sortModel.getColId()).getSelection();
-                        if (sortModel.getSort() == SortType.asc) {
-                            return cb.asc(pivotingAggregationExpression);
-                        } else if (sortModel.getSort() == SortType.desc) {
-                            return cb.desc(pivotingAggregationExpression);
-                        } else {
-                            throw new RuntimeException();
-                        }
-                    })
-                    .collect(Collectors.toList());
-            
-            orders.addAll(pivotingGroupsOrders);
-            orders.addAll(pivotingAggregationOrders);
-        } else {
-            // we know data are still grouped if request contains more group columns than group keys
-            boolean hasUnexpandedGroups = request.getRowGroupCols().size() > request.getGroupKeys().size();
-            if (hasUnexpandedGroups) {
-                // grid is in grouping mode
+        List<GroupingMetadata> groupings = new ArrayList<>();
+        // master-detail can be used together with groups
+        boolean hasUnexpandedGroups = request.getRowGroupCols().size() > request.getGroupKeys().size();
+        if (hasUnexpandedGroups) {
+            for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size() + 1; i++) {
+                String groupCol = request.getRowGroupCols().get(i).getField();
+                GroupingMetadata groupingMetadata = GroupingMetadata
+                        .builder(getPath(root, groupCol))
+                        .column(groupCol)
+                        .build();
 
-                // ordering by grouped columns
-                List<Order> groupOrders = request.getSortModel().stream()
-                        .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))    // ignore auto-generated column
-                        .filter(model -> queryContext.getGrouping().containsKey(model.getColId()))
-                        .map(sortModel -> {
-                            Expression<?> gropingExpression = queryContext.getGrouping().get(sortModel.getColId()).getGropingExpression();
-                            if (sortModel.getSort() == SortType.asc) {
-                                return cb.asc(gropingExpression);
-                            } else if (sortModel.getSort() == SortType.desc) {
-                                return cb.desc(gropingExpression);
-                            } else {
-                                return null;
-                            }
-                        })
-                        .filter(Objects::nonNull)
-                        .limit(request.getGroupKeys().size() + 1)
-                        .collect(Collectors.toList());
-
-                // ordering by aggregated columns
-                List<Order> aggregationOrders = request.getSortModel().stream()
-                        .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))
-                        // in aggregation cols
-                        .filter(model -> queryContext.getSelections().containsKey(model.getColId()))
-                        .filter(model -> queryContext.getSelections().get(model.getColId()).isAggregationSelection())
-                        .map(model -> {
-                            Expression<?> aggregatedField = (Expression<?>) queryContext.getSelections().get(model.getColId()).getSelection();
-                            if (model.getSort() == SortType.asc) {
-                                return cb.asc(aggregatedField);
-                            } else if (model.getSort() == SortType.desc) {
-                                return cb.desc(aggregatedField);
-                            } else {
-                                return null;
-                            }
-                        })
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.toList());
-
-                orders.addAll(groupOrders);
-                orders.addAll(aggregationOrders);
-
-            } else {
-                // grid is in basic mode :)
-                List<Order> columnOrders = request.getSortModel().stream()
-                        .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))
-                        .filter(model -> this.colDefs.containsKey(model.getColId()))
-                        .filter(model -> queryContext.getSelections().containsKey(model.getColId()))
-                        .map(sortModel -> {
-                            Expression<?> field = (Expression<?>) queryContext.getSelections().get(sortModel.getColId()).getSelection();
-                            if (sortModel.getSort() == SortType.asc) {
-                                return cb.asc(field);
-                            } else if (sortModel.getSort() == SortType.desc) {
-                                return cb.desc(field);
-                            } else {
-                                return null;
-                            }
-                        })
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.toList());
-
-                orders.addAll(columnOrders);
+                groupings.add(groupingMetadata);
             }
         }
 
-        queryContext.setOrders(
-                orders.stream()
-                        .map(o -> OrderMetadata.builder(o).colId(o.getExpression().getAlias()).build())
-                        .collect(Collectors.toList())
-        );
+        return groupings;
+    }
+    
+    protected List<OrderMetadata> orderByBasic(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
+        Root<E> root = queryContext.getRoot();
+        
+        return request.getSortModel().stream()
+                .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))
+                .map(model -> {
+                    Expression<?> field = getPath(root, model.getColId());
+                    Order order = model.getSort() == SortType.asc ? cb.asc(field) : cb.desc(field);
+                    return OrderMetadata.builder(order)
+                            .colId(model.getColId())
+                            .build();
+                })
+                .collect(Collectors.toList());
     }
 
-    /**
-     * Constructs {@code HAVING} predicates from the filter model for fields that are aggregated selections.
-     * <p>
-     *
-     * @param cb           the {@link CriteriaBuilder} used to construct predicates
-     * @param request      the AG Grid server-side row request containing filter model data
-     * @param queryContext the query context to populate with {@code HAVING} clause metadata
-     * @throws IllegalArgumentException if a referenced column is not found in {@code colDefs}
-     */
-    @SuppressWarnings("unchecked")
-    protected void having(CriteriaBuilder cb, AbstractQuery<?> query, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
-        List<HavingMetadata> havingPredicates = List.of();
-        if (this.treeData) {
-            // tree data
-//            havingPredicates = this.whereTreeData(cb, query, root, request, queryContext);
-        } else if (this.masterDetail) {
-            // master detail
-//            havingPredicates = this.whereMasterDetail(cb, query, root, request);
-        } else if (queryContext.getPivotingContext().isPivoting()) {
-            // pivoting
-//            havingPredicates = this.wherePivoting(cb, query, root, request, queryContext.getPivotingContext());
-        } else if (!request.getRowGroupCols().isEmpty()) {
-            // grouping
-            havingPredicates = this.havingGrouping(cb, query, root, request);
+    protected List<OrderMetadata> orderByTreeData(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        return this.orderByBasic(queryContext, request);
+    }
+
+    protected List<OrderMetadata> orderByMasterDetail(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        return this.orderByBasic(queryContext, request);
+    }
+
+    
+    protected List<OrderMetadata> orderByGrouping(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
+        Root<E> root = queryContext.getRoot();
+
+        boolean hasUnexpandedGroups = request.getRowGroupCols().size() > request.getGroupKeys().size();
+        if (hasUnexpandedGroups) {
+            // order groups
+            Stream<OrderMetadata> groupOrders = request.getSortModel().stream()
+                    .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))    // ignore auto-generated column
+                    .filter(model -> request.getRowGroupCols().stream().anyMatch(rg -> rg.getField().equals(model.getColId()))) // present in group columns
+                    .map(sortModel -> {
+                        Expression<?> groupingColumnExpression = getPath(root, sortModel.getColId());
+                        Order order = sortModel.getSort() == SortType.asc ? cb.asc(groupingColumnExpression) : cb.desc(groupingColumnExpression);
+                        return OrderMetadata.builder(order)
+                                .colId(sortModel.getColId())
+                                .build();
+                    })
+                    .limit(request.getGroupKeys().size() + 1);   // don't order groups that are not expanded yet
+            
+            // order aggregated columns
+            Stream<OrderMetadata> aggregationOrders = request.getSortModel().stream()
+                    .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))    // ignore auto-generated column
+                    .filter(model -> request.getValueCols().stream().anyMatch(vc -> vc.getField().equals(model.getColId())))  // also present in value cols
+                    .map(sortModelAgg -> {
+                        // corresponding aggregation expression must already be in context
+                        Expression<?> aggregationExpression = queryContext.getSelections().stream()
+                                .filter(s -> s.getAlias().equals(sortModelAgg.getColId()))
+                                .map(SelectionMetadata::getExpression)
+                                .findFirst()
+                                .orElseThrow();
+                        
+                        Order order = sortModelAgg.getSort() == SortType.asc ? cb.asc(aggregationExpression) : cb.desc(aggregationExpression);
+
+                        return OrderMetadata.builder(order)
+                                .colId(sortModelAgg.getColId())
+                                .build();
+                    });
+            
+            return Stream.concat(groupOrders, aggregationOrders).collect(Collectors.toList());
         } else {
-            // basic grid
-//            havingPredicates = this.whereBasic(cb, query, root, request);
+            // all groups expanded, we are on the leaf level, basic ordering
+            return orderByBasic(queryContext, request);
         }
-        queryContext.setHaving(havingPredicates);
+    }
+
+    protected List<OrderMetadata> orderByPivoting(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
+        Root<E> root = queryContext.getRoot();
+        PivotingContext pivotingContext = queryContext.getPivotingContext();
         
-//        if (request.getFilterModel() == null) {
-//            return;
-//        }
-//        // we know data are still grouped if request contains more group columns than group keys
-//        boolean hasUnexpandedGroups = request.getRowGroupCols().size() > request.getGroupKeys().size();
-//        if (!hasUnexpandedGroups) {
-//            // when not grouping, can't have 'having' clause
-//            return;
-//        }
-//        
-//        if (queryContext.getPivotingContext().isPivoting()) {
-//            // todo: pivoting filtering later, need to investigate more
-//            if (request.getRowGroupCols().size() != request.getGroupKeys().size() + 1) {
-//                // only apply filtering when we are on the last group
-//                return;
-//            }
-//            
-//            List<HavingMetadata> pivotingHavingMetadata = request.getFilterModel().entrySet()
-//                    .stream()
-//                    .filter(entry -> queryContext.getSelections().containsKey(entry.getKey()))
-//                    .filter(entry -> queryContext.getSelections().get(entry.getKey()).isPivotingSelection())
-//                    .map(entry -> {
-//                        String selectionAlias = entry.getKey();
-//                        SelectionMetadata selectionMetadata = queryContext.getSelections().get(selectionAlias);
-//                        String columnName = selectionAlias.substring(selectionAlias.lastIndexOf(this.serverSidePivotResultFieldSeparator) + 1);
-//
-//                        IFilter<?, ?> filter = Optional.ofNullable(this.colDefs.get(columnName)).map(ColDef::getFilter)
-//                                .orElseThrow(() -> new IllegalArgumentException("Column " + columnName + " not found in col defs"));
-//                        Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();
-//
-//                        Predicate predicate = filter.toPredicate(cb, (Expression<?>) selectionMetadata.getSelection(), filterMap);
-//
-//                        return HavingMetadata.builder(predicate)
-//                                .isPivoting(true)
-//                                .build();
-//                    })
-//                    .collect(Collectors.toList());
-//            
-//            queryContext.setHaving(pivotingHavingMetadata);
-//        } else {
-//            // not pivoting
-//            // 'groupAggFiltering' must be turned on, and we filter only the first group (group keys is empty)
-//            if (this.groupAggFiltering && request.getGroupKeys().isEmpty()) {
-//                List<HavingMetadata> havingMetadata = request.getFilterModel().entrySet()
-//                        .stream()
-//                        .filter(entry -> queryContext.getSelections().containsKey(entry.getKey()))
-//                        .filter(entry -> queryContext.getSelections().get(entry.getKey()).isAggregationSelection())
-//                        .map(entry -> {
-//                            String columnName = entry.getKey();
-//                            SelectionMetadata selectionMetadata = queryContext.getSelections().get(columnName);
-//
-//                            IFilter<?, ?> filter = Optional.ofNullable(this.colDefs.get(columnName)).map(ColDef::getFilter)
-//                                    .orElseThrow(() -> new IllegalArgumentException("Column " + columnName + " not found in col defs"));
-//                            Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();
-//
-//                            Predicate predicate = filter.toPredicate(cb, (Expression<?>) selectionMetadata.getSelection(), filterMap);
-//                            return HavingMetadata.builder(predicate).build();
-//                        })
-//                        .collect(Collectors.toList());
-//                
-//                queryContext.setHaving(havingMetadata);
-//            }
-//        }
+        // pivoting groups orders
+        Stream<OrderMetadata> pivotingGroupOrders = request.getSortModel().stream()
+                .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))    // ignore auto-generated column
+                .filter(model -> request.getRowGroupCols().stream().anyMatch(rg -> rg.getField().equals(model.getColId()))) // present in group columns
+                .map(sortModel -> {
+                    Expression<?> groupingColumnExpression = getPath(root, sortModel.getColId());
+                    Order order = sortModel.getSort() == SortType.asc ? cb.asc(groupingColumnExpression) : cb.desc(groupingColumnExpression);
+                    return OrderMetadata.builder(order)
+                            .colId(sortModel.getColId())
+                            .build();
+                })
+                .limit(request.getGroupKeys().size() + 1);   // don't order groups that are not expanded yet
+        
+        // pivoting aggregations columns orders
+        Stream<OrderMetadata> pivotingAggregationOrders = request.getSortModel().stream()
+                .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))
+                .filter(model -> pivotingContext.getColumnNamesToExpression().containsKey(model.getColId()))   // pivoting selection
+                .map(sortModel -> {
+                    Expression<?> pivotingExpression = pivotingContext.getColumnNamesToExpression().get(sortModel.getColId());
+                    Order order = sortModel.getSort() == SortType.asc ? cb.asc(pivotingExpression) : cb.desc(pivotingExpression);
+                    return OrderMetadata.builder(order)
+                            .colId(sortModel.getColId())
+                            .build();
+                });
+
+        return Stream.concat(pivotingGroupOrders, pivotingAggregationOrders).collect(Collectors.toList());
     }
 
     /**
@@ -1673,7 +1677,7 @@ public class QueryBuilder<E> {
      * @param request      the AG Grid server-side row request containing {@code startRow} and {@code endRow}
      * @param queryContext the query context to populate with pagination (offset and limit)
      */
-    protected void limitOffset(ServerSideGetRowsRequest request, QueryContext queryContext) {
+    protected void limitOffset(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         queryContext.setFirstResult(request.getStartRow());
         queryContext.setMaxResults(request.getEndRow() - request.getStartRow());
     }
@@ -1780,117 +1784,6 @@ public class QueryBuilder<E> {
         }
 
         return cb.and(predicates.toArray(new Predicate[0]));
-    }
-
-    /**
-     * Converts a filter model into a {@link Predicate} wrapped in {@link WherePredicateMetadata}.
-     * <p>
-     * Supports both column-based and advanced filters. Filters on aggregation fields are excluded
-     * and should be processed separately as HAVING clauses.
-     *
-     * @param cb            the {@link CriteriaBuilder} used to construct predicates
-     * @param root          the query root entity
-     * @param request       the request received from the client (AG Grid)
-     * @param queryContext  the current query context holding metadata like selections
-     * @return the constructed {@link WherePredicateMetadata} representing the filter predicate
-     * @throws IllegalArgumentException if a filter references a non-existent or non-filterable column
-     */
-    @SuppressWarnings("unchecked")
-    protected WherePredicateMetadata filterToWherePredicate(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request, QueryContext queryContext) {
-        Map<String, Object> filterModel = request.getFilterModel();
-        
-        if (!this.isColumnFilter(filterModel)) {
-            // advanced filter
-            AdvancedFilterModel advancedFilterModel = this.recognizeAdvancedFilter(filterModel);
-            Predicate predicate = advancedFilterModel.toPredicate(cb, root);
-            
-            return WherePredicateMetadata
-                    .builder(predicate)
-                    .isFilterPredicate(true)
-                    .isAdvancedFilterPredicate(true)
-                    .advancedFilterModel(advancedFilterModel)
-                    .build();
-        } else {
-            // we know data are still grouped if request contains more group columns than group keys
-            boolean hasUnexpandedGroups = request.getRowGroupCols().size() > request.getGroupKeys().size();
-            
-            List<Predicate> predicates = new ArrayList<>(filterModel.size());
-            for (var entry : filterModel.entrySet()) {
-                String columnName = entry.getKey();
-                Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();
-                
-                // find col def
-                ColDef colDef = Optional.ofNullable(this.colDefs.get(columnName))
-                        .orElseThrow(() -> new IllegalArgumentException("Column " + columnName + " not found in col defs"));
-                // filter of given column
-                IFilter<?, ?> filter = colDef.getFilter();
-                if (filter == null) {
-                    throw new IllegalArgumentException("Column " + columnName + " is not filterable field!");
-                }
-
-                // filter properties
-//                boolean isPivotingColumnFilter = queryContext.getPivotingContext().isPivoting() && queryContext.getPivotingContext().getPivotingResultFields().contains(columnName);
-//                boolean isGroupingColumnFilter = request.getRowGroupCols().stream().anyMatch(c -> c.getId().equals(columnName));
-//                boolean isAggregationColumnFilter = request.getValueCols().stream().anyMatch(c -> c.getId().equals(columnName));
-
-//                if (isPivotingColumnFilter) {
-//                    // filter on pivot-generated column, will be resolved in 'having' clause, skip
-//                    continue;
-//                }
-//                // filtering on group that has been already expanded is ignored
-//                if (isGroupingColumnFilter) {
-//                    int groupColumnIndex = request.getRowGroupCols().indexOf(request.getRowGroupCols().stream().filter(c -> c.getId().equals(columnName)).findFirst().orElseThrow());
-//                    boolean groupWasAlreadyExpanded = groupColumnIndex <= request.getGroupKeys().size() - 1;
-//                    if (groupWasAlreadyExpanded) {
-//                        continue;
-//                    }
-//                }
-//
-//                // When using Filters and Aggregations together, the aggregated values reflect only the rows which have passed the filter. 
-//                // This can be changed to instead ignore applied filters by using the 'suppressAggFilteredOnly' grid option.
-//                if (this.suppressAggFilteredOnly) {
-//                    // if this filter is applied on column that is grouped
-//                    if (isGroupingColumnFilter) {
-//                        // filter on group column
-//                        // we only apply this filter when currently opened group is one above filtered one
-//                        if (hasUnexpandedGroups) {
-//                            String nextGroup = request.getRowGroupCols().get(request.getGroupKeys().size()).getId();
-//                            boolean isFilteringOnNextUnexpandedGroup = columnName.equals(nextGroup);
-//                            if (!isFilteringOnNextUnexpandedGroup) {
-//                                // we don't care about filter on the group column until it's the next group to expand
-//                                continue;
-//                            }
-//                        } else {
-//                            // we ignore filtering on groups that are already expanded
-//                            continue;
-//                        }
-//                    } else {
-//                        // filter on non-group column
-//                        if (hasUnexpandedGroups) {
-//                            // while has unexpanded groups, we ignore filters on non-group columns (until expanding all groups)
-//                            continue;
-//                        }
-//                    }
-//
-//                    // if this filter is applied on column that is aggregated
-//                    if (this.groupAggFiltering && isAggregationColumnFilter && !hasUnexpandedGroups) {
-//                        continue;
-//                    }
-//                }
-                
-                // predicate from filter
-                Predicate predicate = filter.toPredicate(cb, getPath(root, columnName), filterMap);
-                predicates.add(predicate);
-            }
-
-            Predicate predicate = cb.and(predicates.toArray(new Predicate[0]));
-            
-            return WherePredicateMetadata
-                    .builder(predicate)
-                    .isFilterPredicate(true)
-                    .isColumnFilterPredicate(true)
-                    .build();
-        }
     }
 
     /**
@@ -2211,16 +2104,10 @@ public class QueryBuilder<E> {
         }
     }
 
-    /**
-     * Creates pivoting context object to hold all the info about pivoting
-     * @param cb    criteria builder
-     * @param root  root
-     * @param request   request             
-     * @throws OnPivotMaxColumnsExceededException when number of columns to be generated from pivot values is bigger than limit  
-     * @return pivoting context
-     */
-    protected PivotingContext createPivotingContext(CriteriaBuilder cb, Root<E> root, ServerSideGetRowsRequest request) throws OnPivotMaxColumnsExceededException {
-
+    protected PivotingContext createPivotingContext(QueryContext<E> queryContext, ServerSideGetRowsRequest request) throws OnPivotMaxColumnsExceededException {
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
+        Root<E> root = queryContext.getRoot();
+        
         PivotingContext pivotingContext = new PivotingContext();
         if (!request.isPivotMode() || request.getPivotCols().isEmpty()) {
             // no pivoting
@@ -2244,10 +2131,6 @@ public class QueryBuilder<E> {
             List<List<Pair<String, Object>>> cartesianProduct = cartesianProduct(pivotPairs);
             // for each column name its expression
             Map<String, Expression<?>> columnNamesToExpression = this.createPivotingExpressions(cb, root, request, cartesianProduct);
-            // expressions with selections
-            List<Selection<?>> pivotingSelections = columnNamesToExpression.entrySet().stream()
-                    .map(entry -> entry.getValue().alias(entry.getKey()))
-                    .collect(Collectors.toList());
             // result fields are column names
             List<String> pivotingResultFields = new ArrayList<>(columnNamesToExpression.keySet());
 
@@ -2255,7 +2138,6 @@ public class QueryBuilder<E> {
             pivotingContext.setPivotPairs(pivotPairs);
             pivotingContext.setCartesianProduct(cartesianProduct);
             pivotingContext.setColumnNamesToExpression(columnNamesToExpression);
-            pivotingContext.setPivotingSelections(pivotingSelections);
             pivotingContext.setPivotingResultFields(pivotingResultFields);
         }
 

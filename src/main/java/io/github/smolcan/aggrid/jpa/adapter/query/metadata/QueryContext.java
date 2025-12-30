@@ -1,6 +1,10 @@
 package io.github.smolcan.aggrid.jpa.adapter.query.metadata;
 
 
+import jakarta.persistence.criteria.AbstractQuery;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Root;
+
 import java.util.*;
 
 /**
@@ -12,23 +16,44 @@ import java.util.*;
  * during dynamic query generation or analysis.
  * </p>
  */
-public class QueryContext {
+public class QueryContext<E> {
     
-    private Map<String, SelectionMetadata> selections = new HashMap<>();
-    private List<WherePredicateMetadata> wherePredicates = new ArrayList<>();
-    private Map<String, GroupingMetadata> grouping = new LinkedHashMap<>();
-    private List<HavingMetadata> having = new ArrayList<>();
-    private List<OrderMetadata> orders = new ArrayList<>();
+    private final CriteriaBuilder criteriaBuilder;
+    private final AbstractQuery<?> query;
+    private final Root<E> root;
+    
+    private List<SelectionMetadata> selections;
+    private List<WherePredicateMetadata> wherePredicates;
+    private List<GroupingMetadata> grouping;
+    private List<HavingMetadata> having;
+    private List<OrderMetadata> orders;
     private int firstResult;
     private int maxResults;
     private PivotingContext pivotingContext = new PivotingContext();
 
+    public QueryContext(CriteriaBuilder criteriaBuilder, AbstractQuery<?> query, Root<E> root) {
+        this.criteriaBuilder = criteriaBuilder;
+        this.query = query;
+        this.root = root;
+    }
 
-    public Map<String, SelectionMetadata> getSelections() {
+    public CriteriaBuilder getCriteriaBuilder() {
+        return criteriaBuilder;
+    }
+
+    public AbstractQuery<?> getQuery() {
+        return query;
+    }
+
+    public Root<E> getRoot() {
+        return root;
+    }
+
+    public List<SelectionMetadata> getSelections() {
         return selections;
     }
 
-    public void setSelections(Map<String, SelectionMetadata> selections) {
+    public void setSelections(List<SelectionMetadata> selections) {
         this.selections = selections;
     }
 
@@ -40,11 +65,12 @@ public class QueryContext {
         this.wherePredicates = wherePredicates;
     }
 
-    public Map<String, GroupingMetadata> getGrouping() {
+
+    public List<GroupingMetadata> getGrouping() {
         return grouping;
     }
 
-    public void setGrouping(Map<String, GroupingMetadata> grouping) {
+    public void setGrouping(List<GroupingMetadata> grouping) {
         this.grouping = grouping;
     }
 
