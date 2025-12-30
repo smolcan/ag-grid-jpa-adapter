@@ -59,15 +59,15 @@ const AggregationGridGroupFiltering = () => {
             cellDataType: 'text'
         },
         {
-            headerName: 'Submitter ID',
-            field: 'submitter.id',
+            headerName: 'Current Value',
+            field: 'currentValue',
             cellDataType: 'number',
             initialAggFunc: 'count',
             filter: 'agNumberColumnFilter'
         },
         {
-            headerName: 'Submitter Deal ID',
-            field: 'submitterDeal.id',
+            headerName: 'Previous Value',
+            field: 'previousValue',
             cellDataType: 'number',
             initialAggFunc: 'max',
             filter: 'agNumberColumnFilter'
@@ -154,6 +154,7 @@ const AggregationGridGroupFiltering = () => {
                     rowGroupPanelShow={'always'}
                     groupAggFiltering={true}
                     sideBar={true}
+                    cacheBlockSize={30}
                 />
             </div>
         </div>

@@ -1,10 +1,7 @@
 package io.github.smolcan.aggrid.jpa.adapter.query.metadata;
 
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * QueryContext is a metadata container used to inspect 
@@ -19,7 +16,7 @@ public class QueryContext {
     
     private Map<String, SelectionMetadata> selections = new HashMap<>();
     private List<WherePredicateMetadata> wherePredicates = new ArrayList<>();
-    private Map<String, GroupingMetadata> grouping = new HashMap<>();
+    private Map<String, GroupingMetadata> grouping = new LinkedHashMap<>();
     private List<HavingMetadata> having = new ArrayList<>();
     private List<OrderMetadata> orders = new ArrayList<>();
     private int firstResult;
