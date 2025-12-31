@@ -3,14 +3,16 @@ package io.github.smolcan.aggrid.jpa.adapter.request;
 public class SortModelItem {
     private String colId;
     private SortDirection sort;
-    private String sortType;
+    // can not make this enum, since values are 'absolute' and 'default', but default is keyword in java
+    private String type;
 
     public SortModelItem() {
     }
 
-    public SortModelItem(String colId, SortDirection sort, String sortType) {
+    public SortModelItem(String colId, SortDirection sort, String type) {
         this.colId = colId;
         this.sort = sort;
+        this.type = type;
     }
 
     public String getColId() {
@@ -29,11 +31,11 @@ public class SortModelItem {
         this.sort = sort;
     }
 
-    public String getSortType() {
-        return sortType;
+    public String getType() {
+        return type;
     }
 
-    public void setSortType(String sortType) {
-        this.sortType = sortType;
+    public void setType(String type) {
+        this.type = type;
     }
 }

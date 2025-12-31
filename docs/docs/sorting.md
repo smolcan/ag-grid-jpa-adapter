@@ -28,7 +28,21 @@ ColDef priceColumn = ColDef.builder()
 
 import GridLoadingMessage from './grid-loading-message';
 import SortingGrid from './sorting-grid';
+import SortingAbsoluteGrid from './sorting-absolute-grid';
+
 
 <GridLoadingMessage serviceUrls={['/docs/sorting/getRows']}>
     <SortingGrid></SortingGrid>
 </GridLoadingMessage>
+
+## Absolute sorting
+
+Absolute Sorting enables sorting numeric values based on their magnitude, ignoring their sign.
+
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/sorting-absolute-grid.tsx)
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/SortingService.java)
+
+<GridLoadingMessage serviceUrls={['/docs/sorting/absolute/getRows']}>
+<SortingAbsoluteGrid></SortingAbsoluteGrid>
+</GridLoadingMessage>
+
