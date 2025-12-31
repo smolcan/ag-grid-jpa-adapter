@@ -2,7 +2,7 @@ import {ModuleRegistry} from 'ag-grid-community';
 import {
     ColDef,
     ColumnAutoSizeModule,
-    DateFilterModule, EventApiModule, GridApi, GridReadyEvent, IServerSideDatasource,
+    DateFilterModule, EventApiModule, GridApi, GridReadyEvent, IServerSideDatasource, IServerSideGetRowsParams,
     NumberFilterModule, PaginationModule, RowGroupingPanelModule,
     ServerSideRowModelModule,
     TextFilterModule, themeQuartz,
@@ -71,7 +71,7 @@ const RowGroupingChildCountGrid = () => {
     } as ColDef), []);
 
     const serverSideDatasource: IServerSideDatasource = useMemo(() => ({
-        getRows: (params) => {
+        getRows: (params: IServerSideGetRowsParams) => {
             fetch(`${API_URL}/docs/row-grouping/child-count/getRows`, {
                 method: 'POST',
                 headers: {

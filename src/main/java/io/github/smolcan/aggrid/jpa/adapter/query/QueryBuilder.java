@@ -1574,7 +1574,10 @@ public class QueryBuilder<E> {
                 .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))
                 .map(model -> {
                     Expression<?> field = getPath(root, model.getColId());
-                    Order order = model.getSort() == SortType.asc ? cb.asc(field) : cb.desc(field);
+                    if ("absolute".equals(model.getSortType())) {
+                        field = cb.abs((Expression) field);
+                    }
+                    Order order = model.getSort() == SortDirection.asc ? cb.asc(field) : cb.desc(field);
                     return OrderMetadata.builder(order)
                             .colId(model.getColId())
                             .build();
@@ -1603,7 +1606,10 @@ public class QueryBuilder<E> {
                     .filter(model -> request.getRowGroupCols().stream().anyMatch(rg -> rg.getField().equals(model.getColId()))) // present in group columns
                     .map(sortModel -> {
                         Expression<?> groupingColumnExpression = getPath(root, sortModel.getColId());
-                        Order order = sortModel.getSort() == SortType.asc ? cb.asc(groupingColumnExpression) : cb.desc(groupingColumnExpression);
+                        if ("absolute".equals(sortModel.getSortType())) {
+                            groupingColumnExpression = cb.abs((Expression) groupingColumnExpression);
+                        }
+                        Order order = sortModel.getSort() == SortDirection.asc ? cb.asc(groupingColumnExpression) : cb.desc(groupingColumnExpression);
                         return OrderMetadata.builder(order)
                                 .colId(sortModel.getColId())
                                 .build();
@@ -1621,9 +1627,11 @@ public class QueryBuilder<E> {
                                 .map(SelectionMetadata::getExpression)
                                 .findFirst()
                                 .orElseThrow();
+                        if ("absolute".equals(sortModelAgg.getSortType())) {
+                            aggregationExpression = cb.abs((Expression) aggregationExpression);
+                        }
                         
-                        Order order = sortModelAgg.getSort() == SortType.asc ? cb.asc(aggregationExpression) : cb.desc(aggregationExpression);
-
+                        Order order = sortModelAgg.getSort() == SortDirection.asc ? cb.asc(aggregationExpression) : cb.desc(aggregationExpression);
                         return OrderMetadata.builder(order)
                                 .colId(sortModelAgg.getColId())
                                 .build();
@@ -1647,7 +1655,10 @@ public class QueryBuilder<E> {
                 .filter(model -> request.getRowGroupCols().stream().anyMatch(rg -> rg.getField().equals(model.getColId()))) // present in group columns
                 .map(sortModel -> {
                     Expression<?> groupingColumnExpression = getPath(root, sortModel.getColId());
-                    Order order = sortModel.getSort() == SortType.asc ? cb.asc(groupingColumnExpression) : cb.desc(groupingColumnExpression);
+                    if ("absolute".equals(sortModel.getSortType())) {
+                        groupingColumnExpression = cb.abs((Expression) groupingColumnExpression);
+                    }
+                    Order order = sortModel.getSort() == SortDirection.asc ? cb.asc(groupingColumnExpression) : cb.desc(groupingColumnExpression);
                     return OrderMetadata.builder(order)
                             .colId(sortModel.getColId())
                             .build();
@@ -1660,7 +1671,10 @@ public class QueryBuilder<E> {
                 .filter(model -> pivotingContext.getColumnNamesToExpression().containsKey(model.getColId()))   // pivoting selection
                 .map(sortModel -> {
                     Expression<?> pivotingExpression = pivotingContext.getColumnNamesToExpression().get(sortModel.getColId());
-                    Order order = sortModel.getSort() == SortType.asc ? cb.asc(pivotingExpression) : cb.desc(pivotingExpression);
+                    if ("absolute".equals(sortModel.getSortType())) {
+                        pivotingExpression = cb.abs((Expression) pivotingExpression);
+                    }
+                    Order order = sortModel.getSort() == SortDirection.asc ? cb.asc(pivotingExpression) : cb.desc(pivotingExpression);
                     return OrderMetadata.builder(order)
                             .colId(sortModel.getColId())
                             .build();

@@ -2,12 +2,13 @@ package io.github.smolcan.aggrid.jpa.adapter.request;
 
 public class SortModelItem {
     private String colId;
-    private SortType sort;
+    private SortDirection sort;
+    private String sortType;
 
     public SortModelItem() {
     }
 
-    public SortModelItem(String colId, SortType sort) {
+    public SortModelItem(String colId, SortDirection sort, String sortType) {
         this.colId = colId;
         this.sort = sort;
     }
@@ -20,11 +21,19 @@ public class SortModelItem {
         this.colId = colId;
     }
 
-    public SortType getSort() {
+    public SortDirection getSort() {
         return sort;
     }
 
-    public void setSort(SortType sort) {
+    public void setSort(SortDirection sort) {
         this.sort = sort;
+    }
+
+    public String getSortType() {
+        return sortType;
+    }
+
+    public void setSortType(String sortType) {
+        this.sortType = sortType;
     }
 }
