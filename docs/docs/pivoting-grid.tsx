@@ -45,8 +45,8 @@ const PivotingGrid = () => {
             rowGroup: true
         },
         {
-            headerName: 'Portfolio',
-            field: 'portfolio',
+            headerName: 'Book',
+            field: 'book',
             cellDataType: 'text',
             pivot: true,
         },
