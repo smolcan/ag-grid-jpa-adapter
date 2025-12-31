@@ -1049,93 +1049,30 @@ public class QueryBuilder<E> {
         
         boolean hasAnyFilteringOnAggregatedColumns = !this.enableAdvancedFilter &&
                 request.getFilterModel().keySet().stream().anyMatch(k -> request.getValueCols().stream().anyMatch(vc -> vc.getField().equals(k)));
+        boolean hasAnyFilteringOnNonAggregatedColumns = this.enableAdvancedFilter ||
+                request.getFilterModel().keySet().stream().noneMatch(k -> request.getValueCols().stream().anyMatch(vc -> vc.getField().equals(k)));
         boolean hasUnexpandedGroups = request.getRowGroupCols().size() > request.getGroupKeys().size();
         
-        if (this.groupAggFiltering && hasAnyFilteringOnAggregatedColumns && hasUnexpandedGroups) {
-            // apply filtering to group rows by enabling the groupAggFiltering grid option, allowing filters to also apply against the aggregated values.
-            // When a group row passes a filter, it also includes all of its descendent rows in the filtered results.
-            
-            Subquery<Integer> leafNodeExistsSubquery = query.subquery(Integer.class);
-            Root<E> leafNodeRoot = leafNodeExistsSubquery.from(this.entityClass);
-            leafNodeExistsSubquery.select(cb.literal(1));
-            
-            List<Predicate> leafNodeExistsSubqueryPredicates = new ArrayList<>();
-            request.getRowGroupCols().stream()
-                    .map(col -> {
-                        Path<?> subqueryGroupColumnPath = getPath(leafNodeRoot, col.getField());
-                        Path<?> parentQueryGroupColumnPath = getPath(root, col.getField());
-                        return cb.equal(subqueryGroupColumnPath, parentQueryGroupColumnPath);
-                    })
-                    .limit(request.getGroupKeys().size() + 1)
-                    .forEach(leafNodeExistsSubqueryPredicates::add);
-            request.getValueCols().stream()
-                    .filter(vc -> request.getFilterModel().containsKey(vc.getField()))
-                    .forEach(vc -> {
-                        ColDef colDef = this.colDefs.get(vc.getField());
-                        Predicate predicate = colDef.getFilter().toPredicate(cb, getPath(leafNodeRoot, vc.getField()), (Map<String, Object>) request.getFilterModel().get(vc.getField()));
-                        leafNodeExistsSubqueryPredicates.add(predicate);
-                    });
-            leafNodeExistsSubquery.where(leafNodeExistsSubqueryPredicates.toArray(Predicate[]::new));
-            Predicate leafNodePassedPredicate = cb.exists(leafNodeExistsSubquery);
-            
-            // go through every group in each level under current key and check aggregations
-            List<Predicate> groupPassedPredicate = new ArrayList<>(request.getRowGroupCols().size());
-            for (int i = 0; i < request.getRowGroupCols().size(); i++) {
-                
-                // either aggregate passes
-                Subquery<Integer> groupLevelMatchSubquery = query.subquery(Integer.class);
-                Root<E> groupLevelRoot = groupLevelMatchSubquery.from(this.entityClass);
-                groupLevelMatchSubquery.select(cb.literal(1));
-                
-                // group by current level
-                groupLevelMatchSubquery.groupBy(
-                        request.getRowGroupCols().stream()
-                                .map(col -> getPath(groupLevelRoot, col.getField()))
-                                .limit(i + 1)
-                                .collect(Collectors.toList())
-                );
-                
-                // where current level from parent
-                groupLevelMatchSubquery.where(
-                        request.getRowGroupCols().stream()
-                                .map(col -> {
-                                    Path<?> subqueryGroupColumnPath = getPath(groupLevelRoot, col.getField());
-                                    Path<?> parentQueryGroupColumnPath = getPath(root, col.getField());
-                                    return cb.equal(subqueryGroupColumnPath, parentQueryGroupColumnPath);
-                                })
-                                .limit(i + 1)
-                                .collect(Collectors.toList())
-                                .toArray(Predicate[]::new)
-                );
+        
+        if (this.groupAggFiltering) {
+            if (hasUnexpandedGroups && hasAnyFilteringOnAggregatedColumns) {
+                Predicate expandedParentGroupsCheck = this.whereGroupingCreateExpandedParentsPredicate(queryContext, request);
+                Predicate unexpandedChildrenGroupsCheck = this.whereGroupingCreateUnexpandedChildGroupsPredicate(queryContext, request);
+                Predicate leafNodesCheck = this.whereGroupingCreateLeafNodesPredicate(queryContext, request);
 
-                List<Predicate> havingConditions = new ArrayList<>();
-                // for each valueColumn that is in column filter, apply
-                request.getValueCols().stream()
-                        .filter(vc -> request.getFilterModel().containsKey(vc.getField()))
-                        .forEach(vc -> {
-                            // create aggregation expression
-                            Expression<?> aggExpr = this.aggFuncs.get(vc.getAggFunc()).apply(cb, getPath(groupLevelRoot, vc.getField()));
-                            ColDef colDef = this.colDefs.get(vc.getField());
+                Expression<Boolean> groupAggFilteringPredicate = cb.<Boolean>selectCase()
+                        .when(expandedParentGroupsCheck, cb.literal(true))             // when expanded parent group matches, then true
+                        .otherwise(cb.or(leafNodesCheck, unexpandedChildrenGroupsCheck));    // otherwise check child groups aggregation values and leaf nodes
 
-                            Predicate havingPredicate = colDef.getFilter().toPredicate(cb, aggExpr, (Map<String, Object>) request.getFilterModel().get(vc.getField()));
-                            havingConditions.add(havingPredicate);
-                        });
-                groupLevelMatchSubquery.having(havingConditions.toArray(new Predicate[0]));
-                
-                groupPassedPredicate.add(cb.exists(groupLevelMatchSubquery));
+                wherePredicates.add(
+                        WherePredicateMetadata
+                                .builder(cb.isTrue(groupAggFilteringPredicate))
+                                .build()
+                );
             }
-            
-
-            Predicate groupAggFilteringPredicate = cb.or(
-                    leafNodePassedPredicate,
-                    cb.or(groupPassedPredicate.toArray(new Predicate[0]))
-            );
-            
-            wherePredicates.add(
-                    WherePredicateMetadata
-                            .builder(groupAggFilteringPredicate)
-                            .build()
-            );
+            if (!hasUnexpandedGroups && hasAnyFilteringOnNonAggregatedColumns) {
+                wherePredicates.addAll(this.whereBasic(queryContext, request));
+            }
             
             return wherePredicates;
         }
@@ -1200,6 +1137,147 @@ public class QueryBuilder<E> {
         }
 
         return wherePredicates;
+    }
+    
+    
+    protected Predicate whereGroupingCreateExpandedParentsPredicate(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
+        AbstractQuery<?> query = queryContext.getQuery();
+        Root<E> root = queryContext.getRoot();
+        
+        if (request.getGroupKeys().isEmpty()) {
+            return cb.disjunction();
+        }
+        
+        List<Predicate> expandedParentGroupsPredicates = new ArrayList<>(request.getGroupKeys().size());
+        for (int i = 0; i < request.getGroupKeys().size(); i++) {
+            
+            Subquery<Integer> expandedParentSubquery = query.subquery(Integer.class);
+            Root<E> expandedParentRoot = expandedParentSubquery.from(this.entityClass);
+            expandedParentSubquery.select(cb.literal(1));
+
+            expandedParentSubquery.groupBy(
+                    request.getRowGroupCols().stream()
+                            .map(col -> getPath(expandedParentRoot, col.getField()))
+                            .limit(i + 1)
+                            .collect(Collectors.toList())
+            );
+
+            expandedParentSubquery.where(
+                    request.getRowGroupCols().stream()
+                            .map(col -> {
+                                Path<?> subqueryGroupColumnPath = getPath(expandedParentRoot, col.getField());
+                                Path<?> parentQueryGroupColumnPath = getPath(root, col.getField());
+                                return cb.equal(subqueryGroupColumnPath, parentQueryGroupColumnPath);
+                            })
+                            .limit(i + 1)
+                            .collect(Collectors.toList())
+                            .toArray(Predicate[]::new)
+            );
+
+            expandedParentSubquery.having(
+                    request.getValueCols().stream()
+                            .filter(vc -> request.getFilterModel().containsKey(vc.getField()))
+                            .map(vc -> {
+                                // create aggregation expression
+                                Expression<?> aggExpr = this.aggFuncs.get(vc.getAggFunc()).apply(cb, getPath(expandedParentRoot, vc.getField()));
+                                ColDef colDef = this.colDefs.get(vc.getField());
+        
+                                // having predicate
+                                IFilter<?, ?> filter = colDef.getFilter();
+                                return filter.toPredicate(cb, aggExpr, (Map<String, Object>) request.getFilterModel().get(vc.getField()));
+                            })
+                            .toArray(Predicate[]::new)
+            );
+
+            expandedParentGroupsPredicates.add(cb.exists(expandedParentSubquery));
+        }
+        
+        return cb.or(expandedParentGroupsPredicates.toArray(new Predicate[0]));
+    }
+    
+    protected Predicate whereGroupingCreateUnexpandedChildGroupsPredicate(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
+        AbstractQuery<?> query = queryContext.getQuery();
+        Root<E> root = queryContext.getRoot();
+
+        List<Predicate> unexpandedChildGroupsPredicates = new ArrayList<>(request.getGroupKeys().size());
+        for (int i = request.getGroupKeys().size(); i < request.getRowGroupCols().size(); i++) {
+
+            Subquery<Integer> unexpandedChildGroupSubquery = query.subquery(Integer.class);
+            Root<E> unexpandedChildGroupRoot = unexpandedChildGroupSubquery.from(this.entityClass);
+            unexpandedChildGroupSubquery.select(cb.literal(1));
+
+            unexpandedChildGroupSubquery.groupBy(
+                    request.getRowGroupCols().stream()
+                            .map(col -> getPath(unexpandedChildGroupRoot, col.getField()))
+                            .skip(request.getGroupKeys().size())
+                            .limit(i - request.getGroupKeys().size() + 1)
+                            .collect(Collectors.toList())
+            );
+
+            unexpandedChildGroupSubquery.where(
+                    request.getRowGroupCols().stream()
+                            .map(col -> {
+                                Path<?> subqueryGroupColumnPath = getPath(unexpandedChildGroupRoot, col.getField());
+                                Path<?> parentQueryGroupColumnPath = getPath(root, col.getField());
+                                return cb.equal(subqueryGroupColumnPath, parentQueryGroupColumnPath);
+                            })
+                            .skip(request.getGroupKeys().size())
+                            .limit(i - request.getGroupKeys().size() + 1)
+                            .collect(Collectors.toList())
+                            .toArray(Predicate[]::new)
+            );
+
+            unexpandedChildGroupSubquery.having(
+                    request.getValueCols().stream()
+                            .filter(vc -> request.getFilterModel().containsKey(vc.getField()))
+                            .map(vc -> {
+                                // create aggregation expression
+                                Expression<?> aggExpr = this.aggFuncs.get(vc.getAggFunc()).apply(cb, getPath(unexpandedChildGroupRoot, vc.getField()));
+                                ColDef colDef = this.colDefs.get(vc.getField());
+
+                                // having predicate
+                                IFilter<?, ?> filter = colDef.getFilter();
+                                return filter.toPredicate(cb, aggExpr, (Map<String, Object>) request.getFilterModel().get(vc.getField()));
+                            })
+                            .toArray(Predicate[]::new)
+            );
+
+            unexpandedChildGroupsPredicates.add(cb.exists(unexpandedChildGroupSubquery));
+        }
+
+        return cb.or(unexpandedChildGroupsPredicates.toArray(new Predicate[0]));
+    }
+    
+    protected Predicate whereGroupingCreateLeafNodesPredicate(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
+        AbstractQuery<?> query = queryContext.getQuery();
+        Root<E> root = queryContext.getRoot();
+        
+        Subquery<Integer> leafNodeExistsSubquery = query.subquery(Integer.class);
+        Root<E> leafNodeRoot = leafNodeExistsSubquery.from(this.entityClass);
+        leafNodeExistsSubquery.select(cb.literal(1));
+
+        List<Predicate> leafNodeExistsSubqueryPredicates = new ArrayList<>();
+        request.getRowGroupCols().stream()
+                .map(col -> {
+                    Path<?> subqueryGroupColumnPath = getPath(leafNodeRoot, col.getField());
+                    Path<?> parentQueryGroupColumnPath = getPath(root, col.getField());
+                    return cb.equal(subqueryGroupColumnPath, parentQueryGroupColumnPath);
+                })
+                .limit(request.getGroupKeys().size() + 1)
+                .forEach(leafNodeExistsSubqueryPredicates::add);
+        request.getValueCols().stream()
+                .filter(vc -> request.getFilterModel().containsKey(vc.getField()))
+                .forEach(vc -> {
+                    ColDef colDef = this.colDefs.get(vc.getField());
+                    Predicate predicate = colDef.getFilter().toPredicate(cb, getPath(leafNodeRoot, vc.getField()), (Map<String, Object>) request.getFilterModel().get(vc.getField()));
+                    leafNodeExistsSubqueryPredicates.add(predicate);
+                });
+        leafNodeExistsSubquery.where(leafNodeExistsSubqueryPredicates.toArray(Predicate[]::new));
+        
+        return cb.exists(leafNodeExistsSubquery);
     }
 
     protected List<HavingMetadata> havingGrouping(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
