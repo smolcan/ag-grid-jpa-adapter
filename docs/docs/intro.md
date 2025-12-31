@@ -16,11 +16,14 @@ Development will continue for the next 12 months, and significant changes or bre
 ## Installation
 
 **Available via maven dependency**
+
+<a href="https://central.sonatype.com/artifact/io.github.smolcan/ag-grid-jpa-adapter" target="_blank"><img src="https://img.shields.io/maven-central/v/io.github.smolcan/ag-grid-jpa-adapter?strategy=highestVersion&style=flat" alt="Version"/></a>
+
 ```xml
 <dependency>
     <groupId>io.github.smolcan</groupId>
     <artifactId>ag-grid-jpa-adapter</artifactId>
-    <version>0.0.34</version>
+    <version>${ag-grid-jpa-adapter.version}</version>
 </dependency>
 ```
 **Requirements 🛠️**
