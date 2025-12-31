@@ -261,19 +261,19 @@ public class QueryBuilder<E> {
             this.having(subqueryContext, request);
             
             // select the group column in subquery
-            subquery.select((Expression) getPath(subqueryRoot, countingGroupCol)).distinct(true);
+            subquery.select((Expression) getPath(subqueryRoot, countingGroupCol));
             // where
-            if (!queryContext.getWherePredicates().isEmpty()) {
-                Predicate[] predicates = queryContext.getWherePredicates().stream().map(WherePredicateMetadata::getPredicate).toArray(Predicate[]::new);
+            if (!subqueryContext.getWherePredicates().isEmpty()) {
+                Predicate[] predicates = subqueryContext.getWherePredicates().stream().map(WherePredicateMetadata::getPredicate).toArray(Predicate[]::new);
                 subquery.where(predicates);
             }
             // group by
-            if (!queryContext.getGrouping().isEmpty()) {
-                subquery.groupBy(queryContext.getGrouping().stream().map(GroupingMetadata::getGropingExpression).collect(Collectors.toList()));
+            if (!subqueryContext.getGrouping().isEmpty()) {
+                subquery.groupBy(subqueryContext.getGrouping().stream().map(GroupingMetadata::getGropingExpression).collect(Collectors.toList()));
             }
             // having
-            if (!queryContext.getHaving().isEmpty()) {
-                Predicate[] having = queryContext.getHaving().stream().map(HavingMetadata::getPredicate).toArray(Predicate[]::new);
+            if (!subqueryContext.getHaving().isEmpty()) {
+                Predicate[] having = subqueryContext.getHaving().stream().map(HavingMetadata::getPredicate).toArray(Predicate[]::new);
                 subquery.having(having);
             }
             

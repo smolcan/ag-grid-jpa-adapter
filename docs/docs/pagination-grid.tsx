@@ -56,6 +56,13 @@ const PaginationGrid = () => {
             enableRowGroup: true,
         },
         {
+            headerName: 'Book',
+            field: 'book',
+            cellDataType: 'text',
+            filter: 'agTextColumnFilter',
+            enableRowGroup: true,
+        },
+        {
             headerName: 'Birth Date',
             field: 'birthDate',
             cellDataType: 'dateString',
