@@ -1,7 +1,6 @@
 import React, { useState, useEffect, ReactNode } from 'react';
 import { formatDialect, sql } from 'sql-formatter';
 import { useColorMode } from '@docusaurus/theme-common';
-import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
 interface SqlGroup {
     timestamp: string;
@@ -16,7 +15,6 @@ interface GridWrapperProps {
 
 const GridLoadingMessage: React.FC<GridWrapperProps> = ({ children, serviceUrls }) => {
     const [sqlHistory, setSqlHistory] = useState<SqlGroup[]>([]);
-    const [showSlowLoadingMessage, setShowSlowLoadingMessage] = useState<boolean>(false);
     const { colorMode } = useColorMode();
     const urlsRef = React.useRef(serviceUrls);
     useEffect(() => {
@@ -25,7 +23,6 @@ const GridLoadingMessage: React.FC<GridWrapperProps> = ({ children, serviceUrls 
 
     useEffect(() => {
         let activeRequestCount = 0;
-        let slowLoadingTimer: NodeJS.Timeout;
 
         // Save reference to the fetch function currently in place
         const previousFetch = window.fetch;
@@ -37,14 +34,6 @@ const GridLoadingMessage: React.FC<GridWrapperProps> = ({ children, serviceUrls 
             // Check if this request matches ANY of our target URLs
             const currentUrls = urlsRef.current ?? [];
             const isTargetRequest = currentUrls.some(url => requestUrl.includes(url));
-            
-            if (isTargetRequest) {
-                activeRequestCount++;
-                if (activeRequestCount === 1) {
-                    setShowSlowLoadingMessage(false);
-                    slowLoadingTimer = setTimeout(() => setShowSlowLoadingMessage(true), 5000);
-                }
-            }
 
             try {
                 const response = await previousFetch(...args);
@@ -63,29 +52,16 @@ const GridLoadingMessage: React.FC<GridWrapperProps> = ({ children, serviceUrls 
                             }, ...prev]);
                         }
                     } catch (e) { /* Not JSON */ }
-
-                    if (activeRequestCount === 0) {
-                        clearTimeout(slowLoadingTimer);
-                        setShowSlowLoadingMessage(false);
-                    }
                 }
 
                 return response;
             } catch (error) {
-                if (isTargetRequest) {
-                    activeRequestCount--;
-                    if (activeRequestCount === 0) {
-                        clearTimeout(slowLoadingTimer);
-                        setShowSlowLoadingMessage(false);
-                    }
-                }
                 throw error;
             }
         };
 
         return () => {
             window.fetch = previousFetch;
-            if (slowLoadingTimer) clearTimeout(slowLoadingTimer);
         };
     }, [serviceUrls]); // Re-bind if the list of URLs changes
 
@@ -99,17 +75,6 @@ const GridLoadingMessage: React.FC<GridWrapperProps> = ({ children, serviceUrls 
 
     return (
         <div style={{ marginBottom: '2rem' }}>
-            {showSlowLoadingMessage && (
-                <div style={{
-                    backgroundColor: colorMode === 'dark' ? '#2d3748' : '#fff5f5',
-                    padding: '10px',
-                    borderRadius: '4px',
-                    border: '1px solid #feb2b2',
-                    marginBottom: '10px'
-                }}>
-                    ⏱️ Backend is warming up...
-                </div>
-            )}
 
             {children}
 
