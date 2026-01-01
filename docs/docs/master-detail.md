@@ -6,7 +6,7 @@ sidebar_position: 10
 
 The adapter supports AG Grid's [Master / Detail](https://www.ag-grid.com/react-data-grid/master-detail/) view, allowing you to nest grids inside rows.
 
-import GridLoadingMessage from './grid-loading-message';
+import ShowSqlMonitor from './show-sql-monitor';
 import MasterDetailGrid from './master-detail-grid';
 import MasterDetailEagerGrid from './master-detail-eager-grid'
 import MasterDetailDynamicRowsGrid from './master-detail-dynamic-rows-grid'
@@ -75,9 +75,9 @@ You should expose a separate endpoint that calls `getDetailRowData(masterRow)`.
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/master-detail-grid.tsx)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MasterDetailService.java)
 
-<GridLoadingMessage serviceUrls={['/docs/master-detail/getRows', '/docs/master-detail/getDetailRowData']}>
+<ShowSqlMonitor serviceUrls={['/docs/master-detail/getRows', '/docs/master-detail/getDetailRowData']}>
     <MasterDetailGrid></MasterDetailGrid>
-</GridLoadingMessage>
+</ShowSqlMonitor>
 
 ### Eager Loading
 
@@ -138,9 +138,9 @@ JSON Response example:
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/master-detail-eager-grid.tsx)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MasterDetailService.java)
 
-<GridLoadingMessage serviceUrls={['/docs/master-detail/eager/getRows']}>
+<ShowSqlMonitor serviceUrls={['/docs/master-detail/eager/getRows']}>
     <MasterDetailEagerGrid></MasterDetailEagerGrid>
-</GridLoadingMessage>
+</ShowSqlMonitor>
 
 ## Custom Detail Condition
 
@@ -181,9 +181,9 @@ QueryBuilder.builder(Trade.class, entityManager)
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/master-detail-custom-detail-condition-grid.tsx)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MasterDetailService.java)
 
-<GridLoadingMessage serviceUrls={['/docs/master-detail/custom-detail-condition/getRows', '/docs/master-detail/custom-detail-condition/getDetailRows']}>
+<ShowSqlMonitor serviceUrls={['/docs/master-detail/custom-detail-condition/getRows', '/docs/master-detail/custom-detail-condition/getDetailRows']}>
     <MasterDetailCustomDetailConditionGrid></MasterDetailCustomDetailConditionGrid>
-</GridLoadingMessage>
+</ShowSqlMonitor>
 
 ## Dynamic Detail Definitions
 
@@ -236,9 +236,9 @@ If you enable masterDetail, you must provide either the static definition (`mast
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MasterDetailService.java)
 
 
-<GridLoadingMessage serviceUrls={['/docs/master-detail/dynamic/getRows', '/docs/master-detail/dynamic/getDetailRowData']}>
+<ShowSqlMonitor serviceUrls={['/docs/master-detail/dynamic/getRows', '/docs/master-detail/dynamic/getDetailRowData']}>
     <MasterDetailDynamicRowsGrid></MasterDetailDynamicRowsGrid>
-</GridLoadingMessage>
+</ShowSqlMonitor>
 
 
 ## Combining Tree Data with Master Detail
@@ -247,6 +247,6 @@ If you enable masterDetail, you must provide either the static definition (`mast
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MasterDetailService.java)
 
 
-<GridLoadingMessage serviceUrls={['/docs/master-detail/tree/getRows', '/docs/master-detail/tree/getDetailRowData']}>
+<ShowSqlMonitor serviceUrls={['/docs/master-detail/tree/getRows', '/docs/master-detail/tree/getDetailRowData']}>
     <MasterDetailTreeDataGrid></MasterDetailTreeDataGrid>
-</GridLoadingMessage>
+</ShowSqlMonitor>

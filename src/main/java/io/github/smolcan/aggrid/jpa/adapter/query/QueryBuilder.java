@@ -1056,17 +1056,20 @@ public class QueryBuilder<E> {
         
         if (this.groupAggFiltering) {
             if (hasUnexpandedGroups && hasAnyFilteringOnAggregatedColumns) {
-                Predicate expandedParentGroupsCheck = this.whereGroupingCreateExpandedParentsPredicate(queryContext, request);
-                Predicate unexpandedChildrenGroupsCheck = this.whereGroupingCreateUnexpandedChildGroupsPredicate(queryContext, request);
-                Predicate leafNodesCheck = this.whereGroupingCreateLeafNodesPredicate(queryContext, request);
+                
+                if (this.groupAggFilteringExpandedParentsMatch(queryContext, request)) {
+                    // if parent groups match, all child nodes pass, no additional filtering needed
+                    return wherePredicates;
+                }
 
-                Expression<Boolean> groupAggFilteringPredicate = cb.<Boolean>selectCase()
-                        .when(expandedParentGroupsCheck, cb.literal(true))             // when expanded parent group matches, then true
-                        .otherwise(cb.or(leafNodesCheck, unexpandedChildrenGroupsCheck));    // otherwise check child groups aggregation values and leaf nodes
+                // match leaf nodes
+                Predicate leafNodesCheck = this.groupAggFilteringCreateLeafNodesPredicate(queryContext, request);
+                // match aggregates on child groups
+                Predicate unexpandedChildrenGroupsCheck = this.groupAggFilteringCreateUnexpandedChildGroupsPredicate(queryContext, request);
 
                 wherePredicates.add(
                         WherePredicateMetadata
-                                .builder(cb.isTrue(groupAggFilteringPredicate))
+                                .builder(cb.or(leafNodesCheck, unexpandedChildrenGroupsCheck))
                                 .build()
                 );
             }
@@ -1138,9 +1141,91 @@ public class QueryBuilder<E> {
 
         return wherePredicates;
     }
-    
-    
-    protected Predicate whereGroupingCreateExpandedParentsPredicate(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+
+    /**
+     * Checks if any expanded parent group satisfies the current aggregation filters.
+     * This is used to determine if all children of a parent group should be 
+     * automatically included in the results.
+     *
+     * @param queryContext the current query state container
+     * @param request the server-side request parameters from the grid
+     * @return true if any expanded parent group matches the aggregation filters
+     */
+    protected boolean groupAggFilteringExpandedParentsMatch(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
+        if (request.getGroupKeys().isEmpty()) {
+            // no parents
+            return false;
+        }
+
+        CriteriaQuery<Boolean> mainQuery = cb.createQuery(Boolean.class);
+
+        Expression<Boolean> parentMatchExpression = cb.literal(false);
+        for (int i = 0; i < request.getGroupKeys().size(); i++) {
+            String key = request.getGroupKeys().get(i);
+
+            Subquery<Integer> expandedParentSubquery = mainQuery.subquery(Integer.class);
+            Root<E> expandedParentRoot = expandedParentSubquery.from(this.entityClass);
+            expandedParentSubquery.select(cb.literal(1));
+
+            expandedParentSubquery.groupBy(
+                    request.getRowGroupCols().stream()
+                            .map(col -> getPath(expandedParentRoot, col.getField()))
+                            .limit(i + 1)
+                            .collect(Collectors.toList())
+            );
+
+            expandedParentSubquery.where(
+                    request.getRowGroupCols().stream()
+                            .map(col -> {
+                                Path<?> expandedParentGroupPath = getPath(expandedParentRoot, col.getField());
+
+                                // try to synchronize col and key to same data type to prevent errors
+                                // for example, group key is date as string, but field is date, need to parse to date and then compare
+                                TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(expandedParentGroupPath, key);
+                                return cb.equal(synchronizedValueType.getSynchronizedPath(), synchronizedValueType.getSynchronizedValue());
+                            })
+                            .limit(i + 1)
+                            .collect(Collectors.toList())
+                            .toArray(Predicate[]::new)
+            );
+
+            expandedParentSubquery.having(
+                    request.getValueCols().stream()
+                            .filter(vc -> request.getFilterModel().containsKey(vc.getField()))
+                            .map(vc -> {
+                                // create aggregation expression
+                                var aggFunc = this.aggFuncs.get(vc.getAggFunc());
+                                Expression<?> aggExpr = aggFunc.apply(cb, getPath(expandedParentRoot, vc.getField()));
+
+                                // having predicate
+                                ColDef colDef = this.colDefs.get(vc.getField());
+                                @SuppressWarnings("unchecked") 
+                                Map<String, Object> filterModel = (Map<String, Object>) request.getFilterModel().get(vc.getField());
+                                IFilter<?, ?> filter = colDef.getFilter();
+                                return filter.toPredicate(cb, aggExpr, filterModel);
+                            })
+                            .toArray(Predicate[]::new)
+            );
+
+            parentMatchExpression = cb.or(parentMatchExpression, cb.exists(expandedParentSubquery));
+        }
+
+        mainQuery.select(parentMatchExpression);
+
+        return this.entityManager.createQuery(mainQuery).getSingleResult();
+    }
+
+
+    /**
+     * Creates a predicate to identify if the current group's parents meet the 
+     * aggregation filter criteria within the main query.
+     *
+     * @param queryContext the current query state container
+     * @param request the server-side request parameters from the grid
+     * @return a predicate representing the expanded parent group filter match
+     */
+    protected Predicate groupAggFilteringCreateExpandedParentsPredicate(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         AbstractQuery<?> query = queryContext.getQuery();
         Root<E> root = queryContext.getRoot();
@@ -1195,8 +1280,17 @@ public class QueryBuilder<E> {
         
         return cb.or(expandedParentGroupsPredicates.toArray(new Predicate[0]));
     }
-    
-    protected Predicate whereGroupingCreateUnexpandedChildGroupsPredicate(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+
+
+    /**
+     * Creates a predicate to check if any unexpanded child groups (nested groups 
+     * deeper than the current level) satisfy the aggregation filters.
+     *
+     * @param queryContext the current query state container
+     * @param request the server-side request parameters from the grid
+     * @return a predicate that evaluates to true if any hidden child group matches the filters
+     */
+    protected Predicate groupAggFilteringCreateUnexpandedChildGroupsPredicate(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         AbstractQuery<?> query = queryContext.getQuery();
         Root<E> root = queryContext.getRoot();
@@ -1249,8 +1343,16 @@ public class QueryBuilder<E> {
 
         return cb.or(unexpandedChildGroupsPredicates.toArray(new Predicate[0]));
     }
-    
-    protected Predicate whereGroupingCreateLeafNodesPredicate(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+
+    /**
+     * Creates a predicate to verify if any individual leaf nodes (raw data rows) 
+     * belonging to the current group level satisfy the provided filters.
+     *
+     * @param queryContext the current query state container
+     * @param request the server-side request parameters from the grid
+     * @return a predicate that checks for the existence of matching leaf nodes
+     */
+    protected Predicate groupAggFilteringCreateLeafNodesPredicate(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         AbstractQuery<?> query = queryContext.getQuery();
         Root<E> root = queryContext.getRoot();

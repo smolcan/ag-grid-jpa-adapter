@@ -47,16 +47,16 @@ this.queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/tree-data-grid.tsx)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/TreeDataService.java)
 
-import GridLoadingMessage from './grid-loading-message';
+import ShowSqlMonitor from './show-sql-monitor';
 import TreeDataGrid from './tree-data-grid';
 import TreeDataAggGrid from './tree-data-agg-grid';
 import TreeDataChildCountGrid from './tree-data-child-count-grid';
 import TreeDataFilteringGrid from './tree-data-filtering-grid';
 import TreeDataFilteringAllGrid from './tree-data-filtering-all-grid';
 
-<GridLoadingMessage serviceUrls={['/docs/tree-data/getRows']}>
+<ShowSqlMonitor serviceUrls={['/docs/tree-data/getRows']}>
     <TreeDataGrid></TreeDataGrid>
-</GridLoadingMessage>
+</ShowSqlMonitor>
 
 ## Providing Child Counts
 
@@ -71,9 +71,9 @@ To receive child counts for groups, you need to set `getChildCount` param to `tr
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/tree-data-child-count-grid.tsx)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/TreeDataService.java)
 
-<GridLoadingMessage serviceUrls={['/docs/tree-data/child-count/getRows']}>
+<ShowSqlMonitor serviceUrls={['/docs/tree-data/child-count/getRows']}>
     <TreeDataChildCountGrid></TreeDataChildCountGrid>
-</GridLoadingMessage>
+</ShowSqlMonitor>
 
 
 ## Aggregations on Tree Data
@@ -88,9 +88,9 @@ You can get aggregates on group-level nodes the same way as with regular groupin
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/TreeDataService.java)
 
 
-<GridLoadingMessage serviceUrls={['/docs/tree-data/agg/getRows']}>
+<ShowSqlMonitor serviceUrls={['/docs/tree-data/agg/getRows']}>
 <TreeDataAggGrid></TreeDataAggGrid>
-</GridLoadingMessage>
+</ShowSqlMonitor>
 
 
 ## Filtering Tree Data
@@ -109,9 +109,9 @@ To make filtering of tree data work as expected, you need to provide `treeDataDa
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/tree-data-filtering-grid.tsx)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/TreeDataService.java)
 
-<GridLoadingMessage serviceUrls={['/docs/tree-data/filtering/getRows']}>
+<ShowSqlMonitor serviceUrls={['/docs/tree-data/filtering/getRows']}>
     <TreeDataFilteringGrid></TreeDataFilteringGrid>
-</GridLoadingMessage>
+</ShowSqlMonitor>
 
 ### Filtering with non-column filters
 
@@ -120,9 +120,9 @@ Tree filtering also works with non-column filter types: Advanced filters, Extern
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/tree-data-filtering-all-grid.tsx)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/TreeDataService.java)
 
-<GridLoadingMessage serviceUrls={['/docs/tree-data/filtering/all/getRows']}>
+<ShowSqlMonitor serviceUrls={['/docs/tree-data/filtering/all/getRows']}>
     <TreeDataFilteringAllGrid></TreeDataFilteringAllGrid>
-</GridLoadingMessage>
+</ShowSqlMonitor>
 
 ### Ignore Filters when Aggregating Values
 

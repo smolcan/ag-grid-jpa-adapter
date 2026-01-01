@@ -26,14 +26,14 @@ ColDef priceColumn = ColDef.builder()
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/sorting-grid.tsx)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/SortingService.java)
 
-import GridLoadingMessage from './grid-loading-message';
+import ShowSqlMonitor from './show-sql-monitor';
 import SortingGrid from './sorting-grid';
 import SortingAbsoluteGrid from './sorting-absolute-grid';
 
 
-<GridLoadingMessage serviceUrls={['/docs/sorting/getRows']}>
+<ShowSqlMonitor serviceUrls={['/docs/sorting/getRows']}>
     <SortingGrid></SortingGrid>
-</GridLoadingMessage>
+</ShowSqlMonitor>
 
 ## Absolute sorting
 
@@ -42,7 +42,7 @@ Absolute Sorting enables sorting numeric values based on their magnitude, ignori
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/sorting-absolute-grid.tsx)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/SortingService.java)
 
-<GridLoadingMessage serviceUrls={['/docs/sorting/absolute/getRows']}>
+<ShowSqlMonitor serviceUrls={['/docs/sorting/absolute/getRows']}>
 <SortingAbsoluteGrid></SortingAbsoluteGrid>
-</GridLoadingMessage>
+</ShowSqlMonitor>
 
