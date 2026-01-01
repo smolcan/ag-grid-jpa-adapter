@@ -27,15 +27,15 @@ ColDef priceColumn = ColDef.builder()
 
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/aggregation-grid.tsx)
 
-import GridLoadingMessage from './grid-loading-message';
+import ShowSqlMonitor from './show-sql-monitor';
 import AggregationGrid from './aggregation-grid';
 import AggregationCustomFunctionGrid from './aggregation-custom-function-grid';
 import AggregationGridGroupFiltering from './aggregation-grid-group-filtering';
 import AggregationGridSuppressFilteredOnly from './aggregation-grid-suppress-filtered-only';
 
-<GridLoadingMessage serviceUrls={['/docs/aggregation/getRows']}>
+<ShowSqlMonitor serviceUrls={['/docs/aggregation/getRows']}>
     <AggregationGrid></AggregationGrid>
-</GridLoadingMessage>
+</ShowSqlMonitor>
 
 
 **⚠️ Disclaimer**
@@ -62,9 +62,9 @@ QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityMan
 
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/aggregation-custom-function-grid.tsx)
 
-<GridLoadingMessage serviceUrls={['/docs/aggregation/custom-agg-func/getRows']}>
+<ShowSqlMonitor serviceUrls={['/docs/aggregation/custom-agg-func/getRows']}>
     <AggregationCustomFunctionGrid></AggregationCustomFunctionGrid>
-</GridLoadingMessage>
+</ShowSqlMonitor>
 
 ## Aggregation - Filtering
 Filtering can be configured to impact aggregate values in the grid.
@@ -84,9 +84,9 @@ QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityMan
 
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/aggregation-grid-suppress-filtered-only.tsx)
 
-<GridLoadingMessage serviceUrls={['/docs/aggregation/suppress-agg-filtered-only/getRows']}>
+<ShowSqlMonitor serviceUrls={['/docs/aggregation/suppress-agg-filtered-only/getRows']}>
     <AggregationGridSuppressFilteredOnly></AggregationGridSuppressFilteredOnly>
-</GridLoadingMessage>
+</ShowSqlMonitor>
 
 ### Filtering for Aggregated Values
 The grid only applies filters to leaf level rows, this can be toggled to instead also apply filtering to group rows by enabling the `groupAggFiltering` grid option, 
@@ -105,6 +105,6 @@ QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityMan
 - The `suppressAggFilteredOnly` grid option will be implicitly enabled.
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/aggregation-grid-group-filtering.tsx)
 
-<GridLoadingMessage serviceUrls={['/docs/aggregation/group-agg-filtering/getRows']}>
+<ShowSqlMonitor serviceUrls={['/docs/aggregation/group-agg-filtering/getRows']}>
     <AggregationGridGroupFiltering></AggregationGridGroupFiltering>
-</GridLoadingMessage>
+</ShowSqlMonitor>

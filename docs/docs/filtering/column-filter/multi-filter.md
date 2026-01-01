@@ -65,9 +65,9 @@ Multi filter model is represented by [MultiFilterModel](https://github.com/smolc
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/filtering/column-filter/multi-filter-grid.tsx)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MultiFilterService.java)
 
-import GridLoadingMessage from './../../grid-loading-message';
+import ShowSqlMonitor from './../../show-sql-monitor';
 import MultiFilterGrid from './multi-filter-grid';
 
-<GridLoadingMessage serviceUrls={['/docs/filtering/column-filter/multi-filter/getRows', '/docs/filtering/column-filter/multi-filter/supplySetFilterValues']}>
+<ShowSqlMonitor serviceUrls={['/docs/filtering/column-filter/multi-filter/getRows', '/docs/filtering/column-filter/multi-filter/supplySetFilterValues']}>
 <MultiFilterGrid></MultiFilterGrid>
-</GridLoadingMessage>
+</ShowSqlMonitor>

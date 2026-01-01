@@ -20,12 +20,12 @@ ColDef priceColumn = ColDef.builder()
 
 import RowGroupingGrid from './row-grouping-grid';
 import RowGroupingChildCountGrid from './row-grouping-child-count-grid';
-import GridLoadingMessage from './grid-loading-message';
+import ShowSqlMonitor from './show-sql-monitor';
 
 
-<GridLoadingMessage serviceUrls={['/docs/row-grouping/getRows']}>
+<ShowSqlMonitor serviceUrls={['/docs/row-grouping/getRows']}>
     <RowGroupingGrid></RowGroupingGrid>
-</GridLoadingMessage>
+</ShowSqlMonitor>
 
 ## Providing Child Counts
 
@@ -45,6 +45,6 @@ this.queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/row-grouping-child-count-grid.tsx)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/RowGroupingService.java)
 
-<GridLoadingMessage serviceUrls={['/docs/row-grouping/child-count/getRows']}>
+<ShowSqlMonitor serviceUrls={['/docs/row-grouping/child-count/getRows']}>
     <RowGroupingChildCountGrid></RowGroupingChildCountGrid>
-</GridLoadingMessage>
+</ShowSqlMonitor>

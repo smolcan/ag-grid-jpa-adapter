@@ -13,7 +13,7 @@ interface GridWrapperProps {
     serviceUrls: string[];
 }
 
-const GridLoadingMessage: React.FC<GridWrapperProps> = ({ children, serviceUrls }) => {
+const ShowSqlMonitor: React.FC<GridWrapperProps> = ({ children, serviceUrls }) => {
     const [sqlHistory, setSqlHistory] = useState<SqlGroup[]>([]);
     const { colorMode } = useColorMode();
     const urlsRef = React.useRef(serviceUrls);
@@ -120,4 +120,4 @@ const GridLoadingMessage: React.FC<GridWrapperProps> = ({ children, serviceUrls 
     );
 };
 
-export default GridLoadingMessage;
+export default ShowSqlMonitor;

@@ -67,9 +67,9 @@ If more than one Filter Condition is set, then multiple instances of the model a
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/filtering/column-filter/date-filter-grid.tsx)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/DateFilterService.java)
 
-import GridLoadingMessage from './../../grid-loading-message';
+import ShowSqlMonitor from './../../show-sql-monitor';
 import DateFilterGrid from './date-filter-grid';
 
-<GridLoadingMessage serviceUrls={['/docs/filtering/column-filter/date-filter/getRows']}>
+<ShowSqlMonitor serviceUrls={['/docs/filtering/column-filter/date-filter/getRows']}>
 <DateFilterGrid></DateFilterGrid>
-</GridLoadingMessage>
+</ShowSqlMonitor>

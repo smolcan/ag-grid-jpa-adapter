@@ -10,11 +10,11 @@ Pivoting breaks down data in an additional dimension.
 
 
 import PivotingGrid from './pivoting-grid';
-import GridLoadingMessage from './grid-loading-message';
+import ShowSqlMonitor from './show-sql-monitor';
 
-<GridLoadingMessage serviceUrls={['/docs/pivoting/getRows']}>
+<ShowSqlMonitor serviceUrls={['/docs/pivoting/getRows']}>
     <PivotingGrid></PivotingGrid>
-</GridLoadingMessage>
+</ShowSqlMonitor>
 
 ## Enabling Pivoting
 To make column available for pivoting, set the `enablePivot` parameter to `true` on `ColDef`,

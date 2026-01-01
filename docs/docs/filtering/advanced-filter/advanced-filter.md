@@ -35,9 +35,9 @@ If a column does not have a filter set in `ColDef`, attempting to apply an Advan
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/AdvancedFilterService.java)
 
 
-import GridLoadingMessage from './../../grid-loading-message';
+import ShowSqlMonitor from './../../show-sql-monitor';
 import AdvancedFilterGrid from './advanced-filter-grid';
 
-<GridLoadingMessage serviceUrls={['/docs/filtering/advanced-filter/getRows']}>
+<ShowSqlMonitor serviceUrls={['/docs/filtering/advanced-filter/getRows']}>
 <AdvancedFilterGrid></AdvancedFilterGrid>
-</GridLoadingMessage>
+</ShowSqlMonitor>

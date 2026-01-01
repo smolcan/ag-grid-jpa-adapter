@@ -15,11 +15,11 @@ Use the `queryBuilder.countRows(request)` method to retrieve this count
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/PaginationService.java)
 
 import PaginationGrid from './pagination-grid';
-import GridLoadingMessage from './grid-loading-message';
+import ShowSqlMonitor from './show-sql-monitor';
 
-<GridLoadingMessage serviceUrls={['/docs/pagination/getRows', '/docs/pagination/countRows']}>
+<ShowSqlMonitor serviceUrls={['/docs/pagination/getRows', '/docs/pagination/countRows']}>
     <PaginationGrid></PaginationGrid>
-</GridLoadingMessage>
+</ShowSqlMonitor>
 
 ## Paginate child rows
 Set `paginateChildRows=true` in `QueryBuilder` to maintain exact page size. This makes `queryBuilder.countRows(request)` 
@@ -41,6 +41,6 @@ Note: When expanding groups in the frontend and `paginateChildRows` is set to `t
 
 import PaginateChildRowsGrid from './paginate-child-rows-grid';
 
-<GridLoadingMessage serviceUrls={['/docs/pagination/paginate-child-rows/getRows', '/docs/pagination/paginate-child-rows/countRows']}>
+<ShowSqlMonitor serviceUrls={['/docs/pagination/paginate-child-rows/getRows', '/docs/pagination/paginate-child-rows/countRows']}>
     <PaginateChildRowsGrid></PaginateChildRowsGrid>
-</GridLoadingMessage>
+</ShowSqlMonitor>
