@@ -1,6 +1,7 @@
 import React, { useState, useEffect, ReactNode } from 'react';
 import { formatDialect, sql } from 'sql-formatter';
 import { useColorMode } from '@docusaurus/theme-common';
+import CodeBlock from '@theme/CodeBlock';
 
 interface SqlGroup {
     timestamp: string;
@@ -94,22 +95,17 @@ const ShowSqlMonitor: React.FC<GridWrapperProps> = ({ children, serviceUrls }) =
                     </div>
 
                     {sqlHistory.map((group, i) => (
-                        <details key={i} style={{ marginBottom: '8px' }}>
+                        <details key={i} style={{ marginBottom: '8px' }} open={i === 0}>
                             <summary style={{ cursor: 'pointer', fontSize: '0.85rem' }}>
                                 <strong>{group.timestamp}</strong> — {group.queries.length} queries
                             </summary>
                             <div style={{ marginTop: '8px' }}>
-                                {group.queries.map((sql, j) => (
-                                    <pre key={j} style={{
-                                        fontSize: '0.75rem',
-                                        padding: '12px',
-                                        backgroundColor: colorMode === 'dark' ? '#0d1117' : '#fff',
-                                        border: `1px solid ${colorMode === 'dark' ? '#30363d' : '#e1e4e8'}`,
-                                        whiteSpace: 'pre-wrap',
-                                        borderRadius: '6px'
-                                    }}>
-                                        {formatSql(sql)}
-                                    </pre>
+                                {group.queries.map((sqlText, j) => (
+                                    <div key={j} style={{ marginBottom: '10px' }}>
+                                        <CodeBlock language="sql">
+                                            {formatSql(sqlText)}
+                                        </CodeBlock>
+                                    </div>
                                 ))}
                             </div>
                         </details>
