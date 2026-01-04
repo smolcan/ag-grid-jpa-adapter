@@ -16,9 +16,12 @@ Use the `queryBuilder.countRows(request)` method to retrieve this count
 
 import PaginationGrid from './pagination-grid';
 import ShowSqlMonitor from './show-sql-monitor';
+import LazyGrid from './lazy-grid';
 
 <ShowSqlMonitor serviceUrls={['/docs/pagination/getRows', '/docs/pagination/countRows']}>
+<LazyGrid>
     <PaginationGrid></PaginationGrid>
+</LazyGrid>
 </ShowSqlMonitor>
 
 ## Paginate child rows
@@ -42,5 +45,7 @@ Note: When expanding groups in the frontend and `paginateChildRows` is set to `t
 import PaginateChildRowsGrid from './paginate-child-rows-grid';
 
 <ShowSqlMonitor serviceUrls={['/docs/pagination/paginate-child-rows/getRows', '/docs/pagination/paginate-child-rows/countRows']}>
+<LazyGrid>
     <PaginateChildRowsGrid></PaginateChildRowsGrid>
+</LazyGrid>
 </ShowSqlMonitor>

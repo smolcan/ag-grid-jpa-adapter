@@ -29,10 +29,12 @@ ColDef priceColumn = ColDef.builder()
 import ShowSqlMonitor from './show-sql-monitor';
 import SortingGrid from './sorting-grid';
 import SortingAbsoluteGrid from './sorting-absolute-grid';
-
+import LazyGrid from './lazy-grid';
 
 <ShowSqlMonitor serviceUrls={['/docs/sorting/getRows']}>
-    <SortingGrid></SortingGrid>
+    <LazyGrid>
+        <SortingGrid></SortingGrid>
+    </LazyGrid>
 </ShowSqlMonitor>
 
 ## Absolute sorting
@@ -43,6 +45,8 @@ Absolute Sorting enables sorting numeric values based on their magnitude, ignori
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/SortingService.java)
 
 <ShowSqlMonitor serviceUrls={['/docs/sorting/absolute/getRows']}>
+<LazyGrid>
 <SortingAbsoluteGrid></SortingAbsoluteGrid>
+</LazyGrid>
 </ShowSqlMonitor>
 

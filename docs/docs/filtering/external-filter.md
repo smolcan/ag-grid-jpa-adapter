@@ -46,7 +46,10 @@ fetch('/api/rows', {
 
 import ShowSqlMonitor from './../show-sql-monitor';
 import ExternalFilterGrid from './external-filter-grid';
+import LazyGrid from '../lazy-grid';
 
 <ShowSqlMonitor serviceUrls={['/docs/filtering/external-filter/getRows']}>
+<LazyGrid>
 <ExternalFilterGrid></ExternalFilterGrid>
+</LazyGrid>
 </ShowSqlMonitor>

@@ -89,7 +89,10 @@ This function receives the CriteriaBuilder, Root, and the list of parsed words a
 
 import ShowSqlMonitor from './../show-sql-monitor';
 import QuickFilterGrid from './quick-filter-grid';
+import LazyGrid from '../lazy-grid';
 
 <ShowSqlMonitor serviceUrls={['/docs/filtering/quick-filter/getRows']}>
+<LazyGrid>
 <QuickFilterGrid></QuickFilterGrid>
+</LazyGrid>
 </ShowSqlMonitor>

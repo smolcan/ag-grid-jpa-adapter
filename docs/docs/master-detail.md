@@ -12,6 +12,7 @@ import MasterDetailEagerGrid from './master-detail-eager-grid'
 import MasterDetailDynamicRowsGrid from './master-detail-dynamic-rows-grid'
 import MasterDetailTreeDataGrid from './master-detail-tree-data-grid'
 import MasterDetailCustomDetailConditionGrid from './master-detail-custom-detail-condition-grid'
+import LazyGrid from './lazy-grid';
 
 ## Enabling Master Detail
 
@@ -76,7 +77,9 @@ You should expose a separate endpoint that calls `getDetailRowData(masterRow)`.
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MasterDetailService.java)
 
 <ShowSqlMonitor serviceUrls={['/docs/master-detail/getRows', '/docs/master-detail/getDetailRowData']}>
+<LazyGrid>
     <MasterDetailGrid></MasterDetailGrid>
+</LazyGrid>
 </ShowSqlMonitor>
 
 ### Eager Loading
@@ -139,7 +142,9 @@ JSON Response example:
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MasterDetailService.java)
 
 <ShowSqlMonitor serviceUrls={['/docs/master-detail/eager/getRows']}>
+<LazyGrid>
     <MasterDetailEagerGrid></MasterDetailEagerGrid>
+</LazyGrid>
 </ShowSqlMonitor>
 
 ## Custom Detail Condition
@@ -182,7 +187,9 @@ QueryBuilder.builder(Trade.class, entityManager)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MasterDetailService.java)
 
 <ShowSqlMonitor serviceUrls={['/docs/master-detail/custom-detail-condition/getRows', '/docs/master-detail/custom-detail-condition/getDetailRows']}>
+<LazyGrid>
     <MasterDetailCustomDetailConditionGrid></MasterDetailCustomDetailConditionGrid>
+</LazyGrid>
 </ShowSqlMonitor>
 
 ## Dynamic Detail Definitions
@@ -237,7 +244,9 @@ If you enable masterDetail, you must provide either the static definition (`mast
 
 
 <ShowSqlMonitor serviceUrls={['/docs/master-detail/dynamic/getRows', '/docs/master-detail/dynamic/getDetailRowData']}>
+<LazyGrid>
     <MasterDetailDynamicRowsGrid></MasterDetailDynamicRowsGrid>
+</LazyGrid>
 </ShowSqlMonitor>
 
 
@@ -248,5 +257,7 @@ If you enable masterDetail, you must provide either the static definition (`mast
 
 
 <ShowSqlMonitor serviceUrls={['/docs/master-detail/tree/getRows', '/docs/master-detail/tree/getDetailRowData']}>
+<LazyGrid>
     <MasterDetailTreeDataGrid></MasterDetailTreeDataGrid>
+</LazyGrid>
 </ShowSqlMonitor>

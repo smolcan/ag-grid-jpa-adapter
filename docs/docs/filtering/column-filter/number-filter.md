@@ -64,8 +64,11 @@ If more than one Filter Condition is set, then multiple instances of the model a
 
 import ShowSqlMonitor from './../../show-sql-monitor';
 import NumberFilterGrid from './number-filter-grid';
+import LazyGrid from '../../lazy-grid';
 
 <ShowSqlMonitor serviceUrls={['/docs/filtering/column-filter/number-filter/getRows']}>
+<LazyGrid>
 <NumberFilterGrid></NumberFilterGrid>
+</LazyGrid>
 </ShowSqlMonitor>
 

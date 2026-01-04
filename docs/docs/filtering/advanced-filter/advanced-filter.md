@@ -37,7 +37,10 @@ If a column does not have a filter set in `ColDef`, attempting to apply an Advan
 
 import ShowSqlMonitor from './../../show-sql-monitor';
 import AdvancedFilterGrid from './advanced-filter-grid';
+import LazyGrid from '../../lazy-grid';
 
 <ShowSqlMonitor serviceUrls={['/docs/filtering/advanced-filter/getRows']}>
+<LazyGrid>
 <AdvancedFilterGrid></AdvancedFilterGrid>
+</LazyGrid>
 </ShowSqlMonitor>

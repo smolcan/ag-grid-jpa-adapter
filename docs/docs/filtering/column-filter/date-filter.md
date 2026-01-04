@@ -69,7 +69,10 @@ If more than one Filter Condition is set, then multiple instances of the model a
 
 import ShowSqlMonitor from './../../show-sql-monitor';
 import DateFilterGrid from './date-filter-grid';
+import LazyGrid from '../../lazy-grid';
 
 <ShowSqlMonitor serviceUrls={['/docs/filtering/column-filter/date-filter/getRows']}>
+<LazyGrid>
 <DateFilterGrid></DateFilterGrid>
+</LazyGrid>
 </ShowSqlMonitor>

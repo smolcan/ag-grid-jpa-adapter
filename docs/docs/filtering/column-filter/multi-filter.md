@@ -67,7 +67,10 @@ Multi filter model is represented by [MultiFilterModel](https://github.com/smolc
 
 import ShowSqlMonitor from './../../show-sql-monitor';
 import MultiFilterGrid from './multi-filter-grid';
+import LazyGrid from '../../lazy-grid';
 
 <ShowSqlMonitor serviceUrls={['/docs/filtering/column-filter/multi-filter/getRows', '/docs/filtering/column-filter/multi-filter/supplySetFilterValues']}>
+<LazyGrid>
 <MultiFilterGrid></MultiFilterGrid>
+</LazyGrid>
 </ShowSqlMonitor>

@@ -25,6 +25,7 @@
     "prism-react-renderer": "^2.3.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
+    "react-intersection-observer": "^10.0.0",
     "sql-formatter": "^15.6.12",
     "use-debounce": "^10.0.6"
   },

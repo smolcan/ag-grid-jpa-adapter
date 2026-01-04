@@ -32,9 +32,12 @@ import AggregationGrid from './aggregation-grid';
 import AggregationCustomFunctionGrid from './aggregation-custom-function-grid';
 import AggregationGridGroupFiltering from './aggregation-grid-group-filtering';
 import AggregationGridSuppressFilteredOnly from './aggregation-grid-suppress-filtered-only';
+import LazyGrid from './lazy-grid';
 
 <ShowSqlMonitor serviceUrls={['/docs/aggregation/getRows']}>
+<LazyGrid>
     <AggregationGrid></AggregationGrid>
+</LazyGrid>
 </ShowSqlMonitor>
 
 
@@ -63,7 +66,9 @@ QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityMan
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/aggregation-custom-function-grid.tsx)
 
 <ShowSqlMonitor serviceUrls={['/docs/aggregation/custom-agg-func/getRows']}>
+<LazyGrid>
     <AggregationCustomFunctionGrid></AggregationCustomFunctionGrid>
+</LazyGrid>
 </ShowSqlMonitor>
 
 ## Aggregation - Filtering
@@ -85,7 +90,9 @@ QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityMan
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/aggregation-grid-suppress-filtered-only.tsx)
 
 <ShowSqlMonitor serviceUrls={['/docs/aggregation/suppress-agg-filtered-only/getRows']}>
+<LazyGrid>
     <AggregationGridSuppressFilteredOnly></AggregationGridSuppressFilteredOnly>
+</LazyGrid>
 </ShowSqlMonitor>
 
 ### Filtering for Aggregated Values
@@ -106,5 +113,7 @@ QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityMan
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/aggregation-grid-group-filtering.tsx)
 
 <ShowSqlMonitor serviceUrls={['/docs/aggregation/group-agg-filtering/getRows']}>
+<LazyGrid>
     <AggregationGridGroupFiltering></AggregationGridGroupFiltering>
+</LazyGrid>
 </ShowSqlMonitor>

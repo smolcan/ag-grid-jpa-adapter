@@ -72,7 +72,10 @@ fetches distinct sorted values from the database for a given column.
 
 import ShowSqlMonitor from './../../show-sql-monitor';
 import SetFilterGrid from './set-filter-grid';
+import LazyGrid from '../../lazy-grid';
 
 <ShowSqlMonitor serviceUrls={['/docs/filtering/column-filter/set-filter/getRows', '/docs/filtering/column-filter/set-filter/supplySetFilterValues']}>
+<LazyGrid>
 <SetFilterGrid></SetFilterGrid>
+</LazyGrid>
 </ShowSqlMonitor>

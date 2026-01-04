@@ -107,7 +107,10 @@ ColDef colDef = ColDef.builder()
 
 import ShowSqlMonitor from './../../show-sql-monitor';
 import CustomFilterGrid from './custom-filter-grid';
+import LazyGrid from '../../lazy-grid';
 
 <ShowSqlMonitor serviceUrls={['/docs/filtering/column-filter/custom-filter/getRows']}>
+<LazyGrid>
 <CustomFilterGrid></CustomFilterGrid>
+</LazyGrid>
 </ShowSqlMonitor>

@@ -122,7 +122,10 @@ If more than one Filter Condition is set, then multiple instances of the model a
 
 import ShowSqlMonitor from './../../show-sql-monitor';
 import TextFilterGrid from './text-filter-grid';
+import LazyGrid from '../../lazy-grid';
 
 <ShowSqlMonitor serviceUrls={['/docs/filtering/column-filter/text-filter/getRows']}>
+<LazyGrid>
 <TextFilterGrid></TextFilterGrid>
+</LazyGrid>
 </ShowSqlMonitor>
