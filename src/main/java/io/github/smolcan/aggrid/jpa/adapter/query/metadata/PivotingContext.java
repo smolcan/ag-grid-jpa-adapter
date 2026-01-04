@@ -13,8 +13,6 @@ import java.util.Set;
  */
 public class PivotingContext {
     
-    private boolean isPivoting;
-    
     // for each column, its distinct values
     private Map<String, List<Object>> pivotValues;
     
@@ -32,14 +30,6 @@ public class PivotingContext {
     
     // pivoting result fields for response
     private List<String> pivotingResultFields;
-
-    public boolean isPivoting() {
-        return isPivoting;
-    }
-
-    public void setPivoting(boolean pivoting) {
-        isPivoting = pivoting;
-    }
 
     public Map<String, List<Object>> getPivotValues() {
         return pivotValues;

@@ -174,11 +174,8 @@ public class QueryBuilder<E> {
         CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
         CriteriaQuery<Tuple> query = cb.createTupleQuery();
         Root<E> root = query.from(this.entityClass);
-        
         // record all the context we put into query
         QueryContext<E> queryContext = new QueryContext<>(cb, query, root);
-        // if pivoting, load all information needed for pivoting into pivoting context
-        queryContext.setPivotingContext(this.createPivotingContext(queryContext, request));
         
         this.select(queryContext, request);
         this.where(queryContext, request);
@@ -253,7 +250,6 @@ public class QueryBuilder<E> {
             Subquery<?> subquery = query.subquery(getPath(root, countingGroupCol).getJavaType());
             Root<E> subqueryRoot = subquery.from(this.entityClass);
             QueryContext<E> subqueryContext = new QueryContext<>(cb, subquery, subqueryRoot);
-            subqueryContext.setPivotingContext(this.createPivotingContext(subqueryContext, request));
             
             this.select(subqueryContext, request);
             this.where(subqueryContext, request);
@@ -383,7 +379,7 @@ public class QueryBuilder<E> {
         } else if (this.masterDetail) {
             // master-detail
             selections = this.selectMasterDetail(queryContext, request);
-        } else if (queryContext.getPivotingContext().isPivoting()) {
+        } else if (request.isPivotMode() && !request.getPivotCols().isEmpty()) {
             // pivoting
             selections = this.selectPivoting(queryContext, request);
         } else if (!request.getRowGroupCols().isEmpty()) {
@@ -413,7 +409,7 @@ public class QueryBuilder<E> {
         } else if (this.masterDetail) {
             // master detail
             wherePredicates = this.whereMasterDetail(queryContext, request);
-        } else if (queryContext.getPivotingContext().isPivoting()) {
+        } else if (request.isPivotMode() && !request.getPivotCols().isEmpty()) {
             // pivoting
             wherePredicates = this.wherePivoting(queryContext, request);
         } else if (!request.getRowGroupCols().isEmpty()) {
@@ -444,7 +440,7 @@ public class QueryBuilder<E> {
         } else if (this.masterDetail) {
             // master-detail
             groupingMetadata = this.groupByMasterDetail(queryContext, request);
-        } else if (queryContext.getPivotingContext().isPivoting()) {
+        } else if (request.isPivotMode() && !request.getPivotCols().isEmpty()) {
             // pivoting
             groupingMetadata = this.groupByPivoting(queryContext, request);
         } else if (!request.getRowGroupCols().isEmpty()) {
@@ -470,10 +466,10 @@ public class QueryBuilder<E> {
     protected void orderBy(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         List<OrderMetadata> orders;
         if (this.treeData) {
-            orders = this.orderByBasic(queryContext, request);
+            orders = this.orderByTreeData(queryContext, request);
         } else if (this.masterDetail) {
-            orders = this.orderByBasic(queryContext, request);
-        } else if (queryContext.getPivotingContext().isPivoting()) {
+            orders = this.orderByMasterDetail(queryContext, request);
+        } else if (request.isPivotMode() && !request.getPivotCols().isEmpty()) {
             orders = this.orderByPivoting(queryContext, request);
         } else if (!request.getRowGroupCols().isEmpty()) {
             orders = this.orderByGrouping(queryContext, request);
@@ -498,7 +494,7 @@ public class QueryBuilder<E> {
             havingPredicates = List.of();
         } else if (this.masterDetail) {
             havingPredicates = List.of();
-        } else if (queryContext.getPivotingContext().isPivoting()) {
+        } else if (request.isPivotMode() && !request.getPivotCols().isEmpty()) {
             havingPredicates = this.havingPivoting(queryContext, request);
         } else if (!request.getRowGroupCols().isEmpty()) {
             havingPredicates = this.havingGrouping(queryContext, request);
@@ -722,14 +718,20 @@ public class QueryBuilder<E> {
         
         return typedQuery.getResultList();
     }
-    
-    
+
+
+    /**
+     * Creates selections for the query when grid is in tree-data mode.
+     *
+     * @param queryContext the current query state container
+     * @param request the server-side request parameters from the grid
+     * @return created selections
+     */
     protected List<SelectionMetadata> selectTreeData(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
-        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         Root<E> root = queryContext.getRoot();
         
         List<SelectionMetadata> selections = new ArrayList<>();
-
+        
         // add each non-aggregated field to selections as basic selection
         this.colDefs.values().stream()
                 .filter(cd -> request.getValueCols().stream().noneMatch(vc -> vc.getField().equals(cd.getField()))) // filter out the aggregated ones
@@ -738,29 +740,7 @@ public class QueryBuilder<E> {
                     selections.add(SelectionMetadata.builder(field, colDef.getField()).build());
                 });
 
-        // selection to find out whether it has any children
-        Expression<Boolean> isServerSideGroupSelection;
-        if (this.treeDataChildrenField != null) {
-            isServerSideGroupSelection = cb.isNotEmpty(root.get(this.treeDataChildrenField));
-        } else {
-            // Subquery: Select count from Entity where parent = root
-            Subquery<Long> subquery = cb.createTupleQuery().subquery(Long.class);
-            Root<E> subRoot = subquery.from(this.entityClass);
-            subquery.select(cb.count(subRoot));
-            if (this.treeDataParentReferenceField != null) {
-                // compare parent reference directly with root
-                subquery.where(cb.equal(subRoot.get(this.treeDataParentReferenceField), root));
-            } else {
-                // no reference field, just parent id
-                subquery.where(
-                        cb.equal(
-                                subRoot.get(this.treeDataParentIdField),
-                                root.get(this.primaryFieldName))
-                );
-            }
-
-            isServerSideGroupSelection = cb.exists(subquery);
-        }
+        Expression<Boolean> isServerSideGroupSelection = this.createTreeDataIsServerSideGroupExpression(queryContext);
         selections.add(
                 SelectionMetadata
                         .builder(isServerSideGroupSelection, this.isServerSideGroupFieldName)
@@ -784,7 +764,7 @@ public class QueryBuilder<E> {
         
         // add child counts
         if (this.getChildCount) {
-            Expression<?> countExpression = this.createTreeDataGetChildCountExpression(queryContext, isServerSideGroupSelection, request);
+            Expression<Long> countExpression = this.createTreeDataGetChildCountExpression(queryContext, isServerSideGroupSelection, request);
             selections.add(
                     SelectionMetadata
                             .builder(countExpression, this.getChildCountFieldName)
@@ -796,6 +776,13 @@ public class QueryBuilder<E> {
         return selections;
     }
 
+    /**
+     * Creates selections for the query when grid is in master-detail mode.
+     *
+     * @param queryContext the current query state container
+     * @param request the server-side request parameters from the grid
+     * @return created selections
+     */
     protected List<SelectionMetadata> selectMasterDetail(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         if (request.getGroupKeys().isEmpty()) {
             return this.selectBasic(queryContext, request);
@@ -803,10 +790,18 @@ public class QueryBuilder<E> {
             return this.selectGrouping(queryContext, request);
         }
     }
-    
+
+    /**
+     * Creates selections for the query when grid is in pivoting mode.
+     *
+     * @param queryContext the current query state container
+     * @param request the server-side request parameters from the grid
+     * @return created selections
+     */
     protected List<SelectionMetadata> selectPivoting(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         Root<E> root = queryContext.getRoot();
-        PivotingContext pivotingContext = queryContext.getPivotingContext();
+        PivotingContext pivotingContext = this.createPivotingContext(queryContext, request);
+        queryContext.setPivotingContext(pivotingContext);
         
         List<SelectionMetadata> selections = new ArrayList<>();
         
@@ -837,7 +832,14 @@ public class QueryBuilder<E> {
         
         return selections;
     }
-    
+
+    /**
+     * Creates selections for the query when grid is in grouping mode.
+     *
+     * @param queryContext the current query state container
+     * @param request the server-side request parameters from the grid
+     * @return created selections
+     */
     protected List<SelectionMetadata> selectGrouping(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         Root<E> root = queryContext.getRoot();
@@ -892,6 +894,13 @@ public class QueryBuilder<E> {
         return selections;
     }
 
+    /**
+     * Creates selections for the query when grid is in basic mode.
+     *
+     * @param queryContext the current query state container
+     * @param request the server-side request parameters from the grid
+     * @return created selections
+     */
     protected List<SelectionMetadata> selectBasic(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         Root<E> root = queryContext.getRoot();
         // just select col defs
@@ -905,8 +914,11 @@ public class QueryBuilder<E> {
     }
 
     /**
-     * Fills the where metadata predicates if when the grid is in tree data mode
+     * Creates the filtering criteria (WHERE clause) for the query when grid is in tree-data mode.
      *
+     * @param queryContext  the current query state container
+     * @param request       the server-side request parameters from the grid
+     * @return created where predicates
      */
     protected List<WherePredicateMetadata> whereTreeData(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         // unwrap from context
@@ -981,6 +993,13 @@ public class QueryBuilder<E> {
         return wherePredicateMetadata;
     }
 
+    /**
+     * Creates the filtering criteria (WHERE clause) for the query when grid is in master-detail mode.
+     *
+     * @param queryContext  the current query state container
+     * @param request       the server-side request parameters from the grid
+     * @return created where predicates
+     */
     protected List<WherePredicateMetadata> whereMasterDetail(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         if (request.getGroupKeys().isEmpty()) {
             return this.whereBasic(queryContext, request);
@@ -989,6 +1008,13 @@ public class QueryBuilder<E> {
         }
     }
 
+    /**
+     * Creates the filtering criteria (WHERE clause) for the query when grid is in pivoting mode.
+     *
+     * @param queryContext  the current query state container
+     * @param request       the server-side request parameters from the grid
+     * @return created where predicates
+     */
     protected List<WherePredicateMetadata> wherePivoting(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         Root<E> root = queryContext.getRoot();
@@ -1020,9 +1046,15 @@ public class QueryBuilder<E> {
         return wherePredicates;
     }
 
+    /**
+     * Creates the filtering criteria (WHERE clause) for the query when grid is in grouping mode.
+     *
+     * @param queryContext  the current query state container
+     * @param request       the server-side request parameters from the grid
+     * @return created where predicates
+     */
     protected List<WherePredicateMetadata> whereGrouping(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
-        AbstractQuery<?> query = queryContext.getQuery();
         Root<E> root = queryContext.getRoot();
         
         List<WherePredicateMetadata> wherePredicates = new ArrayList<>();
@@ -1092,11 +1124,19 @@ public class QueryBuilder<E> {
         return wherePredicates;
     }
 
+
+    /**
+     * Creates the filtering criteria (WHERE clause) for the query when grid is in basic mode.
+     *
+     * @param queryContext  the current query state container
+     * @param request       the server-side request parameters from the grid
+     * @return created where predicates
+     */
     protected List<WherePredicateMetadata> whereBasic(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         Root<E> root = queryContext.getRoot();
         
-        List<WherePredicateMetadata> wherePredicates = new ArrayList<>();
+        List<WherePredicateMetadata> wherePredicates = new ArrayList<>(3);
 
         // external filter
         if (this.isExternalFilterPresent) {
@@ -1382,12 +1422,26 @@ public class QueryBuilder<E> {
         return cb.exists(leafNodeExistsSubquery);
     }
 
+    /**
+     * Creates predicates for the HAVING clause when grid is in grouping mode.
+     *
+     * @param queryContext  the current query state container
+     * @param request       the server-side request parameters from the grid
+     * @return having predicates
+     */
     protected List<HavingMetadata> havingGrouping(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         // no need to have 'having' clause in grouping for now
         // filtering on aggregated values is done within where clause by subqueries (need to check all levels of tree)
         return List.of();
     }
 
+    /**
+     * Creates predicates for the HAVING clause when grid is in pivoting mode.
+     *
+     * @param queryContext  the current query state container
+     * @param request       the server-side request parameters from the grid
+     * @return having predicates
+     */
     protected List<HavingMetadata> havingPivoting(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         // todo: check how pivoting having clause should work
         return List.of();
@@ -1404,7 +1458,7 @@ public class QueryBuilder<E> {
      * @param queryContext query context.
      * @return expression returning the child count for non-leaf nodes, or null otherwise.
      */
-    protected Expression<?> createTreeDataGetChildCountExpression(
+    protected Expression<Long> createTreeDataGetChildCountExpression(
             QueryContext<E> queryContext,
             Expression<Boolean> hasChildrenPredicate, 
             ServerSideGetRowsRequest request) {
@@ -1455,13 +1509,56 @@ public class QueryBuilder<E> {
         }
         countChildrenSubquery.where(cb.and(predicates.toArray(Predicate[]::new)));
 
-        return cb.selectCase().when(hasChildrenPredicate, countChildrenSubquery);  // count when non-leaf node
+        return cb.<Long>selectCase()
+                .when(hasChildrenPredicate, countChildrenSubquery)    // count when non-leaf node
+                .otherwise(0L);                                 // no children when leaf node
+    }
+
+    /**
+     * Creates boolean expression that tells you if row is group (has children, is non-leaf)
+     * 
+     * @param queryContext  query context
+     * @return  expression
+     */
+    protected Expression<Boolean> createTreeDataIsServerSideGroupExpression(QueryContext<E> queryContext) {
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
+        Root<E> root = queryContext.getRoot();
+        
+        // selection to find out whether it has any children
+        Expression<Boolean> isServerSideGroupSelection;
+        if (this.treeDataChildrenField != null) {
+            isServerSideGroupSelection = cb.isNotEmpty(root.get(this.treeDataChildrenField));
+        } else {
+            // Subquery: Select count from Entity where parent = root
+            Subquery<Long> subquery = cb.createTupleQuery().subquery(Long.class);
+            Root<E> subRoot = subquery.from(this.entityClass);
+            subquery.select(cb.count(subRoot));
+            if (this.treeDataParentReferenceField != null) {
+                // compare parent reference directly with root
+                subquery.where(cb.equal(subRoot.get(this.treeDataParentReferenceField), root));
+            } else {
+                // no reference field, just parent id
+                subquery.where(
+                        cb.equal(
+                                subRoot.get(this.treeDataParentIdField),
+                                root.get(this.primaryFieldName))
+                );
+            }
+
+            isServerSideGroupSelection = cb.exists(subquery);
+        }
+        
+        return isServerSideGroupSelection;
     }
 
     /**
      * Creates an expression that aggregates values from all matching children.
      * When node is leaf node, the expression returns the row's own value for that column.
      *
+     * @param aggColumn for column
+     * @param hasChildrenPredicate A condition checking if the current row is a leaf node or not.
+     * @param request request.
+     * @param queryContext query context.
      * @return expression returning the aggregated value for non-leaf nodes, or the own value otherwise.
      */
     protected Expression<?> createTreeDataAggregationExpression(
@@ -1592,6 +1689,14 @@ public class QueryBuilder<E> {
     }
 
 
+    /**
+     * Creates a predicate that evaluates whether the current row itself (the node) matches 
+     * all active filter criteria.
+     *
+     * @param queryContext Helper for tracking query state
+     * @param request The grid request.
+     * @return A Predicate representing the combined filter criteria for the current node.
+     */
     protected Predicate createTreeDataOwnDataPredicate(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         Root<E> root = queryContext.getRoot();
@@ -1693,11 +1798,26 @@ public class QueryBuilder<E> {
         return cb.exists(childrenMatchSubquery);
     }
 
+    /**
+     * Creates the grouping rules for the query when grid is in tree-data mode (empty).
+     *
+     * @param queryContext  the current query state container
+     * @param request       the server-side request parameters from the grid
+     * @return empty list (tree data does not have any grouping)
+     */
     protected List<GroupingMetadata> groupByTreeData(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         // tree data does not have any grouping
         return List.of();
     }
 
+
+    /**
+     * Creates the grouping rules for the query when grid is in master-detail mode.
+     *
+     * @param queryContext  the current query state container
+     * @param request       the server-side request parameters from the grid
+     * @return list of grouping expressions
+     */
     protected List<GroupingMetadata> groupByMasterDetail(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         if (request.getRowGroupCols().isEmpty()) {
             // no grouping
@@ -1707,10 +1827,17 @@ public class QueryBuilder<E> {
         }
     }
 
+    /**
+     * Creates the grouping rules for the query when grid is in pivot mode.
+     *
+     * @param queryContext  the current query state container
+     * @param request       the server-side request parameters from the grid
+     * @return list of grouping expressions
+     */
     protected List<GroupingMetadata> groupByPivoting(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         Root<E> root = queryContext.getRoot();
         
-        List<GroupingMetadata> groupings = new ArrayList<>();
+        List<GroupingMetadata> groupings = new ArrayList<>(request.getGroupKeys().size() + 1);
         // there is always grouping in pivoting
         for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size() + 1; i++) {
             String groupCol = request.getRowGroupCols().get(i).getField();
@@ -1724,11 +1851,18 @@ public class QueryBuilder<E> {
         
         return groupings;
     }
-    
+
+    /**
+     * Creates the grouping rules for the query when grid is in grouping mode.
+     *
+     * @param queryContext  the current query state container
+     * @param request       the server-side request parameters from the grid
+     * @return list of grouping expressions
+     */
     protected List<GroupingMetadata> groupByGrouping(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         Root<E> root = queryContext.getRoot();
         
-        List<GroupingMetadata> groupings = new ArrayList<>();
+        List<GroupingMetadata> groupings = new ArrayList<>(request.getGroupKeys().size() + 1);
         // master-detail can be used together with groups
         boolean hasUnexpandedGroups = request.getRowGroupCols().size() > request.getGroupKeys().size();
         if (hasUnexpandedGroups) {
@@ -1746,6 +1880,14 @@ public class QueryBuilder<E> {
         return groupings;
     }
     
+
+    /**
+     * Creates the sort order for the query results when grid is in basic mode.
+     *
+     * @param queryContext  the current query state container
+     * @param request       the server-side request parameters from the grid
+     * @return list of orders
+     */
     protected List<OrderMetadata> orderByBasic(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         Root<E> root = queryContext.getRoot();
@@ -1765,15 +1907,35 @@ public class QueryBuilder<E> {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Creates the sort order for the query results when grid is in tree-data mode.
+     *
+     * @param queryContext  the current query state container
+     * @param request       the server-side request parameters from the grid
+     * @return list of orders
+     */
     protected List<OrderMetadata> orderByTreeData(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         return this.orderByBasic(queryContext, request);
     }
 
+    /**
+     * Creates the sort order for the query results when grid is in master-detail mode.
+     *
+     * @param queryContext  the current query state container
+     * @param request       the server-side request parameters from the grid
+     * @return list of orders
+     */
     protected List<OrderMetadata> orderByMasterDetail(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         return this.orderByBasic(queryContext, request);
     }
 
-    
+    /**
+     * Creates the sort order for the query results when grid is in grouping mode.
+     *
+     * @param queryContext  the current query state container
+     * @param request       the server-side request parameters from the grid
+     * @return list of orders
+     */
     protected List<OrderMetadata> orderByGrouping(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         Root<E> root = queryContext.getRoot();
@@ -1824,6 +1986,13 @@ public class QueryBuilder<E> {
         }
     }
 
+    /**
+     * Creates the sort order for the query results when grid is in pivoting mode.
+     *
+     * @param queryContext  the current query state container
+     * @param request       the server-side request parameters from the grid
+     * @return list of orders
+     */
     protected List<OrderMetadata> orderByPivoting(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         Root<E> root = queryContext.getRoot();
@@ -2299,41 +2468,37 @@ public class QueryBuilder<E> {
     }
 
     protected PivotingContext createPivotingContext(QueryContext<E> queryContext, ServerSideGetRowsRequest request) throws OnPivotMaxColumnsExceededException {
+        if (!request.isPivotMode() || request.getPivotCols().isEmpty()) {
+            throw new IllegalStateException("Can not create pivoting context when pivoting is turned off");
+        }
+        
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         Root<E> root = queryContext.getRoot();
         
-        PivotingContext pivotingContext = new PivotingContext();
-        if (!request.isPivotMode() || request.getPivotCols().isEmpty()) {
-            // no pivoting
-            pivotingContext.setPivoting(false);
-        } else {
-            pivotingContext.setPivoting(true);
-
-            // check if number of generated columns did not exceed the limit
-            if (this.pivotMaxGeneratedColumns != null) {
-                long numberOfPivotColumns = this.countPivotColumnsToBeGenerated(cb, request);
-                if (numberOfPivotColumns > this.pivotMaxGeneratedColumns) {
-                    throw new OnPivotMaxColumnsExceededException(this.pivotMaxGeneratedColumns, numberOfPivotColumns);
-                }
+        if (this.pivotMaxGeneratedColumns != null) {
+            long numberOfPivotColumns = this.countPivotColumnsToBeGenerated(cb, request);
+            if (numberOfPivotColumns > this.pivotMaxGeneratedColumns) {
+                throw new OnPivotMaxColumnsExceededException(this.pivotMaxGeneratedColumns, numberOfPivotColumns);
             }
-
-            // distinct values for pivoting
-            Map<String, List<Object>> pivotValues = this.getPivotValues(cb ,request);
-            // pair pivot columns with values
-            List<Set<Pair<String, Object>>> pivotPairs = this.createPivotPairs(pivotValues);
-            // cartesian product of pivot pairs
-            List<List<Pair<String, Object>>> cartesianProduct = cartesianProduct(pivotPairs);
-            // for each column name its expression
-            Map<String, Expression<?>> columnNamesToExpression = this.createPivotingExpressions(cb, root, request, cartesianProduct);
-            // result fields are column names
-            List<String> pivotingResultFields = new ArrayList<>(columnNamesToExpression.keySet());
-
-            pivotingContext.setPivotValues(pivotValues);
-            pivotingContext.setPivotPairs(pivotPairs);
-            pivotingContext.setCartesianProduct(cartesianProduct);
-            pivotingContext.setColumnNamesToExpression(columnNamesToExpression);
-            pivotingContext.setPivotingResultFields(pivotingResultFields);
         }
+
+        PivotingContext pivotingContext = new PivotingContext();
+        // distinct values for pivoting
+        Map<String, List<Object>> pivotValues = this.getPivotValues(cb ,request);
+        // pair pivot columns with values
+        List<Set<Pair<String, Object>>> pivotPairs = this.createPivotPairs(pivotValues);
+        // cartesian product of pivot pairs
+        List<List<Pair<String, Object>>> cartesianProduct = cartesianProduct(pivotPairs);
+        // for each column name its expression
+        Map<String, Expression<?>> columnNamesToExpression = this.createPivotingExpressions(cb, root, request, cartesianProduct);
+        // result fields are column names
+        List<String> pivotingResultFields = new ArrayList<>(columnNamesToExpression.keySet());
+
+        pivotingContext.setPivotValues(pivotValues);
+        pivotingContext.setPivotPairs(pivotPairs);
+        pivotingContext.setCartesianProduct(cartesianProduct);
+        pivotingContext.setColumnNamesToExpression(columnNamesToExpression);
+        pivotingContext.setPivotingResultFields(pivotingResultFields);
 
         return pivotingContext;
     }
