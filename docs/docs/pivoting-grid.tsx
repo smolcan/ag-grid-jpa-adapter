@@ -74,7 +74,7 @@ const PivotingGrid = () => {
 
     const defaultColDef = useMemo(() => ({
         resizable: true,
-        filter: true,
+        filter: false,
         flex: 1,
     } as ColDef), []);
 
