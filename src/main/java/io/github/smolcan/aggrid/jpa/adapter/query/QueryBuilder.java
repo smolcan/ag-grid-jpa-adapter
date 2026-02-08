@@ -1041,7 +1041,8 @@ public class QueryBuilder<E> {
             wherePredicates.add(groupPredicateInfo);
         }
         
-        // todo: check how where clause for pivoting should work when filtering
+        // pivot values are all aggregates, so nothing else to do in where clause
+        // the rest of filtering should be done in having clause
         
         return wherePredicates;
     }
