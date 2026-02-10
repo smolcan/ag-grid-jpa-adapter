@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Sorting
 
-Sorting can be either **ascending** or **descending**, represented by the enum [SortType](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/request/SortType.java).
+Sorting can be either **ascending** or **descending**, represented by the enum [SortDirection](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/request/SortDirection.java).
 
 ## Disabling Sorting
 
