@@ -115,6 +115,7 @@ public class AgDateColumnFilter extends SimpleFilter<DateFilterModel, DateFilter
             // relative times
             case today: 
             case yesterday:
+            case tomorrow:    
             case thisWeek:
             case lastWeek:
             case nextWeek:
