@@ -267,7 +267,9 @@ public class AgDateColumnFilter extends SimpleFilter<DateFilterModel, DateFilter
         this.filterParams.validateDate(dateTo);
 
         Predicate predicate = cb.and(
+                // 	Time Range Start >=
                 cb.greaterThanOrEqualTo(dateExpression, dateFrom),
+                // 	Time Range End <
                 cb.lessThan(dateExpression, dateTo)
         );
         
