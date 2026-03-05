@@ -1,10 +1,14 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params;
 
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.SimpleFilterModelType;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.*;
 
 public class DateFilterParams extends ScalarFilterParams {
 
+    private final Set<SimpleFilterModelType> filterOptions;
     // The maximum valid date that can be entered in the filter.
     // If set, this will override `maxValidYear` - the maximum valid year setting.
     private final LocalDate maxValidDate;
@@ -18,12 +22,17 @@ public class DateFilterParams extends ScalarFilterParams {
     
     private DateFilterParams(Builder builder) {
         super(builder);
+        this.filterOptions = builder.filterOptions;
         this.maxValidDate = builder.maxValidDate;
         this.maxValidYear = builder.maxValidYear;
         this.minValidDate = builder.minValidDate;
         this.minValidYear = builder.minValidYear;
     }
-    
+
+    public Set<SimpleFilterModelType> getFilterOptions() {
+        return filterOptions;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -82,6 +91,7 @@ public class DateFilterParams extends ScalarFilterParams {
 
     public static class Builder extends ScalarFilterParams.Builder {
 
+        private Set<SimpleFilterModelType> filterOptions = Collections.emptySet();
         private LocalDate maxValidDate;
         private Integer maxValidYear;
         private LocalDate minValidDate;
@@ -89,6 +99,16 @@ public class DateFilterParams extends ScalarFilterParams {
         
         public DateFilterParams build() {
             return new DateFilterParams(this);
+        }
+        
+        public Builder filterOptions(SimpleFilterModelType ...type) {
+            this.filterOptions = new HashSet<>(Arrays.asList(type));
+            return this;
+        }
+        
+        public Builder filterOptions(Collection<SimpleFilterModelType> type) {
+            this.filterOptions = new HashSet<>(type);
+            return this;
         }
         
         public Builder maxValidDate(LocalDate maxValidDate) {
