@@ -10,10 +10,14 @@ Pivoting breaks down data in an additional dimension.
 
 
 import PivotingGrid from './pivoting-grid';
+import PivotingLimitColGenGrid from './pivoting-limit-col-gen-grid';
 import ShowSqlMonitor from './show-sql-monitor';
+import LazyGrid from './lazy-grid';
 
 <ShowSqlMonitor serviceUrls={['/docs/pivoting/getRows']}>
+<LazyGrid>
     <PivotingGrid></PivotingGrid>
+</LazyGrid>
 </ShowSqlMonitor>
 
 ## Enabling Pivoting
@@ -42,3 +46,9 @@ this.queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
                 .pivotMaxGeneratedColumns(1000)
                 .build();
 ```
+
+<ShowSqlMonitor serviceUrls={['/docs/pivoting/limit-col-gen/getRows']}>
+<LazyGrid>
+    <PivotingLimitColGenGrid></PivotingLimitColGenGrid>
+</LazyGrid>
+</ShowSqlMonitor>
