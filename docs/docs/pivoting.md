@@ -34,6 +34,7 @@ ColDef priceColumn = ColDef.builder()
 ## Best Practices - Limiting Column Generation
 When pivoting, changes in data, aggregation or pivot columns can cause the number of generated columns to scale exponentially.
 To prevent this from happening, you can set the `pivotMaxGeneratedColumns` option on `QueryBuilder`.
+Server will count number of columns to be generated in advance.
 
 When the grid generates a number of pivot columns exceeding this value, it halts column generation and throws 
 the [`OnPivotMaxColumnsExceededException`](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/exceptions/OnPivotMaxColumnsExceededException.java).
@@ -46,6 +47,13 @@ this.queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
                 .pivotMaxGeneratedColumns(1000)
                 .build();
 ```
+
+### Example - Limiting Column Generation
+
+- Column generation is checked on server (limit 10 columns)
+- Adding `Bid Type` pivoting will result in error on server
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/pivoting-limit-col-gen-grid.tsx)
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/PivotingService.java)
 
 <ShowSqlMonitor serviceUrls={['/docs/pivoting/limit-col-gen/getRows']}>
 <LazyGrid>
