@@ -2582,7 +2582,8 @@ public class QueryBuilder<E> {
      * Calculates the product of the distinct counts of all pivot columns in a single query using the Criteria API.
      * <p>
      * This method dynamically constructs a query that computes the product of distinct counts for all fields specified 
-     * as pivot columns in the current request. It uses subqueries to calculate the distinct count for each field and 
+     * as pivot columns in the current request and multiplies it with amount of value cols. 
+     * It uses subqueries to calculate the distinct count for each field and 
      * combines them into a single product expression.
      * </p>
      *
@@ -2596,7 +2597,7 @@ public class QueryBuilder<E> {
 
         CriteriaQuery<Long> mainQuery = cb.createQuery(Long.class);
 
-        Expression<Long> productExpression = cb.literal(1L);
+        Expression<Long> productExpression = cb.literal((long) request.getValueCols().size());
         for (ColumnVO pivotCol : request.getPivotCols()) {
             // Subquery for count(distinct <field>)
             Subquery<Long> subquery = mainQuery.subquery(Long.class);
