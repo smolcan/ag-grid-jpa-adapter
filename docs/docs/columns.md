@@ -49,11 +49,31 @@ The adapter fully supports querying nested fields using standard dot notation (e
 
 :::info JPA Requirement
 For dot notation to work, the referenced path must correspond to a mapped relationship (e.g., `@ManyToOne`, `@OneToOne`) within your JPA Entity.
+It uses `LEFT JOINS` to join the table.
 :::
+
+- `Trade Id` is from main table
+- `Submitter Id` uses dot notation `submitter.id`, referencing `submitter` entity
+- `Submitter Deal Id` uses dot notation `submitterDeal.id`, referencing `submitterDeal` entity
+- `Parent Trade Id` uses dot notation `parentTrade.id`, referencing `parentTrade` entity (same table)
+- `Parent Trade -> Parent Trade Id` uses dot notation `parentTrade.parentTrade.id`, referencing parent's parent trade
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/dot-notation-grid.tsx)
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/DotNotationService.java)
+
+import ShowSqlMonitor from './show-sql-monitor';
+import LazyGrid from './lazy-grid';
+import DotNotationGrid from './dot-notation-grid';
+import DotNotationFlatDataGrid from './dot-notation-flat-data-grid';
+
+<ShowSqlMonitor serviceUrls={['/docs/dot-notation/getRows']}>
+<LazyGrid>
+<DotNotationGrid></DotNotationGrid>
+</LazyGrid>
+</ShowSqlMonitor>
 
 ### Suppress Field Dot Notation - Flat data
 
-By default, dot notation fields are returned as **nested JSON objects** to align with AG Grid's default behavior.
+By default, dot notation fields are returned as **nested JSON objects** to align with AG Grid's default behavior (check response body in previous grid).
 
 To return flat keys (e.g., `"category.name": "Value"`), you must enable suppressFieldDotNotation in the `QueryBuilder`.
 
@@ -69,4 +89,13 @@ QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityMan
 :::warning Client-Side Configuration
 If you enable `suppressFieldDotNotation(true)` in the backend, you must also set [suppressFieldDotNotation](https://www.ag-grid.com/react-data-grid/grid-options/#reference-columns-suppressFieldDotNotation) to `true` in your AG Grid options on the frontend to ensure the grid treats dots as literal characters.
 :::
+
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/dot-notation-flat-data-grid.tsx)
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/DotNotationService.java)
+
+<ShowSqlMonitor serviceUrls={['/docs/dot-notation/flat-data/getRows']}>
+<LazyGrid>
+<DotNotationFlatDataGrid></DotNotationFlatDataGrid>
+</LazyGrid>
+</ShowSqlMonitor>
 
