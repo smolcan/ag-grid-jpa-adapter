@@ -66,12 +66,14 @@ const TextFilterGrid = () => {
         {
             headerName: 'Deal Type',
             field: 'dealType',
-            cellDataType: 'text'
+            cellDataType: 'text',
+            filter: 'agTextColumnFilter',
         },
         {
             headerName: 'Bid Type',
             field: 'bidType',
-            cellDataType: 'text'
+            cellDataType: 'text',
+            filter: 'agTextColumnFilter',
         },
     ] as ColDef[], []);
 
