@@ -35,9 +35,9 @@ this.queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
     // name of field in which we return whether has children (required)
     .isServerSideGroupFieldName("hasChildren")
     
-    // name of field that references to father (provide one of them)
-    .treeDataParentReferenceField("parentTrade") // mapped father entity
-    // .treeDataParentIdField("parentTradeId") // just ID
+    // name of field that references the parent (provide one of them)
+    .treeDataParentReferenceField("parentTrade") // mapped parent entity
+    // .treeDataParentIdField("parentTradeId") // raw parent ID field
     
     // name of field which holds child collection (optional)
     .treeDataChildrenField("childTrades")
@@ -119,23 +119,6 @@ To make filtering of tree data work as expected, you need to provide `treeDataDa
 <ShowSqlMonitor serviceUrls={['/docs/tree-data/filtering/getRows']}>
     <TreeDataFilteringGrid></TreeDataFilteringGrid>
 </ShowSqlMonitor>
-
-[//]: # (### Filtering with non-column filters)
-
-[//]: # ()
-[//]: # (Tree filtering also works with non-column filter types: Advanced filters, External filters and Quick filters.)
-
-[//]: # ()
-[//]: # (- Source code for this grid available [here]&#40;https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/tree-data-filtering-all-grid.tsx&#41;)
-
-[//]: # (- Backend source code available [here]&#40;https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/TreeDataService.java&#41;)
-
-[//]: # ()
-[//]: # (<ShowSqlMonitor serviceUrls={['/docs/tree-data/filtering/all/getRows']}>)
-
-[//]: # (    <TreeDataFilteringAllGrid></TreeDataFilteringAllGrid>)
-
-[//]: # (</ShowSqlMonitor>)
 
 ### Ignore Filters when Aggregating Values
 

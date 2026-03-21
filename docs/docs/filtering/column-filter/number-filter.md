@@ -6,7 +6,7 @@ sidebar_position: 2
 Number Filters allow you to filter number data.
 
 ## Using Number Filter
-Text filter is represented by class [AgNumberColumnFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/provided/simple/AgNumberColumnFilter.java).
+Number filter is represented by class [AgNumberColumnFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/provided/simple/AgNumberColumnFilter.java).
 
 ```java
 ColDef colDef = ColDef.builder()
@@ -47,7 +47,7 @@ ColDef colDef = ColDef.builder()
 ```
 
 ## Number Filter Model
-Text filter model is represented by [NumberFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/model/simple/NumberFilterModel.java) class.
+Number filter model is represented by [NumberFilterModel](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/model/simple/NumberFilterModel.java) class.
 
 If more than one Filter Condition is set, then multiple instances of the model are created and wrapped inside a Combined Model ([`CombinedSimpleModel<NumberFilterModel>`](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/model/simple/CombinedSimpleModel.java)).
 

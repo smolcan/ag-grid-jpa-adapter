@@ -6,8 +6,8 @@ sidebar_position: 7
 
 Filter rows by comparing against the data in specified columns.
 
-:::warning
-This feature is officially not supported for server-side row model in Official Ag-Grid documentation
+:::info
+AG Grid's frontend does not natively wire quick filter in Server-Side Row Model. This adapter implements the equivalent logic server-side: the search string is passed in the request body and matched against the configured fields using JPA predicates.
 :::
 
 ## Configuration

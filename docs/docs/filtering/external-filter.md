@@ -4,8 +4,8 @@ sidebar_position: 6
 
 # External Filter
 
-:::warning
-This feature is officially not supported for server-side row model in Official Ag-Grid documentation 
+:::info
+AG Grid's frontend does not natively wire external filters in Server-Side Row Model. This adapter implements the equivalent logic server-side: the filter value is passed in the request body and converted to a JPA predicate.
 :::
 
 ## External Filter Configuration
@@ -39,7 +39,7 @@ fetch('/api/rows', {
 })
 ```
 
-## External Filer Example
+## External Filter Example
 
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/filtering/external-filter-grid.tsx)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/ExternalFilterService.java)

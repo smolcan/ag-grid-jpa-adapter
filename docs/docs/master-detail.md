@@ -66,10 +66,10 @@ The adapter supports two strategies for loading detail data: Lazy (default) and 
 
 ### Lazy Loading (Default)
 
-`masterDetailLazy(true)`
+Lazy loading is the default mode — you do not need to call `.masterDetailLazy(true)` explicitly unless overriding a previous setting.
 
-In this mode, detail data is not sent with the master rows. 
-When a user expands a row in AG Grid, the grid sends a separate server-side request. 
+In this mode, detail data is not sent with the master rows.
+When a user expands a row in AG Grid, the grid sends a separate server-side request.
 You should expose a separate endpoint that calls `getDetailRowData(masterRow)`.
 
 

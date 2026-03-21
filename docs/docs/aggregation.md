@@ -8,12 +8,20 @@ Apply provided functions to values to calculate group values in the grid.
 Backend source code of example grids available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/AggregationService.java)
 
 
-## Enabling Aggregation
-To make column available for aggregation, set the `enableValue` parameter to `true` on `ColDef`,
-otherwise aggregation attempt on this column will result to runtime exception.
+## Supported Aggregation Functions
 
-To limit which aggregation functions ([AggregationFunction](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/request/AggregationFunction.java)) 
-can be used on the column, provide array of allowed functions (otherwise all the aggregation functions are allowed.)
+The following built-in functions are supported: `avg`, `sum`, `min`, `max`, `count`.
+
+:::warning
+The `first` and `last` aggregation functions are **not supported** in JPA. Using them will throw a runtime exception.
+:::
+
+## Enabling Aggregation
+To make a column available for aggregation, set the `enableValue` parameter to `true` on `ColDef`,
+otherwise an aggregation attempt on this column will result in a runtime exception.
+
+To limit which aggregation functions ([AggregationFunction](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/request/AggregationFunction.java))
+can be used on the column, provide an array of allowed functions (otherwise all aggregation functions are allowed).
 
 ```java
 ColDef priceColumn = ColDef.builder()
@@ -41,9 +49,6 @@ import LazyGrid from './lazy-grid';
 </ShowSqlMonitor>
 
 
-**⚠️ Disclaimer**
-Currently aggregation functions `first` and `last` are not supported in JPA. Using these functions will result in runtime exception.
-Supported functions are: `avg`, `sum`, `min`, `max`, `count`.
 
 ## Custom Aggregation Functions
 

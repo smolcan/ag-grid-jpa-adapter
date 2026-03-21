@@ -3,26 +3,11 @@ sidebar_position: 7
 ---
 
 # Pivoting
-Pivoting breaks down data in an additional dimension.
-
-- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/pivoting-grid.tsx)
-- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/PivotingService.java)
-
-
-import PivotingGrid from './pivoting-grid';
-import PivotingLimitColGenGrid from './pivoting-limit-col-gen-grid';
-import ShowSqlMonitor from './show-sql-monitor';
-import LazyGrid from './lazy-grid';
-
-<ShowSqlMonitor serviceUrls={['/docs/pivoting/getRows']}>
-<LazyGrid>
-    <PivotingGrid></PivotingGrid>
-</LazyGrid>
-</ShowSqlMonitor>
+Pivoting breaks down data in an additional dimension — it transforms distinct values from one column into separate result columns, each showing an aggregate for that value.
 
 ## Enabling Pivoting
-To make column available for pivoting, set the `enablePivot` parameter to `true` on `ColDef`,
-otherwise pivoting attempt on this column will result to runtime exception.
+To make a column available for pivoting, set the `enablePivot` parameter to `true` on `ColDef`,
+otherwise a pivoting attempt on this column will result in a runtime exception.
 
 ```java
 ColDef priceColumn = ColDef.builder()
@@ -30,6 +15,20 @@ ColDef priceColumn = ColDef.builder()
     .enablePivot(true)
     .build();
 ```
+
+import PivotingGrid from './pivoting-grid';
+import PivotingLimitColGenGrid from './pivoting-limit-col-gen-grid';
+import ShowSqlMonitor from './show-sql-monitor';
+import LazyGrid from './lazy-grid';
+
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/pivoting-grid.tsx)
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/PivotingService.java)
+
+<ShowSqlMonitor serviceUrls={['/docs/pivoting/getRows']}>
+<LazyGrid>
+    <PivotingGrid></PivotingGrid>
+</LazyGrid>
+</ShowSqlMonitor>
 
 ## Best Practices - Limiting Column Generation
 When pivoting, changes in data, aggregation or pivot columns can cause the number of generated columns to scale exponentially.

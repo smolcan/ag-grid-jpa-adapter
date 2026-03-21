@@ -7,10 +7,9 @@ sidebar_position: 1
 A lightweight Maven library for integrating **[AG Grid Server-Side Mode](https://ag-grid.com/angular-data-grid/server-side-model/)** with backend applications using **JPA**. 
 This solution simplifies querying mapped entities for AG Grid and supports advanced server-side operations, including sorting, filtering, pagination, row grouping, and pivoting.
 
-**⚠️ Disclaimer: Active Development**
-This project is currently in active development.
-It is not fully tested and may contain bugs or incomplete features.
-Development will continue for the next 12 months, and significant changes or breaking updates may occur during this time.
+:::warning Active Development
+This project is under active development. Breaking changes may occur between versions. Check the [GitHub releases](https://github.com/smolcan/ag-grid-jpa-adapter/releases) before upgrading.
+:::
 
 
 ## Installation
@@ -62,19 +61,87 @@ ensures compatibility with multiple databases,
 and promotes maintainable and scalable code.
 
 The only entrypoint you interact with is [QueryBuilder](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/query/QueryBuilder.java),
-and it's method **getRows**, which processes a [ServerSideGetRowsRequest](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/request/ServerSideGetRowsRequest.java) object,
-builds the query using **JPA Criteria API**, executes it and returns [LoadSuccessParams](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/response/LoadSuccessParams.java) object,
-which you can directly return to the grid.
-```java title="Java getRows method using QueryBuilder"
-public class Service {
-    private final QueryBuilder<Entity> queryBuilder;
-    public Service() {
-        // ...query builder initialization in class constructor
-        this.queryBuilder = ....
+and its method **getRows**, which processes a [ServerSideGetRowsRequest](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/request/ServerSideGetRowsRequest.java) object,
+builds the query using **JPA Criteria API**, executes it and returns a [LoadSuccessParams](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/response/LoadSuccessParams.java) object
+which you can return directly to the grid.
+
+## Complete Example
+
+**1. Your JPA entity:**
+
+```java
+@Entity
+@Table(name = "trade")
+public class Trade {
+    @Id
+    private Long id;
+    private String product;
+    private String portfolio;
+    private BigDecimal currentValue;
+    // getters / setters
+}
+```
+
+**2. Build a `QueryBuilder` once (e.g. in a Spring `@Service`):**
+
+```java
+@Service
+public class TradeService {
+
+    private final QueryBuilder<Trade> queryBuilder;
+
+    public TradeService(EntityManager entityManager) {
+        this.queryBuilder = QueryBuilder.builder(Trade.class, entityManager)
+            .colDefs(
+                ColDef.builder().field("id").sortable(true).build(),
+                ColDef.builder().field("product").filter(new AgTextColumnFilter()).build(),
+                ColDef.builder().field("portfolio").filter(new AgSetColumnFilter()).build(),
+                ColDef.builder()
+                    .field("currentValue")
+                    .filter(new AgNumberColumnFilter())
+                    .enableValue(true)
+                    .enableRowGroup(true)
+                    .build()
+            )
+            .build();
     }
-    
+
     public LoadSuccessParams getRows(ServerSideGetRowsRequest request) {
         return this.queryBuilder.getRows(request);
     }
 }
+```
+
+**3. Expose an endpoint:**
+
+```java
+@RestController
+@RequestMapping("/api/trades")
+public class TradeController {
+
+    private final TradeService tradeService;
+
+    @PostMapping("/getRows")
+    public LoadSuccessParams getRows(@RequestBody ServerSideGetRowsRequest request) {
+        return tradeService.getRows(request);
+    }
+}
+```
+
+**4. Point AG Grid at your endpoint:**
+
+```javascript
+const datasource = {
+    getRows: (params) => {
+        fetch('/api/trades/getRows', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(params.request),
+        })
+        .then(res => res.json())
+        .then(data => params.success({ rowData: data.rowData, rowCount: data.rowCount }))
+        .catch(() => params.fail());
+    }
+};
+gridApi.setGridOption('serverSideDatasource', datasource);
 ```
