@@ -8,7 +8,7 @@ A lightweight Maven library for integrating **[AG Grid Server-Side Mode](https:/
 This solution simplifies querying mapped entities for AG Grid and supports advanced server-side operations, including sorting, filtering, pagination, row grouping, and pivoting.
 
 :::warning Active Development
-This project is under active development. Breaking changes may occur between versions. Check the [GitHub releases](https://github.com/smolcan/ag-grid-jpa-adapter/releases) before upgrading.
+This project is under active development. Breaking changes may occur between versions.
 :::
 
 
