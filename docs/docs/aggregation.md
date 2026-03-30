@@ -56,7 +56,7 @@ In addition to the built-in functions, the adapter allows you to register custom
 This is particularly useful for leveraging database-specific functions (e.g., statistical functions) that are not part of the standard JPA set.
 
 Custom functions are registered within the `QueryBuilder` using the `.registerCustomAggFunction()` method.
-The following example demonstrates registering functions specifically for the H2 database.
+The following example demonstrates registering functions specifically for the Postgres database.
 
 ```java
 QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
