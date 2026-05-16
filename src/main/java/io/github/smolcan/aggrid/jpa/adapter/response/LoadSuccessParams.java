@@ -12,14 +12,17 @@ public class LoadSuccessParams {
     private Map<String, Object> groupLevelInfo;
     // The pivot fields in the response - if provided the grid will attempt to generate secondary columns.
     private List<String> pivotResultFields;
+    // Data for the grand total row
+    private Map<String, Object> grandTotalData;
 
-    public LoadSuccessParams(List<Map<String, Object>> rowData, Long rowCount, Map<String, Object> groupLevelInfo, List<String> pivotResultFields) {
+    public LoadSuccessParams(List<Map<String, Object>> rowData, Long rowCount, Map<String, Object> groupLevelInfo, List<String> pivotResultFields, Map<String, Object> grandTotalData) {
         this.rowData = rowData;
         this.rowCount = rowCount;
         this.groupLevelInfo = groupLevelInfo;
         this.pivotResultFields = pivotResultFields;
+        this.grandTotalData = grandTotalData;
     }
-    
+
     public LoadSuccessParams() {
     }
 
@@ -53,5 +56,13 @@ public class LoadSuccessParams {
 
     public void setPivotResultFields(List<String> pivotResultFields) {
         this.pivotResultFields = pivotResultFields;
+    }
+
+    public Map<String, Object> getGrandTotalData() {
+        return grandTotalData;
+    }
+
+    public void setGrandTotalData(Map<String, Object> grandTotalData) {
+        this.grandTotalData = grandTotalData;
     }
 }
