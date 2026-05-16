@@ -29,6 +29,8 @@ public class ServerSideGetRowsRequest {
     private Object externalFilter;
     // quick filter value
     private String quickFilter;
+    
+    private boolean needsGrandTotal;
 
     public ServerSideGetRowsRequest() {
     }
@@ -131,5 +133,13 @@ public class ServerSideGetRowsRequest {
 
     public void setQuickFilter(String quickFilter) {
         this.quickFilter = quickFilter;
+    }
+
+    public boolean isNeedsGrandTotal() {
+        return needsGrandTotal;
+    }
+
+    public void setNeedsGrandTotal(boolean needsGrandTotal) {
+        this.needsGrandTotal = needsGrandTotal;
     }
 }

@@ -103,6 +103,7 @@ public class QueryBuilder<E> {
     protected final String masterDetailRowDataFieldName;
     protected final MasterDetailParams masterDetailParams;
     protected final Function<Map<String, Object>, MasterDetailParams> dynamicMasterDetailParams;
+    protected final boolean grandTotalRow;
 
 
     protected final Map<String, ColDef> colDefs;
@@ -146,6 +147,7 @@ public class QueryBuilder<E> {
         this.masterDetailRowDataFieldName = builder.masterDetailRowDataFieldName;
         this.masterDetailParams = builder.masterDetailParams;
         this.dynamicMasterDetailParams = builder.dynamicMasterDetailParams;
+        this.grandTotalRow = builder.grandTotalRow;
         
         this.colDefs = builder.colDefs;
     }
@@ -193,6 +195,10 @@ public class QueryBuilder<E> {
         LoadSuccessParams loadSuccessParams = new LoadSuccessParams();
         loadSuccessParams.setRowData(resData);
         loadSuccessParams.setPivotResultFields(queryContext.getPivotingContext().getPivotingResultFields());
+        if (this.grandTotalRow && request.isNeedsGrandTotal()) {
+            Map<String, Object> grandTotalData = this.getGrandTotalData(request);
+            loadSuccessParams.setGrandTotalData(grandTotalData);
+        }
         return loadSuccessParams;
     }
 
@@ -291,6 +297,58 @@ public class QueryBuilder<E> {
             
             return this.entityManager.createQuery(query).getSingleResult();
         }
+    }
+    
+    public Map<String, Object> getGrandTotalData(ServerSideGetRowsRequest request) {
+        if (!this.grandTotalRow) {
+            throw new IllegalStateException("Grand total row is disabled, enable it to get grand total data");
+        }
+        
+        this.validateRequest(request);
+        if (request.getValueCols().isEmpty()) {
+            return Collections.emptyMap();
+        }
+        
+        CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
+        CriteriaQuery<Tuple> query = cb.createTupleQuery();
+        Root<E> root = query.from(this.entityClass);
+        // record all the context we put into query
+        QueryContext<E> queryContext = new QueryContext<>(cb, query, root);
+
+        // select value cols
+        for (ColumnVO columnVO : request.getValueCols()) {
+            Expression<?> path = getPath(root, columnVO.getField());
+            var aggregateFunction = this.aggFuncs.get(columnVO.getAggFunc());
+            Expression<?> aggregatedField = aggregateFunction.apply(cb, path);
+            queryContext.getSelections().add(
+                    SelectionMetadata
+                            .builder(aggregatedField, columnVO.getField())
+                            .isAggregationSelection(true)
+                            .build()
+            );
+        }
+        // filter
+        this.where(queryContext, request);
+        // remove the ones that filter group keys
+        if (!request.getGroupKeys().isEmpty()) {
+            queryContext.setWherePredicates(
+                    queryContext.getWherePredicates()
+                            .stream()
+                            .filter(p -> !p.isGroupPredicate())
+                            .collect(Collectors.toList())
+            );
+        }
+        
+        
+        // apply
+        query.multiselect(queryContext.getSelections().stream().map(s -> s.getExpression().alias(s.getAlias())).collect(Collectors.toList()));
+        if (!queryContext.getWherePredicates().isEmpty()) {
+            Predicate[] predicates = queryContext.getWherePredicates().stream().map(WherePredicateMetadata::getPredicate).toArray(Predicate[]::new);
+            query.where(predicates);
+        }
+        Tuple data = this.entityManager.createQuery(query).getSingleResult();
+        
+        return this.tupleToMap(List.of(data)).get(0);
     }
 
     /**
@@ -2702,6 +2760,7 @@ public class QueryBuilder<E> {
         private String masterDetailRowDataFieldName;
         private MasterDetailParams masterDetailParams;
         private Function<Map<String, Object>, MasterDetailParams> dynamicMasterDetailParams;
+        private boolean grandTotalRow;
         
         private Map<String, ColDef> colDefs;
 
@@ -2893,6 +2952,12 @@ public class QueryBuilder<E> {
             this.dynamicMasterDetailParams = dynamicMasterDetailParams;
             return this;
         }
+        
+        public Builder<E> grandTotalRow(boolean grandTotalRow) {
+            this.grandTotalRow = grandTotalRow;
+            return this;
+        }
+
         
         public Builder<E> registerCustomAggFunction(String name, BiFunction<CriteriaBuilder, Expression<?>, Expression<?>> function) {
             this.aggFuncs.put(name, function);
