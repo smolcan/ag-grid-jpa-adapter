@@ -2,13 +2,13 @@ import {GRAND_TOTAL_ROW_ID, ModuleRegistry} from 'ag-grid-community';
 import {
     ColDef,
     ColumnAutoSizeModule,
-    EventApiModule, GridApi, GridReadyEvent, IServerSideDatasource,
+    EventApiModule, GridReadyEvent, IServerSideDatasource, IServerSideGetRowsParams,
     NumberFilterModule, RowGroupingPanelModule, ServerSideRowModelApiModule,
     ServerSideRowModelModule, SetFilterModule, SetFilterParams,
     TextFilterModule, themeQuartz,
     ValidationModule
 } from 'ag-grid-enterprise';
-import React, {useCallback, useMemo, useRef, useState} from 'react';
+import React, {useMemo, useState} from 'react';
 import {useColorMode} from '@docusaurus/theme-common';
 import {AgGridReact} from 'ag-grid-react';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
@@ -18,7 +18,6 @@ ModuleRegistry.registerModules([ServerSideRowModelModule, NumberFilterModule, Te
 
 const GrandTotalRowAsyncGrid = () => {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const gridApiRef = useRef<GridApi | null>(null);
     const { siteConfig } = useDocusaurusContext();
     const { API_URL } = siteConfig.customFields;
 
@@ -47,22 +46,14 @@ const GrandTotalRowAsyncGrid = () => {
             filterParams: {
                 values: params => {
                     const field = params.colDef.field;
-                    fetch(`${API_URL}/docs/grand-total-row/async/supplySetFilterValues/${field}`, {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                    })
+                    fetch(`${API_URL}/docs/grand-total-row/async/supplySetFilterValues/${field}`)
                         .then(async response => {
                             if (!response.ok) {
-                                const errorText = await response.text(); // Read plain text from Spring Boot
-                                throw new Error(errorText || `HTTP error! status: ${response.status}`);
+                                throw new Error(await response.text() || `HTTP error! status: ${response.status}`);
                             }
                             return response.json();
                         })
-                        .then(data => {
-                            params.success(data.data);
-                        })
+                        .then(data => params.success(data.data))
                         .catch(error => {
                             console.error('Error fetching data:', error);
                             setErrorMessage(error.message || 'Failed to fetch data');
@@ -94,75 +85,65 @@ const GrandTotalRowAsyncGrid = () => {
         flex: 1,
     } as ColDef), []);
 
+    const postJson = (url: string, body: unknown) =>
+        fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        }).then(async response => {
+            if (!response.ok) {
+                throw new Error(await response.text() || `HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        });
+
+    const refreshGrandTotal = (params: IServerSideGetRowsParams) => {
+        const { api, request } = params;
+        // Clear any stale total immediately so the user doesn't see outdated aggregates
+        // while the new fetch is in flight.
+        api.applyServerSideTransaction({
+            remove: [{ tradeId: GRAND_TOTAL_ROW_ID } as any],
+        });
+
+        postJson(`${API_URL}/docs/grand-total-row/async/getGrandTotalData`, request)
+            .then(data => {
+                setErrorMessage(null);
+                const grandTotalData = { ...data.data, tradeId: GRAND_TOTAL_ROW_ID };
+                // addIndex is required because the backend doesn't return rowCount, leaving
+                // the store's isLastRowKnown=false. Without an explicit index, insertRowNodes
+                // early-returns before reaching the GRAND_TOTAL_ROW_ID branch.
+                api.applyServerSideTransaction({ add: [grandTotalData], addIndex: 0 });
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+                setErrorMessage(error.message || 'Failed to fetch data');
+            });
+    };
+
     const serverSideDatasource: IServerSideDatasource = useMemo(() => ({
         getRows: (params) => {
-            fetch(`${API_URL}/docs/grand-total-row/async/getRows`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(params.request)
-            })
-                .then(async response => {
-                    if (!response.ok) {
-                        const errorText = await response.text(); // Read plain text from Spring Boot
-                        throw new Error(errorText || `HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
+            const needsGrandTotal = params.needsGrandTotal;
+            postJson(`${API_URL}/docs/grand-total-row/async/getRows`, params.request)
                 .then(data => {
                     setErrorMessage(null);
-                    const successData = data.data;
-                    successData.grandTotalData = undefined;
+                    // The sync endpoint returns grandTotalData: null on this response;
+                    // forwarding null to params.success would tell the grid to remove the
+                    // grand total. We own it via transaction here, so strip it.
+                    const { grandTotalData: _omit, ...successData } = data.data;
                     params.success(successData);
+                    if (needsGrandTotal) {
+                        refreshGrandTotal(params);
+                    }
                 })
                 .catch(error => {
                     console.error('Error fetching data:', error);
                     setErrorMessage(error.message || 'Failed to fetch data');
                     params.fail();
                 });
-            
-            if (params.needsGrandTotal) {
-                const { api, request } = params;
-                api.applyServerSideTransaction({
-                    remove: [{ tradeId: GRAND_TOTAL_ROW_ID } as any],
-                });
-
-                fetch(`${API_URL}/docs/grand-total-row/async/getGrandTotalData`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(request)
-                })
-                .then(async response => {
-                    if (!response.ok) {
-                        const errorText = await response.text(); // Read plain text from Spring Boot
-                        throw new Error(errorText || `HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    setErrorMessage(null);
-                    
-                    const grandTotalData = {
-                        ...data.data,
-                        tradeId: GRAND_TOTAL_ROW_ID,
-                    }
-                    api.applyServerSideTransaction({ add: [grandTotalData] });
-                })
-                .catch(error => {
-                    console.error('Error fetching data:', error);
-                    setErrorMessage(error.message || 'Failed to fetch data');
-                });
-            }
         }
     }), []);
 
-    const onGridReady = useCallback((params: GridReadyEvent) => {
-        gridApiRef.current = params.api;
-        params.api.sizeColumnsToFit();
-    }, []);
+    const onGridReady = (params: GridReadyEvent) => params.api.sizeColumnsToFit();
 
     return (
         <div style={{

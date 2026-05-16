@@ -16,7 +16,7 @@ import GrandTotalRowAsyncGrid from './grand-total-row-async-grid';
 </ShowSqlMonitor>
 
 
-<ShowSqlMonitor serviceUrls={['/docs/grand-total-row/async/getRows', '/docs/grand-total-row/async/supplySetFilterValues']}>
+<ShowSqlMonitor serviceUrls={['/docs/grand-total-row/async/getRows', '/docs/grand-total-row/async/supplySetFilterValues', '/docs/grand-total-row/async/getGrandTotalData']}>
 <LazyGrid>
 <GrandTotalRowAsyncGrid></GrandTotalRowAsyncGrid>
 </LazyGrid>
