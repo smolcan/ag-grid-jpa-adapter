@@ -2662,7 +2662,7 @@ public class QueryBuilder<E> {
             Root<E> subRoot = subquery.from(this.entityClass);
             subquery.select(cb.countDistinct(getPath(subRoot, pivotCol.getField())));
 
-            productExpression = cb.prod(productExpression, subquery.getSelection());
+            productExpression = cb.prod(productExpression, subquery);
         }
 
         mainQuery.select(productExpression);
