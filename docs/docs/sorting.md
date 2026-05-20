@@ -39,11 +39,9 @@ import LazyGrid from './lazy-grid';
 
 ## Absolute Sorting
 
-Absolute Sorting orders numeric values by their magnitude, ignoring their sign. For example, with absolute sorting ascending, `-100` would sort after `5` because `|-100| = 100 > 5`.
+Absolute Sorting orders numeric values by their magnitude, ignoring their sign. 
 
-This is useful for financial data where you want to rank by the size of a value regardless of whether it is positive or negative (e.g., P&L, trade deltas).
-
-Absolute sorting is enabled on the frontend by setting the column sort type to `'absolute'` in AG Grid. The adapter automatically applies `ORDER BY ABS(column)` when it receives a sort request with type `absolute`.
+Absolute sorting is enabled on the frontend by setting the column sort type to `'absolute'` in AG Grid.
 
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/sorting-absolute-grid.tsx)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/SortingService.java)
