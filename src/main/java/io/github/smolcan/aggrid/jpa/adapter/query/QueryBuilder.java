@@ -299,6 +299,14 @@ public class QueryBuilder<E> {
         }
     }
     
+    /**
+     * Computes aggregated values across all rows matching the request filters,
+     * intended to populate the grid's grand total row.
+     *
+     * @param request the AG Grid server-side request containing value columns and filters.
+     * @return a map of aggregated values keyed by field name.
+     * @throws IllegalStateException if the grand total row is not enabled on this {@code QueryBuilder}.
+     */
     public Map<String, Object> getGrandTotalData(ServerSideGetRowsRequest request) {
         if (!this.grandTotalRow) {
             throw new IllegalStateException("Grand total row is disabled, enable it to get grand total data");
