@@ -66,21 +66,21 @@ export default function ColdStartNotice() {
 
     return (
         <>
-            <style>{`
-                @keyframes slideUp {
-                    from { opacity: 0; transform: translateY(12px); }
-                    to   { opacity: 1; transform: translateY(0); }
-                }
-            `}</style>
-            <div style={styles.toast} role="status" aria-live="polite">
-                <span style={styles.icon}>ℹ️</span>
-                <div style={styles.body}>
-                    <div style={styles.title}>Backend cold start</div>
-                    The demo backend runs on a free Render instance and may take a few seconds to wake up.
-                    Example grids might be slow to load on first visit.
-                </div>
-                <button style={styles.close} onClick={dismiss} aria-label="Dismiss">✕</button>
-            </div>
+            {/*<style>{`*/}
+            {/*    @keyframes slideUp {*/}
+            {/*        from { opacity: 0; transform: translateY(12px); }*/}
+            {/*        to   { opacity: 1; transform: translateY(0); }*/}
+            {/*    }*/}
+            {/*`}</style>*/}
+            {/*<div style={styles.toast} role="status" aria-live="polite">*/}
+            {/*    <span style={styles.icon}>ℹ️</span>*/}
+            {/*    <div style={styles.body}>*/}
+            {/*        <div style={styles.title}>Backend cold start</div>*/}
+            {/*        The demo backend runs on a free Render instance and may take a few seconds to wake up.*/}
+            {/*        Example grids might be slow to load on first visit.*/}
+            {/*    </div>*/}
+            {/*    <button style={styles.close} onClick={dismiss} aria-label="Dismiss">✕</button>*/}
+            {/*</div>*/}
         </>
     );
 }
