@@ -2228,7 +2228,7 @@ public class QueryBuilder<E> {
         if (filterModel == null) {
             return false;
         }
-        return filterModel.values().stream().allMatch(v -> v instanceof Map);
+        return filterModel.values().stream().allMatch(Map.class::isInstance);
     }
 
 
@@ -2288,7 +2288,7 @@ public class QueryBuilder<E> {
                     textAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).orElse(null));
                     Optional.ofNullable(this.colDefs.get(colId).getFilter())
                             .map(IFilter::getFilterParams)
-                            .filter(fp -> fp instanceof TextFilterParams)
+                            .filter(TextFilterParams.class::isInstance)
                             .map(fp -> (TextFilterParams) fp)
                             .ifPresent(textAdvancedFilterModel::setFilterParams);
                     return textAdvancedFilterModel;
@@ -2299,7 +2299,7 @@ public class QueryBuilder<E> {
                     dateAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).map(f -> LocalDate.parse(f, DATE_FORMATTER_FOR_DATE_ADVANCED_FILTER)).orElse(null));
                     Optional.ofNullable(this.colDefs.get(colId).getFilter())
                             .map(IFilter::getFilterParams)
-                            .filter(fp -> fp instanceof DateFilterParams)
+                            .filter(DateFilterParams.class::isInstance)
                             .map(fp -> (DateFilterParams) fp)
                             .ifPresent(dateAdvancedFilterModel::setFilterParams);
                     return dateAdvancedFilterModel;
@@ -2310,7 +2310,7 @@ public class QueryBuilder<E> {
                     numberAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).map(BigDecimal::new).orElse(null));
                     Optional.ofNullable(this.colDefs.get(colId).getFilter())
                             .map(IFilter::getFilterParams)
-                            .filter(fp -> fp instanceof NumberFilterParams)
+                            .filter(NumberFilterParams.class::isInstance)
                             .map(fp -> (NumberFilterParams) fp)
                             .ifPresent(numberAdvancedFilterModel::setFilterParams);
                     return numberAdvancedFilterModel;
@@ -2727,7 +2727,7 @@ public class QueryBuilder<E> {
     
     public static class Builder<E> {
         private static final String DEFAULT_SERVER_SIDE_PIVOT_RESULT_FIELD_SEPARATOR = "_";
-        private static final Function<String, List<String>> DEFAULT_QUICK_FILTER_PARSER = (input) -> Arrays.asList(input.trim().split("\\s+")); 
+        private static final Function<String, List<String>> DEFAULT_QUICK_FILTER_PARSER = input -> Arrays.asList(input.trim().split("\\s+")); 
         
         private final Class<E> entityClass;
         private final EntityManager entityManager;

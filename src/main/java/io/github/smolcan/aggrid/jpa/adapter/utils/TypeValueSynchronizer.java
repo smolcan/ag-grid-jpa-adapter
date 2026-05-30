@@ -13,6 +13,7 @@ import java.time.format.DateTimeFormatter;
  */
 public class TypeValueSynchronizer {
 
+    private TypeValueSynchronizer() {}
 
     /**
      * Synchronizes the types of the expression and value provided for a query,

@@ -3,15 +3,15 @@ package io.github.smolcan.aggrid.jpa.adapter.filter.model.simple;
 public abstract class SimpleFilterModel extends ProvidedFilterModel {
     protected SimpleFilterModelType type;
     
-    public SimpleFilterModel() {
+    protected SimpleFilterModel() {
         
     }
-    
-    public SimpleFilterModel(String filterType) {
+
+    protected SimpleFilterModel(String filterType) {
         super(filterType);
     }
-    
-    public SimpleFilterModel(String filterType, SimpleFilterModelType type) {
+
+    protected SimpleFilterModel(String filterType, SimpleFilterModelType type) {
         super(filterType);
         this.type = type;
     }

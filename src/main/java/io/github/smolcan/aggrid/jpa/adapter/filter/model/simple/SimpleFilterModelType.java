@@ -1,5 +1,6 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.model.simple;
 
+@SuppressWarnings("java:S115")
 public enum SimpleFilterModelType {
     empty,
     equals,

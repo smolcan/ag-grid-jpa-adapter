@@ -6,7 +6,7 @@ import jakarta.persistence.criteria.Expression;
 import java.util.function.BiFunction;
 
 // Default aggregation functions
-@SuppressWarnings({"unchecked", "rawtypes"})
+@SuppressWarnings({"unchecked", "rawtypes", "java:S115"})
 public enum AggregationFunction {
     avg(
             (cb, expr) -> cb.avg((Expression) expr)

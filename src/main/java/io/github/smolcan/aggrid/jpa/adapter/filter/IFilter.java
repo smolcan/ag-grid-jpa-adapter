@@ -13,6 +13,7 @@ import java.util.Map;
  * @param <FM>  model the filter receives
  * @param <FP>  filter params for filter
  */
+@SuppressWarnings("java:S119")
 public abstract class IFilter<FM extends IFilterModel, FP extends IFilterParams> {
     protected FP filterParams = this.getDefaultFilterParams();
 

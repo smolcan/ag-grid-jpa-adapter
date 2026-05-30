@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
  * @param <FM>  model the filter receives
  * @param <FP>  filter params for filter
  */
+@SuppressWarnings("java:S119")
 public abstract class SimpleFilter<FM extends SimpleFilterModel, FP extends IFilterParams> extends IProvidedFilter<FM, FP> {
 
     /**

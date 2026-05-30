@@ -6,7 +6,7 @@ import java.util.List;
 
 public class SetFilterModel extends ProvidedFilterModel {
     
-    public List<String> values = new ArrayList<>();
+    private List<String> values = new ArrayList<>();
     
     public SetFilterModel() {
         super("set");

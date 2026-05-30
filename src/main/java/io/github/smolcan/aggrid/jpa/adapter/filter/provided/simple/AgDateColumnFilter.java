@@ -157,7 +157,7 @@ public class AgDateColumnFilter extends SimpleFilter<DateFilterModel, DateFilter
         LocalDateTime startOfToday = now.with(LocalTime.MIN);
 
         WeekFields weekFields = WeekFields.of(Locale.getDefault());
-        LocalDateTime startOfCurrentWeek = startOfToday.minusDays(now.get(weekFields.dayOfWeek()) - 1);
+        LocalDateTime startOfCurrentWeek = startOfToday.minusDays(now.get(weekFields.dayOfWeek()) - 1L);
 
         LocalDateTime startOfCurrentMonth = now.withDayOfMonth(1).with(LocalTime.MIN);
 

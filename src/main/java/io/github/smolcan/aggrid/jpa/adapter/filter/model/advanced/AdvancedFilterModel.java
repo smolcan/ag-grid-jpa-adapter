@@ -8,7 +8,7 @@ import jakarta.persistence.criteria.Root;
 public abstract class AdvancedFilterModel {
     private String filterType;
     
-    public AdvancedFilterModel(String filterType) {
+    protected AdvancedFilterModel(String filterType) {
         this.filterType = filterType;
     }
 

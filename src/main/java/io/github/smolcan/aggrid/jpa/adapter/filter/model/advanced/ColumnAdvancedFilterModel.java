@@ -3,7 +3,7 @@ package io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced;
 public abstract class ColumnAdvancedFilterModel extends AdvancedFilterModel {
     private String colId;
     
-    public ColumnAdvancedFilterModel(String filterType, String colId) {
+    protected ColumnAdvancedFilterModel(String filterType, String colId) {
         super(filterType);
         this.colId = colId;
     }

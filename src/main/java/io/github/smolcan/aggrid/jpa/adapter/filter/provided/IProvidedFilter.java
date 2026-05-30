@@ -9,6 +9,7 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.IFilterPa
  * @param <FM>  model the filter receives
  * @param <FP>  filter params for filter
  */
+@SuppressWarnings("java:S119")
 public abstract class IProvidedFilter<FM extends ProvidedFilterModel, FP extends IFilterParams> extends IFilter<FM, FP> {
     
 }
