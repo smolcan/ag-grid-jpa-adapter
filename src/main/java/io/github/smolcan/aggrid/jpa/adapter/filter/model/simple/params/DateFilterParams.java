@@ -97,6 +97,7 @@ public class DateFilterParams extends ScalarFilterParams {
         private LocalDate minValidDate;
         private Integer minValidYear = 1000;
         
+        @Override
         public DateFilterParams build() {
             return new DateFilterParams(this);
         }

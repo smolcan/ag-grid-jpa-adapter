@@ -374,23 +374,23 @@ public class QueryBuilder<E> {
         }
         
         // find params for detail grid
-        MasterDetailParams masterDetailParams = this.dynamicMasterDetailParams != null
+        MasterDetailParams params = this.dynamicMasterDetailParams != null
                 ? this.dynamicMasterDetailParams.apply(masterRow)   // dynamic
                 : this.masterDetailParams;                          // static
         
         CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
         CriteriaQuery<Tuple> query = cb.createTupleQuery();
-        Root<?> root = query.from(masterDetailParams.getDetailClass());
+        Root<?> root = query.from(params.getDetailClass());
         
         // select
         query.multiselect(
-                masterDetailParams.getDetailColDefs().values().stream()
+                params.getDetailColDefs().values().stream()
                 .map(colDef -> getPath(root, colDef.getField()).alias(colDef.getField()))
                 .collect(Collectors.toList())
         );
 
         // master predicate
-        Predicate masterPredicate = this.createMasterRowPredicate(cb, root, masterRow, masterDetailParams);
+        Predicate masterPredicate = this.createMasterRowPredicate(cb, root, masterRow, params);
         query.where(masterPredicate);
 
         // result
@@ -593,6 +593,7 @@ public class QueryBuilder<E> {
             return;
         }
         
+        Objects.requireNonNull(this.masterDetailParams);
         CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
         CriteriaQuery<Tuple> query = cb.createTupleQuery();
         Root<?> detailRoot = query.from(this.masterDetailParams.getDetailClass());
@@ -1278,7 +1279,7 @@ public class QueryBuilder<E> {
             expandedParentSubquery.groupBy(
                     request.getRowGroupCols().stream()
                             .map(col -> getPath(expandedParentRoot, col.getField()))
-                            .limit(i + 1)
+                            .limit(i + 1L)
                             .collect(Collectors.toList())
             );
 
@@ -1292,7 +1293,7 @@ public class QueryBuilder<E> {
                                 TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(expandedParentGroupPath, key);
                                 return cb.equal(synchronizedValueType.getSynchronizedPath(), synchronizedValueType.getSynchronizedValue());
                             })
-                            .limit(i + 1)
+                            .limit(i + 1L)
                             .collect(Collectors.toList())
                             .toArray(Predicate[]::new)
             );
@@ -1351,7 +1352,7 @@ public class QueryBuilder<E> {
             expandedParentSubquery.groupBy(
                     request.getRowGroupCols().stream()
                             .map(col -> getPath(expandedParentRoot, col.getField()))
-                            .limit(i + 1)
+                            .limit(i + 1L)
                             .collect(Collectors.toList())
             );
 
@@ -1362,7 +1363,7 @@ public class QueryBuilder<E> {
                                 Path<?> parentQueryGroupColumnPath = getPath(root, col.getField());
                                 return cb.equal(subqueryGroupColumnPath, parentQueryGroupColumnPath);
                             })
-                            .limit(i + 1)
+                            .limit(i + 1L)
                             .collect(Collectors.toList())
                             .toArray(Predicate[]::new)
             );
@@ -1413,7 +1414,7 @@ public class QueryBuilder<E> {
                     request.getRowGroupCols().stream()
                             .map(col -> getPath(unexpandedChildGroupRoot, col.getField()))
                             .skip(request.getGroupKeys().size())
-                            .limit(i - request.getGroupKeys().size() + 1)
+                            .limit(i - request.getGroupKeys().size() + 1L)
                             .collect(Collectors.toList())
             );
 
@@ -1425,7 +1426,7 @@ public class QueryBuilder<E> {
                                 return cb.equal(subqueryGroupColumnPath, parentQueryGroupColumnPath);
                             })
                             .skip(request.getGroupKeys().size())
-                            .limit(i - request.getGroupKeys().size() + 1)
+                            .limit(i - request.getGroupKeys().size() + 1L)
                             .collect(Collectors.toList())
                             .toArray(Predicate[]::new)
             );
@@ -1475,7 +1476,7 @@ public class QueryBuilder<E> {
                     Path<?> parentQueryGroupColumnPath = getPath(root, col.getField());
                     return cb.equal(subqueryGroupColumnPath, parentQueryGroupColumnPath);
                 })
-                .limit(request.getGroupKeys().size() + 1)
+                .limit(request.getGroupKeys().size() + 1L)
                 .forEach(leafNodeExistsSubqueryPredicates::add);
         request.getValueCols().stream()
                 .filter(vc -> request.getFilterModel().containsKey(vc.getField()))
@@ -2023,7 +2024,7 @@ public class QueryBuilder<E> {
                                 .colId(sortModel.getColId())
                                 .build();
                     })
-                    .limit(request.getGroupKeys().size() + 1);   // don't order groups that are not expanded yet
+                    .limit(request.getGroupKeys().size() + 1L);   // don't order groups that are not expanded yet
             
             // order aggregated columns
             Stream<OrderMetadata> aggregationOrders = request.getSortModel().stream()
@@ -2079,7 +2080,7 @@ public class QueryBuilder<E> {
                             .colId(sortModel.getColId())
                             .build();
                 })
-                .limit(request.getGroupKeys().size() + 1);   // don't order groups that are not expanded yet
+                .limit(request.getGroupKeys().size() + 1L);   // don't order groups that are not expanded yet
         
         // pivoting aggregations columns orders
         Stream<OrderMetadata> pivotingAggregationOrders = request.getSortModel().stream()
@@ -2169,11 +2170,10 @@ public class QueryBuilder<E> {
 
                     // put value to the level of insertion
                     currentLevel.put(parts[parts.length - 1], value);
-                    continue;
+                } else {
+                    // simple scenario
+                    map.put(alias, value);
                 }
-
-                // simple scenario
-                map.put(alias, value);
             }
             result.add(map);
         }

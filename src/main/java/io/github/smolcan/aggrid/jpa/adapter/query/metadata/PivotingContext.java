@@ -2,7 +2,6 @@ package io.github.smolcan.aggrid.jpa.adapter.query.metadata;
 
 import io.github.smolcan.aggrid.jpa.adapter.utils.Pair;
 import jakarta.persistence.criteria.Expression;
-import jakarta.persistence.criteria.Selection;
 
 import java.util.List;
 import java.util.Map;
