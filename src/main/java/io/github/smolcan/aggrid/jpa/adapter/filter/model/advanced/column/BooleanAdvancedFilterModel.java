@@ -6,7 +6,11 @@ import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter
+@Setter
 public class BooleanAdvancedFilterModel extends ColumnAdvancedFilterModel {
     private BooleanAdvancedFilterModelType type;
 
@@ -43,13 +47,5 @@ public class BooleanAdvancedFilterModel extends ColumnAdvancedFilterModel {
         }
         
         return predicate;
-    }
-
-    public BooleanAdvancedFilterModelType getType() {
-        return type;
-    }
-
-    public void setType(BooleanAdvancedFilterModelType type) {
-        this.type = type;
     }
 }

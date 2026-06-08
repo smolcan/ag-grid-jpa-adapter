@@ -8,8 +8,13 @@ import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.time.LocalDate;
 
+@Getter
+@Setter
 public class DateAdvancedFilterModel extends ColumnAdvancedFilterModel {
     
     private ScalarAdvancedFilterModelType type;
@@ -83,29 +88,5 @@ public class DateAdvancedFilterModel extends ColumnAdvancedFilterModel {
         }
         
         return predicate;
-    }
-
-    public ScalarAdvancedFilterModelType getType() {
-        return type;
-    }
-
-    public void setType(ScalarAdvancedFilterModelType type) {
-        this.type = type;
-    }
-
-    public LocalDate getFilter() {
-        return filter;
-    }
-
-    public void setFilter(LocalDate filter) {
-        this.filter = filter;
-    }
-
-    public DateFilterParams getFilterParams() {
-        return filterParams;
-    }
-
-    public void setFilterParams(DateFilterParams filterParams) {
-        this.filterParams = filterParams;
     }
 }
