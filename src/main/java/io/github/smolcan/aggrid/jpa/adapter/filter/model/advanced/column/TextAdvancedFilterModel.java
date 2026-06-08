@@ -6,11 +6,18 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextFilte
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextMatcherParams;
 import io.github.smolcan.aggrid.jpa.adapter.utils.Utils;
 import jakarta.persistence.criteria.*;
+import lombok.Getter;
+import lombok.NonNull;
+import lombok.Setter;
 
+@Getter
+@Setter
 public class TextAdvancedFilterModel extends ColumnAdvancedFilterModel {
-    
+
+    @Setter(onMethod_ = {@NonNull})
     private TextAdvancedFilterModelType type;
     private String filter;
+    @NonNull
     private TextFilterParams filterParams = TextFilterParams.builder().build();
     
     public TextAdvancedFilterModel(String colId) {
@@ -74,29 +81,5 @@ public class TextAdvancedFilterModel extends ColumnAdvancedFilterModel {
         }
         
         return predicate;
-    }
-
-    public TextAdvancedFilterModelType getType() {
-        return type;
-    }
-
-    public void setType(TextAdvancedFilterModelType type) {
-        this.type = type;
-    }
-
-    public String getFilter() {
-        return filter;
-    }
-
-    public void setFilter(String filter) {
-        this.filter = filter;
-    }
-
-    public TextFilterParams getFilterParams() {
-        return filterParams;
-    }
-
-    public void setFilterParams(TextFilterParams filterParams) {
-        this.filterParams = filterParams;
     }
 }

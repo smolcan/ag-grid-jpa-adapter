@@ -1,13 +1,19 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params;
 
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.SimpleFilterModelType;
+import lombok.Getter;
+import lombok.NonNull;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
+@Getter
+@SuperBuilder
 public class DateFilterParams extends ScalarFilterParams {
 
+    @NonNull
     private final Set<SimpleFilterModelType> filterOptions;
     // The maximum valid date that can be entered in the filter.
     // If set, this will override `maxValidYear` - the maximum valid year setting.
@@ -19,39 +25,6 @@ public class DateFilterParams extends ScalarFilterParams {
     private final LocalDate minValidDate;
     // This is the minimum year that may be entered in a date field for the value to be considered valid.
     private final Integer minValidYear;
-    
-    private DateFilterParams(Builder builder) {
-        super(builder);
-        this.filterOptions = builder.filterOptions;
-        this.maxValidDate = builder.maxValidDate;
-        this.maxValidYear = builder.maxValidYear;
-        this.minValidDate = builder.minValidDate;
-        this.minValidYear = builder.minValidYear;
-    }
-
-    public Set<SimpleFilterModelType> getFilterOptions() {
-        return filterOptions;
-    }
-
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public LocalDate getMaxValidDate() {
-        return maxValidDate;
-    }
-
-    public Integer getMaxValidYear() {
-        return maxValidYear;
-    }
-
-    public LocalDate getMinValidDate() {
-        return minValidDate;
-    }
-
-    public Integer getMinValidYear() {
-        return minValidYear;
-    }
 
     public void validateDate(LocalDateTime dateTime) {
         if (dateTime == null) {
@@ -89,83 +62,19 @@ public class DateFilterParams extends ScalarFilterParams {
         }
     }
 
-    public static class Builder extends ScalarFilterParams.Builder {
-
+    public abstract static class DateFilterParamsBuilder<C extends DateFilterParams, B extends DateFilterParamsBuilder<C, B>> extends ScalarFilterParamsBuilder<C, B> {
+        // Hand-declared so Lombok keeps these defaults (ColDef-style) instead of using @Builder.Default.
         private Set<SimpleFilterModelType> filterOptions = Collections.emptySet();
-        private LocalDate maxValidDate;
-        private Integer maxValidYear;
-        private LocalDate minValidDate;
         private Integer minValidYear = 1000;
-        
-        @Override
-        public DateFilterParams build() {
-            return new DateFilterParams(this);
-        }
-        
-        public Builder filterOptions(SimpleFilterModelType ...type) {
+
+        public B filterOptions(SimpleFilterModelType... type) {
             this.filterOptions = new HashSet<>(Arrays.asList(type));
-            return this;
+            return self();
         }
-        
-        public Builder filterOptions(Collection<SimpleFilterModelType> type) {
+
+        public B filterOptions(Collection<SimpleFilterModelType> type) {
             this.filterOptions = new HashSet<>(type);
-            return this;
-        }
-        
-        public Builder maxValidDate(LocalDate maxValidDate) {
-            this.maxValidDate = maxValidDate;
-            return this;
-        }
-        
-        public Builder maxValidYear(Integer maxValidYear) {
-            this.maxValidYear = maxValidYear;
-            return this;
-        }
-        
-        public Builder minValidDate(LocalDate minValidDate) {
-            this.minValidDate = minValidDate;
-            return this;
-        }
-        
-        public Builder minValidYear(Integer minValidYear) {
-            this.minValidYear = minValidYear;
-            return this;
-        }
-
-        @Override
-        public Builder inRangeInclusive(boolean inRangeInclusive) {
-            super.inRangeInclusive(inRangeInclusive);
-            return this;
-        }
-
-        @Override
-        public Builder includeBlanksInEquals(boolean includeBlanksInEquals) {
-            super.includeBlanksInEquals(includeBlanksInEquals);
-            return this;
-        }
-
-        @Override
-        public Builder includeBlanksInNotEqual(boolean includeBlanksInNotEqual) {
-            super.includeBlanksInNotEqual(includeBlanksInNotEqual);
-            return this;
-        }
-
-        @Override
-        public Builder includeBlanksInLessThan(boolean includeBlanksInLessThan) {
-            super.includeBlanksInLessThan(includeBlanksInLessThan);
-            return this;
-        }
-
-        @Override
-        public Builder includeBlanksInGreaterThan(boolean includeBlanksInGreaterThan) {
-            super.includeBlanksInGreaterThan(includeBlanksInGreaterThan);
-            return this;
-        }
-
-        @Override
-        public Builder includeBlanksInRange(boolean includeBlanksInRange) {
-            super.includeBlanksInRange(includeBlanksInRange);
-            return this;
+            return self();
         }
     }
 }

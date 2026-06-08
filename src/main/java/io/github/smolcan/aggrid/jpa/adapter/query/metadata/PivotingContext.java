@@ -2,6 +2,8 @@ package io.github.smolcan.aggrid.jpa.adapter.query.metadata;
 
 import io.github.smolcan.aggrid.jpa.adapter.utils.Pair;
 import jakarta.persistence.criteria.Expression;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.List;
 import java.util.Map;
@@ -10,6 +12,8 @@ import java.util.Set;
 /**
  * To hold all the needed information about pivoting
  */
+@Setter
+@Getter
 public class PivotingContext {
     
     // for each column, its distinct values
@@ -30,43 +34,4 @@ public class PivotingContext {
     // pivoting result fields for response
     private List<String> pivotingResultFields;
 
-    public Map<String, List<Object>> getPivotValues() {
-        return pivotValues;
-    }
-
-    public void setPivotValues(Map<String, List<Object>> pivotValues) {
-        this.pivotValues = pivotValues;
-    }
-
-    public List<Set<Pair<String, Object>>> getPivotPairs() {
-        return pivotPairs;
-    }
-
-    public void setPivotPairs(List<Set<Pair<String, Object>>> pivotPairs) {
-        this.pivotPairs = pivotPairs;
-    }
-
-    public List<List<Pair<String, Object>>> getCartesianProduct() {
-        return cartesianProduct;
-    }
-
-    public void setCartesianProduct(List<List<Pair<String, Object>>> cartesianProduct) {
-        this.cartesianProduct = cartesianProduct;
-    }
-    
-    public List<String> getPivotingResultFields() {
-        return pivotingResultFields;
-    }
-    
-    public void setPivotingResultFields(List<String> pivotingResultFields) {
-        this.pivotingResultFields = pivotingResultFields;
-    }
-
-    public Map<String, Expression<?>> getColumnNamesToExpression() {
-        return columnNamesToExpression;
-    }
-
-    public void setColumnNamesToExpression(Map<String, Expression<?>> columnNamesToExpression) {
-        this.columnNamesToExpression = columnNamesToExpression;
-    }
 }

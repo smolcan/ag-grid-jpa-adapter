@@ -1,8 +1,13 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.model.simple;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.List;
 import java.util.Map;
 
+@Setter
+@Getter
 public class MultiFilterModel extends ProvidedFilterModel {
     
     // Child filter models in the same order as the filters are specified in filterParams.
@@ -12,11 +17,4 @@ public class MultiFilterModel extends ProvidedFilterModel {
         super("multi");
     }
 
-    public List<Map<String, Object>> getFilterModels() {
-        return filterModels;
-    }
-
-    public void setFilterModels(List<Map<String, Object>> filterModels) {
-        this.filterModels = filterModels;
-    }
 }

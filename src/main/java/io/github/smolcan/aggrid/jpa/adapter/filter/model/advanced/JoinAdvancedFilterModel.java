@@ -4,14 +4,21 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.JoinOperator;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import lombok.Getter;
+import lombok.NonNull;
+import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Setter
+@Getter
 public class JoinAdvancedFilterModel extends AdvancedFilterModel {
-    
+
+    @Setter(onMethod_ = {@NonNull})
     private JoinOperator type;
+    @NonNull
     private List<AdvancedFilterModel> conditions = new ArrayList<>();
     
     public JoinAdvancedFilterModel() {
@@ -30,19 +37,4 @@ public class JoinAdvancedFilterModel extends AdvancedFilterModel {
         }
     }
 
-    public JoinOperator getType() {
-        return type;
-    }
-
-    public void setType(JoinOperator type) {
-        this.type = type;
-    }
-
-    public List<AdvancedFilterModel> getConditions() {
-        return conditions;
-    }
-
-    public void setConditions(List<AdvancedFilterModel> conditions) {
-        this.conditions = conditions;
-    }
 }

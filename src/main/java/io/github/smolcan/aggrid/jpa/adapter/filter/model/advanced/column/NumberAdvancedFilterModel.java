@@ -8,12 +8,20 @@ import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 
+import lombok.Getter;
+import lombok.NonNull;
+import lombok.Setter;
+
 import java.math.BigDecimal;
 
+@Getter
+@Setter
 public class NumberAdvancedFilterModel extends ColumnAdvancedFilterModel {
-    
+
+    @Setter(onMethod_ = {@NonNull})
     private ScalarAdvancedFilterModelType type;
     private BigDecimal filter;
+    @NonNull
     private NumberFilterParams filterParams = NumberFilterParams.builder().build();
     
     public NumberAdvancedFilterModel(String colId) {
@@ -84,30 +92,5 @@ public class NumberAdvancedFilterModel extends ColumnAdvancedFilterModel {
         }
 
         return predicate;
-    }
-
-
-    public ScalarAdvancedFilterModelType getType() {
-        return type;
-    }
-
-    public void setType(ScalarAdvancedFilterModelType type) {
-        this.type = type;
-    }
-
-    public BigDecimal getFilter() {
-        return filter;
-    }
-
-    public void setFilter(BigDecimal filter) {
-        this.filter = filter;
-    }
-
-    public NumberFilterParams getFilterParams() {
-        return filterParams;
-    }
-
-    public void setFilterParams(NumberFilterParams filterParams) {
-        this.filterParams = filterParams;
     }
 }
