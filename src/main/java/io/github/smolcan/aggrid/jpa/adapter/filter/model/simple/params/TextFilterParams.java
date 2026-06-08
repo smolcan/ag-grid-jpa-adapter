@@ -4,10 +4,15 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.SimpleFilterMode
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.experimental.Tolerate;
 
 import java.util.Set;
 import java.util.function.BiFunction;
 
+@Getter
+@Builder(builderClassName = "Builder")
 public class TextFilterParams implements ISimpleFilterParams {
     // Used to override how to filter based on the user input. Returns true if the value passes the filter, otherwise false.
     private final BiFunction<CriteriaBuilder, TextMatcherParams, Predicate> textMatcher;
@@ -20,38 +25,6 @@ public class TextFilterParams implements ISimpleFilterParams {
     // If only whitespace is entered, it will be left as-is. 
     private final boolean trimInput;
     private final Set<SimpleFilterModelType> filterOptions;
-
-    private TextFilterParams(Builder builder) {
-        this.textMatcher = builder.textMatcher;
-        this.caseSensitive = builder.caseSensitive;
-        this.textFormatter = builder.textFormatter;
-        this.trimInput = builder.trimInput;
-        this.filterOptions = builder.filterOptions;
-    }
-
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public BiFunction<CriteriaBuilder, TextMatcherParams, Predicate> getTextMatcher() {
-        return textMatcher;
-    }
-
-    public boolean isCaseSensitive() {
-        return caseSensitive;
-    }
-
-    public  BiFunction<CriteriaBuilder, Expression<String>, Expression<String>> getTextFormatter() {
-        return textFormatter;
-    }
-
-    public boolean isTrimInput() {
-        return trimInput;
-    }
-
-    public Set<SimpleFilterModelType> getFilterOptions() {
-        return filterOptions;
-    }
 
     /**
      * With given expression, generate new expression according to filter params
@@ -77,39 +50,13 @@ public class TextFilterParams implements ISimpleFilterParams {
     }
     
     public static class Builder {
-        private BiFunction<CriteriaBuilder, TextMatcherParams, Predicate> textMatcher;
-        private boolean caseSensitive = false;
-        private BiFunction<CriteriaBuilder, Expression<String>, Expression<String>> textFormatter;
-        private boolean trimInput = false;
+        
         private Set<SimpleFilterModelType> filterOptions = Set.of(SimpleFilterModelType.values());
 
-        public Builder textMatcher(BiFunction<CriteriaBuilder, TextMatcherParams, Predicate> textMatcher) {
-            this.textMatcher = textMatcher;
-            return this;
-        }
-        
-        public Builder caseSensitive(boolean caseSensitive) {
-            this.caseSensitive = caseSensitive;
-            return this;
-        }
-
-        public Builder textFormatter( BiFunction<CriteriaBuilder, Expression<String>, Expression<String>> textFormatter) {
-            this.textFormatter = textFormatter;
-            return this;
-        }
-
-        public Builder trimInput(boolean trimInput) {
-            this.trimInput = trimInput;
-            return this;
-        }
-        
+        @Tolerate
         public Builder filterOptions(SimpleFilterModelType ...values) {
             this.filterOptions = Set.of(values);
             return this;
-        }
-
-        public TextFilterParams build() {
-            return new TextFilterParams(this);
         }
     }
 }
