@@ -7,14 +7,17 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextMatch
 import io.github.smolcan.aggrid.jpa.adapter.utils.Utils;
 import jakarta.persistence.criteria.*;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 
 @Getter
 @Setter
 public class TextAdvancedFilterModel extends ColumnAdvancedFilterModel {
-    
+
+    @Setter(onMethod_ = {@NonNull})
     private TextAdvancedFilterModelType type;
     private String filter;
+    @NonNull
     private TextFilterParams filterParams = TextFilterParams.builder().build();
     
     public TextAdvancedFilterModel(String colId) {

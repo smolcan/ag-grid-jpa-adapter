@@ -7,10 +7,11 @@ import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 
 @Getter
-@Setter
+@Setter(onMethod_ = {@NonNull})
 public class BooleanAdvancedFilterModel extends ColumnAdvancedFilterModel {
     private BooleanAdvancedFilterModelType type;
 

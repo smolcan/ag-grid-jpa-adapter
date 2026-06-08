@@ -1,8 +1,17 @@
 package io.github.smolcan.aggrid.jpa.adapter.response;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.util.List;
 import java.util.Map;
 
+@Setter
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
 public class LoadSuccessParams {
     // Data retrieved from the server as requested by the grid.
     private List<Map<String, Object>> rowData;
@@ -14,55 +23,4 @@ public class LoadSuccessParams {
     private List<String> pivotResultFields;
     // Data for the grand total row
     private Map<String, Object> grandTotalData;
-
-    public LoadSuccessParams(List<Map<String, Object>> rowData, Long rowCount, Map<String, Object> groupLevelInfo, List<String> pivotResultFields, Map<String, Object> grandTotalData) {
-        this.rowData = rowData;
-        this.rowCount = rowCount;
-        this.groupLevelInfo = groupLevelInfo;
-        this.pivotResultFields = pivotResultFields;
-        this.grandTotalData = grandTotalData;
-    }
-
-    public LoadSuccessParams() {
-    }
-
-    public List<Map<String, Object>> getRowData() {
-        return rowData;
-    }
-
-    public void setRowData(List<Map<String, Object>> rowData) {
-        this.rowData = rowData;
-    }
-
-    public Long getRowCount() {
-        return rowCount;
-    }
-
-    public void setRowCount(Long rowCount) {
-        this.rowCount = rowCount;
-    }
-
-    public Map<String, Object> getGroupLevelInfo() {
-        return groupLevelInfo;
-    }
-
-    public void setGroupLevelInfo(Map<String, Object> groupLevelInfo) {
-        this.groupLevelInfo = groupLevelInfo;
-    }
-
-    public List<String> getPivotResultFields() {
-        return pivotResultFields;
-    }
-
-    public void setPivotResultFields(List<String> pivotResultFields) {
-        this.pivotResultFields = pivotResultFields;
-    }
-
-    public Map<String, Object> getGrandTotalData() {
-        return grandTotalData;
-    }
-
-    public void setGrandTotalData(Map<String, Object> grandTotalData) {
-        this.grandTotalData = grandTotalData;
-    }
 }

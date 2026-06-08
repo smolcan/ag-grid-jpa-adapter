@@ -2,6 +2,7 @@ package io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params;
 
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.SimpleFilterModelType;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDate;
@@ -12,6 +13,7 @@ import java.util.*;
 @SuperBuilder
 public class DateFilterParams extends ScalarFilterParams {
 
+    @NonNull
     private final Set<SimpleFilterModelType> filterOptions;
     // The maximum valid date that can be entered in the filter.
     // If set, this will override `maxValidYear` - the maximum valid year setting.

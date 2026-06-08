@@ -330,7 +330,9 @@ public class QueryBuilder<E> {
             Expression<?> aggregatedField = aggregateFunction.apply(cb, path);
             queryContext.getSelections().add(
                     SelectionMetadata
-                            .builder(aggregatedField, columnVO.getField())
+                            .builder()
+                            .alias(columnVO.getField())
+                            .expression(aggregatedField)
                             .isAggregationSelection(true)
                             .build()
             );
@@ -804,13 +806,20 @@ public class QueryBuilder<E> {
                 .filter(cd -> request.getValueCols().stream().noneMatch(vc -> vc.getField().equals(cd.getField()))) // filter out the aggregated ones
                 .forEach(colDef -> {
                     Path<?> field = getPath(root, colDef.getField());
-                    selections.add(SelectionMetadata.builder(field, colDef.getField()).build());
+                    selections.add(
+                            SelectionMetadata.builder()
+                                    .alias(colDef.getField())
+                                    .expression(field)
+                                    .build()
+                    );
                 });
 
         Expression<Boolean> isServerSideGroupSelection = this.createTreeDataIsServerSideGroupExpression(queryContext);
         selections.add(
                 SelectionMetadata
-                        .builder(isServerSideGroupSelection, this.isServerSideGroupFieldName)
+                        .builder()
+                        .alias(this.isServerSideGroupFieldName)
+                        .expression(isServerSideGroupSelection)
                         .isServerSideGroupSelection(true)
                         .build()
         );
@@ -822,7 +831,9 @@ public class QueryBuilder<E> {
                 Expression<?> aggExpression = this.createTreeDataAggregationExpression(queryContext, isServerSideGroupSelection, aggColumn, request);
                 selections.add(
                         SelectionMetadata
-                                .builder(aggExpression, aggColumn.getField())
+                                .builder()
+                                .alias(aggColumn.getField())
+                                .expression(aggExpression)
                                 .isAggregationSelection(true)
                                 .build()
                 );
@@ -834,7 +845,9 @@ public class QueryBuilder<E> {
             Expression<Long> countExpression = this.createTreeDataGetChildCountExpression(queryContext, isServerSideGroupSelection, request);
             selections.add(
                     SelectionMetadata
-                            .builder(countExpression, this.getChildCountFieldName)
+                            .builder()
+                            .alias(this.getChildCountFieldName)
+                            .expression(countExpression)
                             .isChildCountSelection(true)
                             .build()
             );
@@ -878,7 +891,9 @@ public class QueryBuilder<E> {
             Expression<?> groupExpression = getPath(root, groupCol.getField());
 
             SelectionMetadata groupSelectionMetadata = SelectionMetadata
-                    .builder(groupExpression, groupCol.getField())
+                    .builder()
+                    .alias(groupCol.getField())
+                    .expression(groupExpression)
                     .isGroupingSelection(true)
                     .build();
             selections.add(groupSelectionMetadata);
@@ -890,7 +905,9 @@ public class QueryBuilder<E> {
                 .stream()
                 .map(entry -> 
                         SelectionMetadata
-                            .builder(entry.getValue(), entry.getKey())
+                            .builder()
+                            .alias(entry.getKey())
+                            .expression(entry.getValue())
                             .isPivotingSelection(true)
                             .isAggregationSelection(true)
                             .build()
@@ -921,7 +938,9 @@ public class QueryBuilder<E> {
                 Expression<?> groupExpression = getPath(root, groupCol.getField());
 
                 SelectionMetadata groupSelectionMetadata = SelectionMetadata
-                        .builder(groupExpression, groupCol.getField())
+                        .builder()
+                        .alias(groupCol.getField())
+                        .expression(groupExpression)
                         .isGroupingSelection(true)
                         .build();
                 selections.add(groupSelectionMetadata);
@@ -931,7 +950,9 @@ public class QueryBuilder<E> {
             if (this.getChildCount) {
                 Expression<Long> childCountExpression = cb.count(root);
                 selections.add(
-                        SelectionMetadata.builder(childCountExpression, this.getChildCountFieldName)
+                        SelectionMetadata.builder()
+                                .alias(this.getChildCountFieldName)
+                                .expression(childCountExpression)
                                 .isChildCountSelection(true)
                                 .build()
                 );
@@ -944,7 +965,9 @@ public class QueryBuilder<E> {
                 Expression<?> aggregatedField = aggregateFunction.apply(cb, path);
                 selections.add(
                         SelectionMetadata
-                                .builder(aggregatedField, columnVO.getField())
+                                .builder()
+                                .alias(columnVO.getField())
+                                .expression(aggregatedField)
                                 .isAggregationSelection(true)
                                 .build()
                 );
@@ -954,7 +977,12 @@ public class QueryBuilder<E> {
             // just select columns
             for (ColDef colDef : this.colDefs.values()) {
                 Path<?> field = getPath(root, colDef.getField());
-                selections.add(SelectionMetadata.builder(field, colDef.getField()).build());
+                selections.add(
+                        SelectionMetadata.builder()
+                                .alias(colDef.getField())
+                                .expression(field)
+                                .build()
+                );
             }
         }
         
@@ -975,7 +1003,7 @@ public class QueryBuilder<E> {
                 .stream()
                 .map(colDef -> {
                     Path<?> field = getPath(root, colDef.getField());
-                    return SelectionMetadata.builder(field, colDef.getField()).build();
+                    return SelectionMetadata.builder().alias(colDef.getField()).expression(field).build();
                 })
                 .collect(Collectors.toList());
     }
@@ -1027,7 +1055,8 @@ public class QueryBuilder<E> {
         }
         wherePredicateMetadata.add(
                 WherePredicateMetadata
-                        .builder(treePredicate)
+                        .builder()
+                        .predicate(treePredicate)
                         .isTreeDataPredicate(true)
                         .build()
         );
@@ -1051,7 +1080,8 @@ public class QueryBuilder<E> {
             Predicate treeDataFilteringPredicate = cb.or(parentPredicate, ownDataPredicate, childrenPredicate);
             wherePredicateMetadata.add(
                     WherePredicateMetadata
-                            .builder(treeDataFilteringPredicate)
+                            .builder()
+                            .predicate(treeDataFilteringPredicate)
                             .isFilterPredicate(true)
                             .build()
             );
@@ -1100,7 +1130,8 @@ public class QueryBuilder<E> {
 
             // wrap in predicate info object
             WherePredicateMetadata groupPredicateInfo = WherePredicateMetadata
-                    .builder(groupPredicate)
+                    .builder()
+                    .predicate(groupPredicate)
                     .isGroupPredicate(true)
                     .groupKey(synchronizedValueType.getSynchronizedValue())
                     .groupCol(groupCol)
@@ -1139,7 +1170,8 @@ public class QueryBuilder<E> {
 
             // wrap in predicate info object
             WherePredicateMetadata groupPredicateInfo = WherePredicateMetadata
-                    .builder(groupPredicate)
+                    .builder()
+                    .predicate(groupPredicate)
                     .isGroupPredicate(true)
                     .groupKey(synchronizedValueType.getSynchronizedValue())
                     .groupCol(groupCol)
@@ -1169,7 +1201,8 @@ public class QueryBuilder<E> {
 
                 wherePredicates.add(
                         WherePredicateMetadata
-                                .builder(cb.or(leafNodesCheck, unexpandedChildrenGroupsCheck))
+                                .builder()
+                                .predicate(cb.or(leafNodesCheck, unexpandedChildrenGroupsCheck))
                                 .build()
                 );
             }
@@ -1211,7 +1244,8 @@ public class QueryBuilder<E> {
             Predicate externalFilterPredicate = this.doesExternalFilterPass.apply(cb, root, request.getExternalFilter());
             if (externalFilterPredicate != null) {
                 wherePredicates.add(
-                        WherePredicateMetadata.builder(externalFilterPredicate)
+                        WherePredicateMetadata.builder()
+                                .predicate(externalFilterPredicate)
                                 .isExternalFilterPredicate(true)
                                 .build()
                 );
@@ -1222,7 +1256,8 @@ public class QueryBuilder<E> {
             Predicate quickFilterPredicate = this.createQuickFilterPredicate(cb, root, request.getQuickFilter());
             if (quickFilterPredicate != null) {
                 wherePredicates.add(
-                        WherePredicateMetadata.builder(quickFilterPredicate)
+                        WherePredicateMetadata.builder()
+                                .predicate(quickFilterPredicate)
                                 .isQuickFilterPredicate(true)
                                 .build()
                 );
@@ -1233,14 +1268,16 @@ public class QueryBuilder<E> {
             if (this.enableAdvancedFilter) {
                 Predicate advancedFilterPredicate = this.createAdvancedFilterPredicate(cb, root, request.getFilterModel());
                 wherePredicates.add(
-                        WherePredicateMetadata.builder(advancedFilterPredicate)
+                        WherePredicateMetadata.builder()
+                                .predicate(advancedFilterPredicate)
                                 .isAdvancedFilterPredicate(true)
                                 .build()
                 );
             } else {
                 Predicate columnFilterPredicate = this.createColumnFilterPredicate(cb, root, request.getFilterModel());
                 wherePredicates.add(
-                        WherePredicateMetadata.builder(columnFilterPredicate)
+                        WherePredicateMetadata.builder()
+                                .predicate(columnFilterPredicate)
                                 .isColumnFilterPredicate(true)
                                 .build()
                 );
@@ -1910,7 +1947,8 @@ public class QueryBuilder<E> {
         for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size() + 1; i++) {
             String groupCol = request.getRowGroupCols().get(i).getField();
             GroupingMetadata groupingMetadata = GroupingMetadata
-                    .builder(getPath(root, groupCol))
+                    .builder()
+                    .gropingExpression(getPath(root, groupCol))
                     .column(groupCol)
                     .build();
 
@@ -1937,7 +1975,8 @@ public class QueryBuilder<E> {
             for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size() + 1; i++) {
                 String groupCol = request.getRowGroupCols().get(i).getField();
                 GroupingMetadata groupingMetadata = GroupingMetadata
-                        .builder(getPath(root, groupCol))
+                        .builder()
+                        .gropingExpression(getPath(root, groupCol))
                         .column(groupCol)
                         .build();
 
@@ -1968,7 +2007,8 @@ public class QueryBuilder<E> {
                         field = cb.abs((Expression) field);
                     }
                     Order order = model.getSort() == SortDirection.asc ? cb.asc(field) : cb.desc(field);
-                    return OrderMetadata.builder(order)
+                    return OrderMetadata.builder()
+                            .order(order)
                             .colId(model.getColId())
                             .build();
                 })
@@ -2020,7 +2060,8 @@ public class QueryBuilder<E> {
                             groupingColumnExpression = cb.abs((Expression) groupingColumnExpression);
                         }
                         Order order = sortModel.getSort() == SortDirection.asc ? cb.asc(groupingColumnExpression) : cb.desc(groupingColumnExpression);
-                        return OrderMetadata.builder(order)
+                        return OrderMetadata.builder()
+                                .order(order)
                                 .colId(sortModel.getColId())
                                 .build();
                     })
@@ -2042,7 +2083,8 @@ public class QueryBuilder<E> {
                         }
                         
                         Order order = sortModelAgg.getSort() == SortDirection.asc ? cb.asc(aggregationExpression) : cb.desc(aggregationExpression);
-                        return OrderMetadata.builder(order)
+                        return OrderMetadata.builder()
+                                .order(order)
                                 .colId(sortModelAgg.getColId())
                                 .build();
                     });
@@ -2076,7 +2118,8 @@ public class QueryBuilder<E> {
                         groupingColumnExpression = cb.abs((Expression) groupingColumnExpression);
                     }
                     Order order = sortModel.getSort() == SortDirection.asc ? cb.asc(groupingColumnExpression) : cb.desc(groupingColumnExpression);
-                    return OrderMetadata.builder(order)
+                    return OrderMetadata.builder()
+                            .order(order)
                             .colId(sortModel.getColId())
                             .build();
                 })
@@ -2092,7 +2135,8 @@ public class QueryBuilder<E> {
                         pivotingExpression = cb.abs((Expression) pivotingExpression);
                     }
                     Order order = sortModel.getSort() == SortDirection.asc ? cb.asc(pivotingExpression) : cb.desc(pivotingExpression);
-                    return OrderMetadata.builder(order)
+                    return OrderMetadata.builder()
+                            .order(order)
                             .colId(sortModel.getColId())
                             .build();
                 });

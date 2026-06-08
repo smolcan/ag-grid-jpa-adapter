@@ -9,6 +9,7 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 
 import java.time.LocalDate;
@@ -16,9 +17,11 @@ import java.time.LocalDate;
 @Getter
 @Setter
 public class DateAdvancedFilterModel extends ColumnAdvancedFilterModel {
-    
+
+    @Setter(onMethod_ = {@NonNull})
     private ScalarAdvancedFilterModelType type;
     private LocalDate filter;
+    @NonNull
     private DateFilterParams filterParams = DateFilterParams.builder().build();
     
     public DateAdvancedFilterModel(String colId) {

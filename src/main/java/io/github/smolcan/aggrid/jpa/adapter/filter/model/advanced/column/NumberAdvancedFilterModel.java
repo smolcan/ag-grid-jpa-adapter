@@ -9,6 +9,7 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 
 import java.math.BigDecimal;
@@ -16,9 +17,11 @@ import java.math.BigDecimal;
 @Getter
 @Setter
 public class NumberAdvancedFilterModel extends ColumnAdvancedFilterModel {
-    
+
+    @Setter(onMethod_ = {@NonNull})
     private ScalarAdvancedFilterModelType type;
     private BigDecimal filter;
+    @NonNull
     private NumberFilterParams filterParams = NumberFilterParams.builder().build();
     
     public NumberAdvancedFilterModel(String colId) {
