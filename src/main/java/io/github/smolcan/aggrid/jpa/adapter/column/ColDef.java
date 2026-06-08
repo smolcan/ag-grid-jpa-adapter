@@ -50,13 +50,13 @@ public class ColDef {
         }
         
         @Tolerate
-        public Builder allowedAggFuncs(AggregationFunction ...functions) {
+        public Builder allowedAggFuncs(@NonNull AggregationFunction ...functions) {
             this.allowedAggFuncs = Arrays.stream(functions).map(Enum::name).collect(Collectors.toSet());
             return this;
         }
         
         @Tolerate
-        public Builder allowedAggFuncs(String ...functions) {
+        public Builder allowedAggFuncs(@NonNull String ...functions) {
             this.allowedAggFuncs = new HashSet<>(Arrays.asList(functions));
             return this;
         }

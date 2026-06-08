@@ -1,46 +1,31 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params;
 
 import io.github.smolcan.aggrid.jpa.adapter.filter.IFilter;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NonNull;
+import lombok.Setter;
+import lombok.experimental.Tolerate;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+@Setter
+@Getter
+@Builder(builderClassName = "Builder")
 public class MultiFilterParams implements IFilterParams {
     
-    private List<IFilter<?, ?>> filters = new ArrayList<>();
-
-    private MultiFilterParams(Builder builder) {
-        this.filters = builder.filters;
-    }
-
-    public List<IFilter<?, ?>> getFilters() {
-        return filters;
-    }
-
-    public void setFilters(List<IFilter<?, ?>> filters) {
-        this.filters = filters;
-    }
-
-    public static Builder builder() {
-        return new Builder();
-    }
+    @NonNull
+    private List<IFilter<?, ?>> filters;
     
     public static class Builder {
         private List<IFilter<?, ?>> filters = new ArrayList<>();
 
-        public Builder filters(List<IFilter<?, ?>> filters) {
-            this.filters = new ArrayList<>(filters); // Ensures immutability
-            return this;
-        }
-
-        public Builder filters(IFilter<?, ?>... filters) {
+        @Tolerate
+        public Builder filters(@NonNull IFilter<?, ?>... filters) {
             this.filters = Arrays.asList(filters);
             return this;
-        }
-
-        public MultiFilterParams build() {
-            return new MultiFilterParams(this);
         }
     }
 }
