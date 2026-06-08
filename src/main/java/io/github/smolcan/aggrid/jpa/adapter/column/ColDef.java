@@ -3,6 +3,10 @@ package io.github.smolcan.aggrid.jpa.adapter.column;
 import io.github.smolcan.aggrid.jpa.adapter.filter.IFilter;
 import io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple.AgTextColumnFilter;
 import io.github.smolcan.aggrid.jpa.adapter.request.AggregationFunction;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NonNull;
+import lombok.experimental.Tolerate;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -12,81 +16,30 @@ import java.util.stream.Collectors;
 /**
  * Column definition, tries to be same as in frontend
  */
+@Getter
+@Builder(builderClassName = "Builder")
 public class ColDef {
     
+    @NonNull
     private final String field;
+    // Set false to disable sorting which is enabled by default.
     private final boolean sortable;
+    // Set to `true` if you want to be able to row group by this column
     private final boolean enableRowGroup;
+    // Set to `true` if you want to be able to aggregate by this column
     private final boolean enableValue;
     private final boolean enablePivot;
     private final Set<String> allowedAggFuncs;
     private final IFilter<?, ?> filter;
 
-    private ColDef(Builder builder) {
-        this.field = builder.field;
-        this.sortable = builder.sortable;
-        this.enableRowGroup = builder.enableRowGroup;
-        this.enableValue = builder.enableValue;
-        this.enablePivot = builder.enablePivot;
-        this.allowedAggFuncs = builder.allowedAggFuncs;
-        this.filter = builder.filter;
-    }
-
-    public String getField() {
-        return field;
-    }
-
-    public boolean isSortable() {
-        return sortable;
-    }
-
-    public Set<String> getAllowedAggFuncs() {
-        return allowedAggFuncs;
-    }
-
-    public boolean isEnableRowGroup() {
-        return enableRowGroup;
-    }
-
-    public boolean isEnableValue() {
-        return enableValue;
-    }
-
-    public boolean isEnablePivot() {
-        return enablePivot;
-    }
-
-    public IFilter<?, ?> getFilter() {
-        return filter;
-    }
-
-    public static Builder builder() {
-        return new Builder();
-    }
-
     public static class Builder {
-        private String field;
-        // Set false to disable sorting which is enabled by default.
+        
+        // default builder values
         private boolean sortable = true;
-        // Set to `true` if you want to be able to row group by this column
-        private boolean enableRowGroup = false;
-        // Set to `true` if you want to be able to aggregate by this column
-        private boolean enableValue = false;
-        private boolean enablePivot = false;
-        private Set<String> allowedAggFuncs;
-        
         private IFilter<?, ?> filter = new AgTextColumnFilter();
-
-        public Builder field(String field) {
-            this.field = field;
-            return this;
-        }
-
-        public Builder filter(IFilter<?, ?> filter) {
-            this.filter = filter;
-            return this;
-        }
         
+        // overloaded builder methods
+        @Tolerate
         public Builder filter(boolean filter) {
             if (filter) {
                 this.filter = new AgTextColumnFilter();
@@ -96,42 +49,16 @@ public class ColDef {
             return this;
         }
         
-        public Builder sortable(boolean sortable) {
-            this.sortable = sortable;
-            return this;
-        }
-        
-        public Builder enableRowGroup(boolean enableRowGroup) {
-            this.enableRowGroup = enableRowGroup;
-            return this;
-        }
-        
-        public Builder enableValue(boolean enableValue) {
-            this.enableValue = enableValue;
-            return this;
-        }
-        
-        public Builder enablePivot(boolean enablePivot) {
-            this.enablePivot = enablePivot;
-            return this;
-        }
-        
+        @Tolerate
         public Builder allowedAggFuncs(AggregationFunction ...functions) {
             this.allowedAggFuncs = Arrays.stream(functions).map(Enum::name).collect(Collectors.toSet());
             return this;
         }
         
+        @Tolerate
         public Builder allowedAggFuncs(String ...functions) {
             this.allowedAggFuncs = new HashSet<>(Arrays.asList(functions));
             return this;
-        }
-
-        public ColDef build() {
-            if (this.field == null) {
-                throw new IllegalArgumentException("field cannot be null");
-            }
-            
-            return new ColDef(this);
         }
     }
 }
