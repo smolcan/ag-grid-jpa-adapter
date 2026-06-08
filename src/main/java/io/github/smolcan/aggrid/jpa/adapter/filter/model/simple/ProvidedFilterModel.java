@@ -1,7 +1,11 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.model.simple;
 
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.IFilterModel;
+import lombok.Getter;
+import lombok.Setter;
 
+@Setter
+@Getter
 public abstract class ProvidedFilterModel implements IFilterModel {
     private String filterType;
 
@@ -12,11 +16,4 @@ public abstract class ProvidedFilterModel implements IFilterModel {
     }
 
 
-    public void setFilterType(String filterType) {
-        this.filterType = filterType;
-    }
-
-    public String getFilterType() {
-        return filterType;
-    }
 }

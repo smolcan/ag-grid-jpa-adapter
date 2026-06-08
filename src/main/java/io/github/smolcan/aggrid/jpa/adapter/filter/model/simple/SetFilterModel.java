@@ -1,9 +1,14 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.model.simple;
 
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.ArrayList;
 import java.util.List;
 
+@Setter
+@Getter
 public class SetFilterModel extends ProvidedFilterModel {
     
     private List<String> values = new ArrayList<>();
@@ -12,11 +17,4 @@ public class SetFilterModel extends ProvidedFilterModel {
         super("set");
     }
 
-    public List<String> getValues() {
-        return values;
-    }
-
-    public void setValues(List<String> values) {
-        this.values = values;
-    }
 }

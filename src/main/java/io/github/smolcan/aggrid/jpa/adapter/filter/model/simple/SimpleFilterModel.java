@@ -1,5 +1,10 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.model.simple;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Setter
+@Getter
 public abstract class SimpleFilterModel extends ProvidedFilterModel {
     protected SimpleFilterModelType type;
     
@@ -16,11 +21,4 @@ public abstract class SimpleFilterModel extends ProvidedFilterModel {
         this.type = type;
     }
 
-    public SimpleFilterModelType getType() {
-        return type;
-    }
-
-    public void setType(SimpleFilterModelType type) {
-        this.type = type;
-    }
 }

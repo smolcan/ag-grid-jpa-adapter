@@ -1,8 +1,13 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.model.simple;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.math.BigDecimal;
 
 
+@Setter
+@Getter
 public class NumberFilterModel extends SimpleFilterModel {
 
     private BigDecimal filter;
@@ -10,22 +15,6 @@ public class NumberFilterModel extends SimpleFilterModel {
     
     public NumberFilterModel() {
         super("number");
-    }
-
-    public BigDecimal getFilter() {
-        return filter;
-    }
-
-    public void setFilter(BigDecimal filter) {
-        this.filter = filter;
-    }
-
-    public BigDecimal getFilterTo() {
-        return filterTo;
-    }
-
-    public void setFilterTo(BigDecimal filterTo) {
-        this.filterTo = filterTo;
     }
 
 }

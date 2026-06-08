@@ -1,11 +1,13 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params;
 
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.SimpleFilterModelType;
+import lombok.Getter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
+@Getter
 public class DateFilterParams extends ScalarFilterParams {
 
     private final Set<SimpleFilterModelType> filterOptions;
@@ -29,28 +31,8 @@ public class DateFilterParams extends ScalarFilterParams {
         this.minValidYear = builder.minValidYear;
     }
 
-    public Set<SimpleFilterModelType> getFilterOptions() {
-        return filterOptions;
-    }
-
     public static Builder builder() {
         return new Builder();
-    }
-
-    public LocalDate getMaxValidDate() {
-        return maxValidDate;
-    }
-
-    public Integer getMaxValidYear() {
-        return maxValidYear;
-    }
-
-    public LocalDate getMinValidDate() {
-        return minValidDate;
-    }
-
-    public Integer getMinValidYear() {
-        return minValidYear;
     }
 
     public void validateDate(LocalDateTime dateTime) {
