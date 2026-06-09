@@ -1,14 +1,12 @@
 package io.github.smolcan.aggrid.jpa.adapter.request;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Setter
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class SortModelItem {
     private String colId;
     private SortDirection sort;

@@ -1,9 +1,6 @@
 package io.github.smolcan.aggrid.jpa.adapter.response;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.List;
 import java.util.Map;
@@ -12,6 +9,7 @@ import java.util.Map;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class LoadSuccessParams {
     // Data retrieved from the server as requested by the grid.
     private List<Map<String, Object>> rowData;
