@@ -5,6 +5,7 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.IFilterPa
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
+import lombok.Getter;
 
 import java.util.Map;
 
@@ -15,6 +16,7 @@ import java.util.Map;
  */
 @SuppressWarnings("java:S119")
 public abstract class IFilter<FM extends IFilterModel, FP extends IFilterParams> {
+    @Getter
     protected FP filterParams = this.getDefaultFilterParams();
 
     /**
@@ -52,10 +54,6 @@ public abstract class IFilter<FM extends IFilterModel, FP extends IFilterParams>
      * @return              predicate for expression
      */
     protected abstract Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, FM filterModel);
-
-    public FP getFilterParams() {
-        return filterParams;
-    }
     
     public IFilter<FM, FP> filterParams(FP filterParams) {
         this.filterParams = filterParams;

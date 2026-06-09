@@ -2,6 +2,7 @@ package io.github.smolcan.aggrid.jpa.adapter.request;
 
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
+import lombok.Getter;
 
 import java.util.function.BiFunction;
 
@@ -24,14 +25,11 @@ public enum AggregationFunction {
             CriteriaBuilder::count
     ),
     ;
-    
+
+    @Getter
     private final BiFunction<CriteriaBuilder, Expression<?>, Expression<?>> createAggregateFunction;
 
     AggregationFunction(BiFunction<CriteriaBuilder, Expression<?>, Expression<?>> createAggregateFunction) {
         this.createAggregateFunction = createAggregateFunction;
-    }
-
-    public BiFunction<CriteriaBuilder, Expression<?>, Expression<?>> getCreateAggregateFunction() {
-        return createAggregateFunction;
     }
 }
