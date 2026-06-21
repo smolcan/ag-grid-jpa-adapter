@@ -6,6 +6,7 @@ import jakarta.persistence.criteria.Expression;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 
 
 /**
@@ -38,13 +39,17 @@ public class TypeValueSynchronizer {
      * @return A Result object containing the expression and the converted value, both of which are compatible.
      * @throws IllegalArgumentException if the type of the expression is not supported or if parsing fails.
      */
+    @SuppressWarnings({"unchecked", "rawtypes", "java:S1452"})
     public static Result<?> synchronizeTypes(Expression<?> expr, String value) {
         if (value == null) {
             return new Result<>(expr, null);
         }
         
         Class<?> exprType = expr.getJavaType();
-        
+        if (exprType.isPrimitive()) {
+            exprType = primitiveToWrapper(exprType);
+        }
+
         // compatible
         if (exprType.equals(String.class)) {
             return new Result<>(expr.as(String.class), value);
@@ -75,8 +80,38 @@ public class TypeValueSynchronizer {
             );
         }
 
+        // uuid
+        if (UUID.class.equals(exprType)) {
+            return new Result<>(
+                    expr.as(UUID.class), 
+                    UUID.fromString(value)
+            );
+        }
+        
+        // enum
+        if (exprType.isEnum()) {
+            Enum<?> enumValue = Enum.valueOf((Class<? extends Enum>) exprType, value);
+            return new Result(
+                    expr,
+                    enumValue
+            );
+        }
+
         // idk wtf this field is, compare without check, universe might explode
         return new Result(expr, value);
+    }
+    
+
+    private static Class<?> primitiveToWrapper(Class<?> type) {
+        if (type == int.class) return Integer.class;
+        if (type == long.class) return Long.class;
+        if (type == double.class) return Double.class;
+        if (type == float.class) return Float.class;
+        if (type == short.class) return Short.class;
+        if (type == byte.class) return Byte.class;
+        if (type == boolean.class) return Boolean.class;
+        if (type == char.class) return Character.class;
+        return type;
     }
 
 
