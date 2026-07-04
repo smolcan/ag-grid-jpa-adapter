@@ -10,6 +10,6 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.IFilterPa
  * @param <FP>  filter params for filter
  */
 @SuppressWarnings("java:S119")
-public abstract class IProvidedFilter<FM extends ProvidedFilterModel, FP extends IFilterParams> extends IFilter<FM, FP> {
+public abstract class IProvidedFilter<T, FM extends ProvidedFilterModel, FP extends IFilterParams> extends IFilter<T, FM, FP> {
     
 }

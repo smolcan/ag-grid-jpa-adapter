@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
  * @param <FP>  filter params for filter
  */
 @SuppressWarnings("java:S119")
-public abstract class SimpleFilter<FM extends SimpleFilterModel, FP extends IFilterParams> extends IProvidedFilter<FM, FP> {
+public abstract class SimpleFilter<T, FM extends SimpleFilterModel, FP extends IFilterParams> extends IProvidedFilter<T, FM, FP> {
 
     /**
      * Overrides this method because in simple filter, we must first check if filter is combined
@@ -31,7 +31,7 @@ public abstract class SimpleFilter<FM extends SimpleFilterModel, FP extends IFil
      * @return              predicate
      */
     @Override
-    public Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, Map<String, Object> filterModel) {
+    public Predicate toPredicate(CriteriaBuilder cb, Expression<T> expression, Map<String, Object> filterModel) {
         if (this.isCombinedFilter(filterModel)) {
             CombinedSimpleModel<FM> combinedSimpleModel = this.getCombinedFilterModel(filterModel);
             return this.toCombinedPredicate(cb, expression, combinedSimpleModel);
@@ -60,7 +60,7 @@ public abstract class SimpleFilter<FM extends SimpleFilterModel, FP extends IFil
         return combinedSimpleModel;
     }
     
-    private Predicate toCombinedPredicate(CriteriaBuilder cb, Expression<?> expression, CombinedSimpleModel<FM> combinedSimpleModel) {
+    private Predicate toCombinedPredicate(CriteriaBuilder cb, Expression<T> expression, CombinedSimpleModel<FM> combinedSimpleModel) {
         List<Predicate> predicates = combinedSimpleModel.getConditions().stream().map(c -> this.toPredicate(cb, expression, c)).collect(Collectors.toList());
         if (combinedSimpleModel.getOperator() == JoinOperator.AND) {
             return cb.and(predicates.toArray(new Predicate[0]));

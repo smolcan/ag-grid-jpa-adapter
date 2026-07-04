@@ -11,7 +11,7 @@ import java.math.BigDecimal;
 import java.util.Map;
 import java.util.Optional;
 
-public class AgNumberColumnFilter extends SimpleFilter<NumberFilterModel, NumberFilterParams> {
+public class AgNumberColumnFilter<N extends Number> extends SimpleFilter<N, NumberFilterModel, NumberFilterParams> {
     
     @Override
     public NumberFilterModel recognizeFilterModel(Map<String, Object> model) {
@@ -29,12 +29,9 @@ public class AgNumberColumnFilter extends SimpleFilter<NumberFilterModel, Number
 
 
     @Override
-    protected Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, NumberFilterModel filterModel) {
+    protected Predicate toPredicate(CriteriaBuilder cb, Expression<N> numberExpression, NumberFilterModel filterModel) {
         Predicate predicate;
-
-        // ensuring number compatibility
-        // comparing any number types without problem, cast both to big decimal
-        Expression<BigDecimal> numberExpression = expression.as(BigDecimal.class);
+        
         switch (filterModel.getType()) {
             case empty: case blank: {
                 predicate = cb.isNull(numberExpression);

@@ -10,13 +10,15 @@ import jakarta.persistence.criteria.Predicate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.Temporal;
 import java.time.temporal.WeekFields;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-public class AgDateColumnFilter extends SimpleFilter<DateFilterModel, DateFilterParams> {
+@SuppressWarnings("java:S119")
+public class AgDateColumnFilter<DT extends Temporal & Comparable<? super DT>> extends SimpleFilter<DT, DateFilterModel, DateFilterParams> {
     
     @Override
     public DateFilterModel recognizeFilterModel(Map<String, Object> filterModel) {
@@ -36,10 +38,11 @@ public class AgDateColumnFilter extends SimpleFilter<DateFilterModel, DateFilter
     }
 
     @Override
-    protected Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, DateFilterModel filterModel) {
+    protected Predicate toPredicate(CriteriaBuilder cb, Expression<DT> expression, DateFilterModel filterModel) {
         this.filterParams.validateDate(filterModel.getDateFrom());
         this.filterParams.validateDate(filterModel.getDateTo());
         Predicate predicate;
+        // todo: add converter
         Expression<LocalDateTime> dateExpression = expression.as(LocalDateTime.class);
         switch (filterModel.getType()) {
             case empty: case blank: {

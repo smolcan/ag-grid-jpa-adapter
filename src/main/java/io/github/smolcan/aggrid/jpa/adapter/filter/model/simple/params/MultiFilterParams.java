@@ -14,16 +14,16 @@ import java.util.List;
 @Setter
 @Getter
 @Builder(builderClassName = "Builder")
-public class MultiFilterParams implements IFilterParams {
+public class MultiFilterParams<T> implements IFilterParams {
     
     @NonNull
-    private List<IFilter<?, ?>> filters;
-    
-    public static class Builder {
-        private List<IFilter<?, ?>> filters = new ArrayList<>();
+    private List<IFilter<T, ?, ?>> filters;
+
+    public static class Builder<T> {
+        private List<IFilter<T, ?, ?>> filters = new ArrayList<>();
 
         @Tolerate
-        public Builder filters(@NonNull IFilter<?, ?>... filters) {
+        public Builder<T> filters(@NonNull IFilter<T, ?, ?>... filters) {
             this.filters = Arrays.asList(filters);
             return this;
         }

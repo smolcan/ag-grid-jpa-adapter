@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class AgSetColumnFilter extends IProvidedFilter<SetFilterModel, SetFilterParams> {
+public class AgSetColumnFilter<T> extends IProvidedFilter<T, SetFilterModel, SetFilterParams> {
     
     @Override
     @SuppressWarnings("unchecked")
@@ -29,7 +29,7 @@ public class AgSetColumnFilter extends IProvidedFilter<SetFilterModel, SetFilter
     }
 
     @Override
-    protected Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, SetFilterModel filterModel) {
+    protected Predicate toPredicate(CriteriaBuilder cb, Expression<T> expression, SetFilterModel filterModel) {
         if (filterModel.getValues().isEmpty()) {
             // empty values, FALSE predicate
             return cb.disjunction();

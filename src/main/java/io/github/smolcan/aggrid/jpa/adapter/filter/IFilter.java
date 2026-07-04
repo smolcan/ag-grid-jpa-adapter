@@ -15,7 +15,7 @@ import java.util.Map;
  * @param <FP>  filter params for filter
  */
 @SuppressWarnings("java:S119")
-public abstract class IFilter<FM extends IFilterModel, FP extends IFilterParams> {
+public abstract class IFilter<T, FM extends IFilterModel, FP extends IFilterParams> {
     @Getter
     protected FP filterParams = this.getDefaultFilterParams();
 
@@ -41,7 +41,7 @@ public abstract class IFilter<FM extends IFilterModel, FP extends IFilterParams>
      * @param filterModel   filter model as Map
      * @return              predicate for expression
      */
-    public Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, Map<String, Object> filterModel) {
+    public Predicate toPredicate(CriteriaBuilder cb, Expression<T> expression, Map<String, Object> filterModel) {
         FM model = this.recognizeFilterModel(filterModel);
         return this.toPredicate(cb, expression, model);
     }
@@ -53,9 +53,9 @@ public abstract class IFilter<FM extends IFilterModel, FP extends IFilterParams>
      * @param filterModel   filter model
      * @return              predicate for expression
      */
-    protected abstract Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, FM filterModel);
+    protected abstract Predicate toPredicate(CriteriaBuilder cb, Expression<T> expression, FM filterModel);
     
-    public IFilter<FM, FP> filterParams(FP filterParams) {
+    public IFilter<T, FM, FP> filterParams(FP filterParams) {
         this.filterParams = filterParams;
         return this;
     }

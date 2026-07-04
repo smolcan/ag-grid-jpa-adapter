@@ -11,7 +11,7 @@ import jakarta.persistence.criteria.Predicate;
 import java.util.Map;
 import java.util.Optional;
 
-public class AgTextColumnFilter extends SimpleFilter<TextFilterModel, TextFilterParams> {
+public class AgTextColumnFilter extends SimpleFilter<String, TextFilterModel, TextFilterParams> {
     
     @Override
     public TextFilterModel recognizeFilterModel(Map<String, Object> filterModel) {
@@ -28,13 +28,13 @@ public class AgTextColumnFilter extends SimpleFilter<TextFilterModel, TextFilter
     }
 
     @Override
-    protected Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, TextFilterModel filterModel) {
+    protected Predicate toPredicate(CriteriaBuilder cb, Expression<String> expression, TextFilterModel filterModel) {
         if (!this.filterParams.getFilterOptions().contains(filterModel.getType())) {
             throw new IllegalArgumentException("Filter type " + filterModel.getType() + " not allowed for this column");
         }
         
         Expression<String> filterExpression = this.filterParams.generateExpressionFromFilterParams(cb, cb.literal(filterModel.getFilter()));
-        Expression<String> valueExpression = this.filterParams.generateExpressionFromFilterParams(cb, expression.as(String.class));
+        Expression<String> valueExpression = this.filterParams.generateExpressionFromFilterParams(cb, expression);
         
         // check if provided custom text matcher
         if (this.filterParams.getTextMatcher() != null) {

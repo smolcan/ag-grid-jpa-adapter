@@ -1,8 +1,8 @@
 package io.github.smolcan.aggrid.jpa.adapter.column;
 
 import io.github.smolcan.aggrid.jpa.adapter.filter.IFilter;
-import io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple.AgTextColumnFilter;
 import io.github.smolcan.aggrid.jpa.adapter.request.AggregationFunction;
+import jakarta.persistence.metamodel.SingularAttribute;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
@@ -18,10 +18,10 @@ import java.util.stream.Collectors;
  */
 @Getter
 @Builder(builderClassName = "Builder")
-public class ColDef {
+public class ColDef<P, T> {
     
     @NonNull
-    private final String field;
+    private final FieldPath<P, T> field;
     // Set false to disable sorting which is enabled by default.
     private final boolean sortable;
     // Set to `true` if you want to be able to row group by this column
@@ -30,33 +30,38 @@ public class ColDef {
     private final boolean enableValue;
     private final boolean enablePivot;
     private final Set<String> allowedAggFuncs;
-    private final IFilter<?, ?> filter;
+    private final IFilter<T, ?, ?> filter;
+    
+    public static <P, T> Builder<P, T> builder(@NonNull SingularAttribute<P, T> field) {
+        return new Builder<P, T>().field(FieldPath.of(field));
+    }
 
-    public static class Builder {
+    public static <P, T> Builder<P, T> builder(@NonNull FieldPath<P, T> field) {
+        return new Builder<P, T>().field(field);
+    }
+
+    public @NonNull String getFieldName() {
+        return field.getName();
+    }
+
+    public static class Builder<P, T> {
         
         // default builder values
         private boolean sortable = true;
-        private IFilter<?, ?> filter = new AgTextColumnFilter();
         
-        // overloaded builder methods
-        @Tolerate
-        public Builder filter(boolean filter) {
-            if (filter) {
-                this.filter = new AgTextColumnFilter();
-            } else {
-                this.filter = null;
-            }
+        private Builder<P, T> field(FieldPath<P, T> field) {
+            // no-op
             return this;
         }
         
         @Tolerate
-        public Builder allowedAggFuncs(@NonNull AggregationFunction ...functions) {
+        public Builder<P, T> allowedAggFuncs(@NonNull AggregationFunction ...functions) {
             this.allowedAggFuncs = Arrays.stream(functions).map(Enum::name).collect(Collectors.toSet());
             return this;
         }
         
         @Tolerate
-        public Builder allowedAggFuncs(@NonNull String ...functions) {
+        public Builder<P, T> allowedAggFuncs(@NonNull String ...functions) {
             this.allowedAggFuncs = new HashSet<>(Arrays.asList(functions));
             return this;
         }
