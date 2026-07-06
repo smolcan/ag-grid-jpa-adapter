@@ -1,5 +1,10 @@
 package io.github.smolcan.aggrid.jpa.adapter.column;
 
+import jakarta.persistence.criteria.From;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Path;
+import jakarta.persistence.criteria.Root;
 import jakarta.persistence.metamodel.Attribute;
 import jakarta.persistence.metamodel.SingularAttribute;
 import lombok.Getter;
@@ -35,5 +40,34 @@ public class FieldPath<E, T> {
     
     public @NonNull String getName() {
         return this.hops.stream().map(Attribute::getName).collect(Collectors.joining("."));
+    }
+    
+    public Path<T> getPath(@NonNull Root<E> root) {
+        From<?, ?> currentFrom = root;
+        Path<?> currentPath = root;
+        boolean canJoin = true;
+        for (int i = 0; i < this.hops.size() - 1; i++) {
+            Attribute<?, ?> hop = this.hops.get(i);
+            if (canJoin && hop.isAssociation()) {
+                // to-one association -> reuse or create a LEFT JOIN
+                currentFrom = reuseOrCreateLeftJoin(currentFrom, hop.getName());
+                currentPath = currentFrom;
+            } else {
+                // embedded (or anything nested under one) -> navigate without a join
+                currentPath = currentPath.get(hop.getName());
+                canJoin = false;
+            }
+        }
+
+        return currentPath.get(this.hops.get(this.hops.size() - 1).getName());
+    }
+
+    private static Join<?, ?> reuseOrCreateLeftJoin(From<?, ?> from, String attributeName) {
+        for (Join<?, ?> join : from.getJoins()) {
+            if (join.getAttribute().getName().equals(attributeName) && join.getJoinType() == JoinType.LEFT) {
+                return join;
+            }
+        }
+        return from.join(attributeName, JoinType.LEFT);
     }
 }
