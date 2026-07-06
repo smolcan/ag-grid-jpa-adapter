@@ -1009,7 +1009,7 @@ public class QueryBuilder<E, D> {
         return this.colDefs.values()
                 .stream()
                 .map(colDef -> {
-                    Path<?> field = getPath(root, colDef.getFieldName());
+                    Path<?> field = colDef.getField().getPath(root);
                     return SelectionMetadata.builder().alias(colDef.getFieldName()).expression(field).build();
                 })
                 .collect(Collectors.toList());

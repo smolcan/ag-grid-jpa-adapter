@@ -37,11 +37,13 @@ public class FieldPath<E, T> {
         extended.add(next);
         return new FieldPath<>(extended);
     }
-    
-    public @NonNull String getName() {
+
+    @NonNull
+    public String getName() {
         return this.hops.stream().map(Attribute::getName).collect(Collectors.joining("."));
     }
     
+    @NonNull
     public Path<T> getPath(@NonNull Root<E> root) {
         From<?, ?> currentFrom = root;
         Path<?> currentPath = root;
@@ -62,7 +64,8 @@ public class FieldPath<E, T> {
         return currentPath.get(this.hops.get(this.hops.size() - 1).getName());
     }
 
-    private static Join<?, ?> reuseOrCreateLeftJoin(From<?, ?> from, String attributeName) {
+    @NonNull
+    private static Join<?, ?> reuseOrCreateLeftJoin(@NonNull From<?, ?> from, @NonNull String attributeName) {
         for (Join<?, ?> join : from.getJoins()) {
             if (join.getAttribute().getName().equals(attributeName) && join.getJoinType() == JoinType.LEFT) {
                 return join;

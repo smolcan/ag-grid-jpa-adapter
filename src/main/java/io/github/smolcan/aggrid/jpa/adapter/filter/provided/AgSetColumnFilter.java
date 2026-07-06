@@ -68,27 +68,21 @@ public abstract class AgSetColumnFilter<T> extends IProvidedFilter<T, SetFilterM
         }
 
         // IN predicate over the non-null selected values
-        Predicate predicate = this.toSetPredicate(cb, expression, filterModel);
+        Expression<T> columnExpression = this.modifyColumnExpression(cb, expression);
+        List<Expression<T>> valueExpressions = filterModel.getValues()
+                .stream()
+                .filter(Objects::nonNull)
+                .map(value -> this.parseValueToExpression(cb, value))
+                .collect(Collectors.toList());
+        Predicate predicate = columnExpression.in(valueExpressions);
+        
         if (hasNullInValues) {
             predicate = cb.or(predicate, cb.isNull(expression));
         }
         return predicate;
     }
     
-    
-    protected Predicate toSetPredicate(CriteriaBuilder cb, Expression<T> expression, SetFilterModel filterModel) {
-        Expression<T> columnExpression = this.modifyColumnExpression(cb, expression);
-        List<Expression<?>> valueExpressions = filterModel.getValues()
-                .stream()
-                .filter(Objects::nonNull)
-                .map(value -> this.parseValueToExpression(cb, value))
-                .collect(Collectors.toList());
-
-        return columnExpression.in(valueExpressions);
-    }
-    
-    
-    protected Expression<T> modifyColumnExpression(CriteriaBuilder cb, Expression<T> expression) {
+    protected Expression<T> modifyColumnExpression(@NonNull CriteriaBuilder cb, @NonNull Expression<T> expression) {
         return expression;
     }
 
