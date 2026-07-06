@@ -233,6 +233,7 @@ public class QueryBuilder<E, D> {
      * @throws OnPivotMaxColumnsExceededException If the number of pivot columns to be generated exceeds the configured limit.
      * @see #getRows(ServerSideGetRowsRequest) For retrieving the actual row data.
      */
+    @SuppressWarnings("unchecked")
     public long countRows(@NonNull ServerSideGetRowsRequest request) throws OnPivotMaxColumnsExceededException {
         this.validateRequest(request);
 
@@ -261,9 +262,10 @@ public class QueryBuilder<E, D> {
                     // otherwise, we count root group
                     : 0;
             String countingGroupCol = request.getRowGroupCols().get(countingGroupColIndex).getId();
+            ColDef<E, ?> countingGroupColDef = this.colDefs.get(countingGroupCol);
 
             // subquery will only select the group column 
-            Subquery<?> subquery = query.subquery(getPath(root, countingGroupCol).getJavaType());
+            Subquery<?> subquery = query.subquery(countingGroupColDef.getField().getPath(root).getJavaType());
             Root<E> subqueryRoot = subquery.from(this.entityClass);
             QueryContext<E> subqueryContext = new QueryContext<>(cb, subquery, subqueryRoot);
             
@@ -273,7 +275,7 @@ public class QueryBuilder<E, D> {
             this.having(subqueryContext, request);
             
             // select the group column in subquery
-            subquery.select((Expression) getPath(subqueryRoot, countingGroupCol));
+            subquery.select((Expression) countingGroupColDef.getField().getPath(subqueryRoot));
             // where
             if (!subqueryContext.getWherePredicates().isEmpty()) {
                 Predicate[] predicates = subqueryContext.getWherePredicates().stream().map(WherePredicateMetadata::getPredicate).toArray(Predicate[]::new);
@@ -290,8 +292,8 @@ public class QueryBuilder<E, D> {
             }
             
             // in parent query, count distinct values of column group that are returned in subquery
-            query.select(cb.countDistinct(getPath(root, countingGroupCol)));
-            query.where(cb.in(getPath(root, countingGroupCol)).value((Subquery) subquery));
+            query.select(cb.countDistinct(countingGroupColDef.getField().getPath(root)));
+            query.where(cb.in(countingGroupColDef.getField().getPath(root)).value((Subquery) subquery));
             
             return this.entityManager.createQuery(query).getSingleResult();
         } else {
@@ -596,7 +598,7 @@ public class QueryBuilder<E, D> {
      * @param masters the list of master row data maps to be populated
      */
     protected void attachDetailRowDataToMasters(@NonNull List<Map<String, Object>> masters) {
-        if (masters == null || masters.isEmpty()) {
+        if (masters.isEmpty()) {
             return;
         }
 
@@ -1637,9 +1639,7 @@ public class QueryBuilder<E, D> {
                 } else {
                     filterPredicate = this.createColumnFilterPredicate(cb, countChildrenRoot, request.getFilterModel());
                 }
-                if (filterPredicate != null) {
-                    predicates.add(filterPredicate);
-                }
+                predicates.add(filterPredicate);
             }
         }
         countChildrenSubquery.where(cb.and(predicates.toArray(Predicate[]::new)));
@@ -1745,9 +1745,7 @@ public class QueryBuilder<E, D> {
                 } else {
                     filterPredicate = this.createColumnFilterPredicate(cb, treeAggregationRoot, request.getFilterModel());
                 }
-                if (filterPredicate != null) {
-                    predicates.add(filterPredicate);
-                }
+                predicates.add(filterPredicate);
             }
         }
         treeAggregationSubquery.where(cb.and(predicates.toArray(Predicate[]::new)));
@@ -1811,9 +1809,7 @@ public class QueryBuilder<E, D> {
             } else {
                 filterPredicate = this.createColumnFilterPredicate(cb, parentRoot, request.getFilterModel());
             }
-            if (filterPredicate != null) {
-                predicates.add(filterPredicate);
-            }
+            predicates.add(filterPredicate);
         }
         
         parentMatchSubquery
@@ -1866,9 +1862,7 @@ public class QueryBuilder<E, D> {
                 // column filter
                 filterPredicate = this.createColumnFilterPredicate(cb, root, request.getFilterModel());
             }
-            if (filterPredicate != null) {
-                predicates.add(filterPredicate);
-            }
+            predicates.add(filterPredicate);
         }
         
         return cb.and(predicates.toArray(Predicate[]::new));
@@ -1923,9 +1917,7 @@ public class QueryBuilder<E, D> {
                 // column filter
                 filterPredicate = this.createColumnFilterPredicate(cb, childrenRoot, request.getFilterModel());
             }
-            if (filterPredicate != null) {
-                predicates.add(filterPredicate);
-            }
+            predicates.add(filterPredicate);
         }
 
         childrenMatchSubquery
@@ -2448,7 +2440,7 @@ public class QueryBuilder<E, D> {
         List<InvalidRequestException.ValidationError> errors = new ArrayList<>();
 
         // validate groups cols
-        if (request.getRowGroupCols() != null && !request.getRowGroupCols().isEmpty()) {
+        if (!request.getRowGroupCols().isEmpty()) {
             List<ColumnVO> rowGroupColsNotInColDefs = request.getRowGroupCols().stream()
                     .filter(c -> !this.colDefs.containsKey(c.getField()))
                     .collect(Collectors.toList());
@@ -2481,7 +2473,7 @@ public class QueryBuilder<E, D> {
         }
 
         // validate value cols
-        if (request.getValueCols() != null && !request.getValueCols().isEmpty()) {
+        if (!request.getValueCols().isEmpty()) {
             List<ColumnVO> valueColsNotInColDefs = request.getValueCols().stream()
                     .filter(c -> !this.colDefs.containsKey(c.getField()))
                     .collect(Collectors.toList());
@@ -2554,7 +2546,7 @@ public class QueryBuilder<E, D> {
         }
 
         // validate pivot cols
-        if (request.getPivotCols() != null && !request.getPivotCols().isEmpty()) {
+        if (!request.getPivotCols().isEmpty()) {
             List<ColumnVO> pivotColsNotInColDefs = request.getPivotCols()
                     .stream()
                     .filter(c -> !this.colDefs.containsKey(c.getField()))
@@ -2588,7 +2580,7 @@ public class QueryBuilder<E, D> {
         }
 
         // validate sort cols
-        if (request.getSortModel() != null && !request.getSortModel().isEmpty()) {
+        if (!request.getSortModel().isEmpty()) {
             List<SortModelItem> sortModelItemsNotInColDefs = request.getSortModel()
                     .stream()
                     .filter(c -> !AUTO_GROUP_COLUMN_NAME.equals(c.getColId()))
