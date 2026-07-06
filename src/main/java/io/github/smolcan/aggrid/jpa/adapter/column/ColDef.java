@@ -32,10 +32,12 @@ public class ColDef<P, T> {
     private final Set<String> allowedAggFuncs;
     private final IFilter<T, ?, ?> filter;
     
+    @NonNull
     public static <P, T> Builder<P, T> builder(@NonNull SingularAttribute<P, T> field) {
         return new Builder<P, T>().field(FieldPath.of(field));
     }
 
+    @NonNull
     public static <P, T> Builder<P, T> builder(@NonNull FieldPath<P, T> field) {
         return new Builder<P, T>().field(field);
     }
@@ -55,12 +57,14 @@ public class ColDef<P, T> {
         }
         
         @Tolerate
+        @NonNull
         public Builder<P, T> allowedAggFuncs(@NonNull AggregationFunction ...functions) {
             this.allowedAggFuncs = Arrays.stream(functions).map(Enum::name).collect(Collectors.toSet());
             return this;
         }
-        
+
         @Tolerate
+        @NonNull
         public Builder<P, T> allowedAggFuncs(@NonNull String ...functions) {
             this.allowedAggFuncs = new HashSet<>(Arrays.asList(functions));
             return this;

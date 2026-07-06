@@ -6,6 +6,7 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.MultiFilt
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
+import lombok.NonNull;
 
 import java.util.*;
 
@@ -30,12 +31,14 @@ public class AgMultiColumnFilter<T> extends IProvidedFilter<T, MultiFilterModel,
     }
 
     @Override
+    @NonNull
     public MultiFilterParams<T> getDefaultFilterParams() {
         return MultiFilterParams.<T>builder().build();
     }
 
     @Override
-    protected Predicate toPredicate(CriteriaBuilder cb, Expression<T> expression, MultiFilterModel filterModel) {
+    @NonNull
+    protected Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Expression<T> expression, MultiFilterModel filterModel) {
         if (this.filterParams == null || this.filterParams.getFilters().isEmpty() || filterModel == null) {
             return cb.conjunction();
         }

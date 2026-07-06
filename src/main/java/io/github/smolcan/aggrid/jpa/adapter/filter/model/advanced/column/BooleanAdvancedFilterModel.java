@@ -20,7 +20,8 @@ public class BooleanAdvancedFilterModel<E> extends ColumnAdvancedFilterModel<E, 
     }
 
     @Override
-    public Predicate toPredicate(CriteriaBuilder cb, Root<E> root) {
+    @NonNull
+    public Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<E> root) {
         Predicate predicate;
 
         Path<Boolean> path = this.getColumnField().getPath(root);

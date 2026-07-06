@@ -111,15 +111,17 @@ public class QueryBuilder<E, D> {
 
     protected final Map<String, ColDef<E, ?>> colDefs;
     
+    @NonNull
     public static <E> Builder<E, Void> builder(@NonNull Class<E> entityClass, @NonNull EntityManager entityManager) {
         return new Builder<>(entityClass, entityManager);
     }
     
+    @NonNull
     public static <E, D> Builder<E, D> builder(@NonNull Class<E> entityClass, @NonNull Class<D> detailClass, @NonNull EntityManager entityManager) {
         return new Builder<>(entityClass, detailClass, entityManager);
     }
     
-    protected QueryBuilder(Builder<E, D> builder) {
+    protected QueryBuilder(@NonNull Builder<E, D> builder) {
         this.entityClass = builder.entityClass;
         this.entityManager = builder.entityManager;
         this.primaryFieldName = builder.primaryFieldName;
@@ -177,7 +179,8 @@ public class QueryBuilder<E, D> {
      * @return A {@link LoadSuccessParams} object containing the retrieved row data mapped to a format suitable for AG Grid.
      * @throws OnPivotMaxColumnsExceededException - when number of pivot columns exceeded limit
      */
-    public LoadSuccessParams getRows(ServerSideGetRowsRequest request) {
+    @NonNull
+    public LoadSuccessParams getRows(@NonNull ServerSideGetRowsRequest request) {
         this.validateRequest(request);
         
         CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
@@ -230,7 +233,7 @@ public class QueryBuilder<E, D> {
      * @throws OnPivotMaxColumnsExceededException If the number of pivot columns to be generated exceeds the configured limit.
      * @see #getRows(ServerSideGetRowsRequest) For retrieving the actual row data.
      */
-    public long countRows(ServerSideGetRowsRequest request) throws OnPivotMaxColumnsExceededException {
+    public long countRows(@NonNull ServerSideGetRowsRequest request) throws OnPivotMaxColumnsExceededException {
         this.validateRequest(request);
 
         CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
@@ -314,7 +317,8 @@ public class QueryBuilder<E, D> {
      * @return a map of aggregated values keyed by field name.
      * @throws IllegalStateException if the grand total row is not enabled on this {@code QueryBuilder}.
      */
-    public Map<String, Object> getGrandTotalData(ServerSideGetRowsRequest request) {
+    @NonNull
+    public Map<String, Object> getGrandTotalData(@NonNull ServerSideGetRowsRequest request) {
         if (!this.grandTotalRow) {
             throw new IllegalStateException("Grand total row is disabled, enable it to get grand total data");
         }
@@ -377,7 +381,8 @@ public class QueryBuilder<E, D> {
      * @param masterRow the data of the parent row for which details are being requested
      * @return a list of maps representing the detail rows
      */
-    public List<Map<String, Object>> getDetailRowData(Map<String, Object> masterRow) {
+    @NonNull
+    public List<Map<String, Object>> getDetailRowData(@NonNull Map<String, Object> masterRow) {
         if (!this.masterDetail) {
             throw new IllegalStateException("Please set masterDetail property to true to use detail row data");
         }
@@ -415,7 +420,8 @@ public class QueryBuilder<E, D> {
      * @param field the name of the field to retrieve unique values for.
      * @return a sorted list of distinct values present in the database.
      */
-    public List<Object> supplySetFilterValues(String field) {
+    @NonNull
+    public List<Object> supplySetFilterValues(@NonNull String field) {
         ColDef<E, ?> colDef = this.colDefs.get(field);
         if (colDef == null) {
             throw new IllegalArgumentException(String.format("Column definition for field '%s' not found.", field));
@@ -445,7 +451,7 @@ public class QueryBuilder<E, D> {
      * @param queryContext the current query state container
      * @param request the server-side request parameters from the grid
      */
-    protected void select(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    protected void select(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         // select
         List<SelectionMetadata> selections;
         if (this.treeData) {
@@ -476,7 +482,7 @@ public class QueryBuilder<E, D> {
      * @param queryContext  the current query state container
      * @param request       the server-side request parameters from the grid  
      */
-    protected void where(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    protected void where(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         List<WherePredicateMetadata> wherePredicates;
         if (this.treeData) {
             // tree data
@@ -506,7 +512,7 @@ public class QueryBuilder<E, D> {
      * @param queryContext  the current query state container
      * @param request       the server-side request parameters from the grid
      */
-    protected void groupBy(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    protected void groupBy(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         List<GroupingMetadata> groupingMetadata;
 
         if (this.treeData) {
@@ -538,7 +544,7 @@ public class QueryBuilder<E, D> {
      * @param queryContext  the current query state container
      * @param request       the server-side request parameters from the grid
      */
-    protected void orderBy(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    protected void orderBy(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         List<OrderMetadata> orders;
         if (this.treeData) {
             orders = this.orderByTreeData(queryContext, request);
@@ -563,7 +569,7 @@ public class QueryBuilder<E, D> {
      * @param queryContext  the current query state container
      * @param request       the server-side request parameters from the grid
      */
-    protected void having(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    protected void having(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         List<HavingMetadata> havingPredicates;
         if (this.treeData) {
             havingPredicates = List.of();
@@ -589,7 +595,7 @@ public class QueryBuilder<E, D> {
      *
      * @param masters the list of master row data maps to be populated
      */
-    protected void attachDetailRowDataToMasters(List<Map<String, Object>> masters) {
+    protected void attachDetailRowDataToMasters(@NonNull List<Map<String, Object>> masters) {
         if (masters == null || masters.isEmpty()) {
             return;
         }
@@ -659,7 +665,7 @@ public class QueryBuilder<E, D> {
      * @param params    params for the detail grid             
      * @return the filtering {@link Predicate} used to select only relevant child records
      */
-    protected Predicate createMasterRowPredicate(CriteriaBuilder cb, Root<D> root, Map<String, Object> masterRow, MasterDetailParams<E, D> params) {
+    protected Predicate createMasterRowPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<D> root, @NonNull Map<String, Object> masterRow, @NonNull MasterDetailParams<E, D> params) {
         // add to wherePredicates predicate for parent
         Predicate masterRowPredicate;
         if (params.getCreateMasterRowPredicate() != null) {
@@ -700,7 +706,7 @@ public class QueryBuilder<E, D> {
      * @param quickFilter the raw search string input
      * @return the constructed {@link Predicate}, or {@code null} if the filter is empty
      */
-    protected Predicate createQuickFilterPredicate(CriteriaBuilder cb, Root<E> root, String quickFilter) {
+    protected Predicate createQuickFilterPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<E> root, String quickFilter) {
         if (quickFilter == null || quickFilter.isEmpty()) {
             return null;
         }
@@ -766,7 +772,8 @@ public class QueryBuilder<E, D> {
      * @param queryContext the context containing metadata for selections, filters, grouping, etc.
      * @return a list of results returned by the executed query
      */
-    protected List<Tuple> apply(CriteriaQuery<Tuple> query, QueryContext<E> queryContext) {
+    @NonNull
+    protected List<Tuple> apply(@NonNull CriteriaQuery<Tuple> query, @NonNull QueryContext<E> queryContext) {
         // select
         query.multiselect(queryContext.getSelections().stream().map(s -> s.getExpression().alias(s.getAlias())).collect(Collectors.toList()));
         // where
@@ -803,7 +810,8 @@ public class QueryBuilder<E, D> {
      * @param request the server-side request parameters from the grid
      * @return created selections
      */
-    protected List<SelectionMetadata> selectTreeData(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected List<SelectionMetadata> selectTreeData(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         Root<E> root = queryContext.getRoot();
         
         List<SelectionMetadata> selections = new ArrayList<>();
@@ -870,7 +878,8 @@ public class QueryBuilder<E, D> {
      * @param request the server-side request parameters from the grid
      * @return created selections
      */
-    protected List<SelectionMetadata> selectMasterDetail(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected List<SelectionMetadata> selectMasterDetail(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         if (request.getGroupKeys().isEmpty()) {
             return this.selectBasic(queryContext, request);
         } else {
@@ -885,7 +894,8 @@ public class QueryBuilder<E, D> {
      * @param request the server-side request parameters from the grid
      * @return created selections
      */
-    protected List<SelectionMetadata> selectPivoting(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected List<SelectionMetadata> selectPivoting(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         Root<E> root = queryContext.getRoot();
         PivotingContext pivotingContext = this.createPivotingContext(queryContext, request);
         queryContext.setPivotingContext(pivotingContext);
@@ -931,7 +941,8 @@ public class QueryBuilder<E, D> {
      * @param request the server-side request parameters from the grid
      * @return created selections
      */
-    protected List<SelectionMetadata> selectGrouping(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected List<SelectionMetadata> selectGrouping(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         Root<E> root = queryContext.getRoot();
         
@@ -1003,7 +1014,8 @@ public class QueryBuilder<E, D> {
      * @param request the server-side request parameters from the grid
      * @return created selections
      */
-    protected List<SelectionMetadata> selectBasic(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected List<SelectionMetadata> selectBasic(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         Root<E> root = queryContext.getRoot();
         // just select col defs
         return this.colDefs.values()
@@ -1022,7 +1034,8 @@ public class QueryBuilder<E, D> {
      * @param request       the server-side request parameters from the grid
      * @return created where predicates
      */
-    protected List<WherePredicateMetadata> whereTreeData(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected List<WherePredicateMetadata> whereTreeData(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         // unwrap from context
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         Root<E> root = queryContext.getRoot();
@@ -1104,7 +1117,8 @@ public class QueryBuilder<E, D> {
      * @param request       the server-side request parameters from the grid
      * @return created where predicates
      */
-    protected List<WherePredicateMetadata> whereMasterDetail(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected List<WherePredicateMetadata> whereMasterDetail(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         if (request.getGroupKeys().isEmpty()) {
             return this.whereBasic(queryContext, request);
         } else {
@@ -1119,7 +1133,8 @@ public class QueryBuilder<E, D> {
      * @param request       the server-side request parameters from the grid
      * @return created where predicates
      */
-    protected List<WherePredicateMetadata> wherePivoting(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected List<WherePredicateMetadata> wherePivoting(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         Root<E> root = queryContext.getRoot();
         
@@ -1159,7 +1174,8 @@ public class QueryBuilder<E, D> {
      * @param request       the server-side request parameters from the grid
      * @return created where predicates
      */
-    protected List<WherePredicateMetadata> whereGrouping(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected List<WherePredicateMetadata> whereGrouping(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         Root<E> root = queryContext.getRoot();
         
@@ -1240,7 +1256,8 @@ public class QueryBuilder<E, D> {
      * @param request       the server-side request parameters from the grid
      * @return created where predicates
      */
-    protected List<WherePredicateMetadata> whereBasic(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected List<WherePredicateMetadata> whereBasic(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         Root<E> root = queryContext.getRoot();
         
@@ -1303,7 +1320,7 @@ public class QueryBuilder<E, D> {
      * @param request the server-side request parameters from the grid
      * @return true if any expanded parent group matches the aggregation filters
      */
-    protected boolean groupAggFilteringExpandedParentsMatch(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    protected boolean groupAggFilteringExpandedParentsMatch(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         if (request.getGroupKeys().isEmpty()) {
             // no parents
@@ -1377,7 +1394,8 @@ public class QueryBuilder<E, D> {
      * @param request the server-side request parameters from the grid
      * @return a predicate representing the expanded parent group filter match
      */
-    protected Predicate groupAggFilteringCreateExpandedParentsPredicate(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected Predicate groupAggFilteringCreateExpandedParentsPredicate(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         AbstractQuery<?> query = queryContext.getQuery();
         Root<E> root = queryContext.getRoot();
@@ -1442,7 +1460,8 @@ public class QueryBuilder<E, D> {
      * @param request the server-side request parameters from the grid
      * @return a predicate that evaluates to true if any hidden child group matches the filters
      */
-    protected Predicate groupAggFilteringCreateUnexpandedChildGroupsPredicate(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected Predicate groupAggFilteringCreateUnexpandedChildGroupsPredicate(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         AbstractQuery<?> query = queryContext.getQuery();
         Root<E> root = queryContext.getRoot();
@@ -1504,7 +1523,8 @@ public class QueryBuilder<E, D> {
      * @param request the server-side request parameters from the grid
      * @return a predicate that checks for the existence of matching leaf nodes
      */
-    protected Predicate groupAggFilteringCreateLeafNodesPredicate(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected Predicate groupAggFilteringCreateLeafNodesPredicate(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         AbstractQuery<?> query = queryContext.getQuery();
         Root<E> root = queryContext.getRoot();
@@ -1541,7 +1561,8 @@ public class QueryBuilder<E, D> {
      * @param request       the server-side request parameters from the grid
      * @return having predicates
      */
-    protected List<HavingMetadata> havingGrouping(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected List<HavingMetadata> havingGrouping(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         // no need to have 'having' clause in grouping for now
         // filtering on aggregated values is done within where clause by subqueries (need to check all levels of tree)
         return List.of();
@@ -1554,7 +1575,8 @@ public class QueryBuilder<E, D> {
      * @param request       the server-side request parameters from the grid
      * @return having predicates
      */
-    protected List<HavingMetadata> havingPivoting(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected List<HavingMetadata> havingPivoting(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         // todo: check how pivoting having clause should work
         return List.of();
     }
@@ -1570,10 +1592,11 @@ public class QueryBuilder<E, D> {
      * @param queryContext query context.
      * @return expression returning the child count for non-leaf nodes, or null otherwise.
      */
+    @NonNull
     protected Expression<Long> createTreeDataGetChildCountExpression(
-            QueryContext<E> queryContext,
-            Expression<Boolean> hasChildrenPredicate, 
-            ServerSideGetRowsRequest request) {
+            @NonNull QueryContext<E> queryContext,
+            @NonNull Expression<Boolean> hasChildrenPredicate,
+            @NonNull ServerSideGetRowsRequest request) {
         
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         AbstractQuery<?> query = queryContext.getQuery();
@@ -1632,7 +1655,8 @@ public class QueryBuilder<E, D> {
      * @param queryContext  query context
      * @return  expression
      */
-    protected Expression<Boolean> createTreeDataIsServerSideGroupExpression(QueryContext<E> queryContext) {
+    @NonNull
+    protected Expression<Boolean> createTreeDataIsServerSideGroupExpression(@NonNull QueryContext<E> queryContext) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         Root<E> root = queryContext.getRoot();
         
@@ -1673,11 +1697,12 @@ public class QueryBuilder<E, D> {
      * @param queryContext query context.
      * @return expression returning the aggregated value for non-leaf nodes, or the own value otherwise.
      */
+    @NonNull
     protected Expression<?> createTreeDataAggregationExpression(
-            QueryContext<E> queryContext, 
-            Expression<Boolean> hasChildrenPredicate, 
-            ColumnVO aggColumn, 
-            ServerSideGetRowsRequest request
+            @NonNull QueryContext<E> queryContext,
+            @NonNull Expression<Boolean> hasChildrenPredicate,
+            @NonNull ColumnVO aggColumn,
+            @NonNull ServerSideGetRowsRequest request
     ) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         Root<E> root = queryContext.getRoot();
@@ -1739,7 +1764,8 @@ public class QueryBuilder<E, D> {
      * @param queryContext Helper for tracking query state and parameters.
      * @return A condition (Predicate) that is true if at least one parent matches the filters.
      */
-    protected Predicate createTreeDataParentMatchPredicate(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected Predicate createTreeDataParentMatchPredicate(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         AbstractQuery<?> query = queryContext.getQuery();
         
@@ -1809,7 +1835,8 @@ public class QueryBuilder<E, D> {
      * @param request The grid request.
      * @return A Predicate representing the combined filter criteria for the current node.
      */
-    protected Predicate createTreeDataOwnDataPredicate(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected Predicate createTreeDataOwnDataPredicate(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         Root<E> root = queryContext.getRoot();
         
@@ -1855,7 +1882,8 @@ public class QueryBuilder<E, D> {
      * @param queryContext Helper for tracking query state and parameters.
      * @return A condition (Predicate) that is true if at least one descendant matches the filters.
      */
-    protected Predicate createTreeDataChildrenMatchPredicate(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected Predicate createTreeDataChildrenMatchPredicate(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         Root<E> root = queryContext.getRoot();
         AbstractQuery<?> query = queryContext.getQuery();
@@ -1917,7 +1945,8 @@ public class QueryBuilder<E, D> {
      * @param request       the server-side request parameters from the grid
      * @return empty list (tree data does not have any grouping)
      */
-    protected List<GroupingMetadata> groupByTreeData(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected List<GroupingMetadata> groupByTreeData(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         // tree data does not have any grouping
         return List.of();
     }
@@ -1930,7 +1959,8 @@ public class QueryBuilder<E, D> {
      * @param request       the server-side request parameters from the grid
      * @return list of grouping expressions
      */
-    protected List<GroupingMetadata> groupByMasterDetail(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected List<GroupingMetadata> groupByMasterDetail(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         if (request.getRowGroupCols().isEmpty()) {
             // no grouping
             return List.of();
@@ -1946,7 +1976,8 @@ public class QueryBuilder<E, D> {
      * @param request       the server-side request parameters from the grid
      * @return list of grouping expressions
      */
-    protected List<GroupingMetadata> groupByPivoting(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected List<GroupingMetadata> groupByPivoting(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         Root<E> root = queryContext.getRoot();
         
         List<GroupingMetadata> groupings = new ArrayList<>(request.getGroupKeys().size() + 1);
@@ -1972,7 +2003,8 @@ public class QueryBuilder<E, D> {
      * @param request       the server-side request parameters from the grid
      * @return list of grouping expressions
      */
-    protected List<GroupingMetadata> groupByGrouping(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected List<GroupingMetadata> groupByGrouping(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         Root<E> root = queryContext.getRoot();
         
         List<GroupingMetadata> groupings = new ArrayList<>(request.getGroupKeys().size() + 1);
@@ -2002,7 +2034,8 @@ public class QueryBuilder<E, D> {
      * @param request       the server-side request parameters from the grid
      * @return list of orders
      */
-    protected List<OrderMetadata> orderByBasic(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected List<OrderMetadata> orderByBasic(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         Root<E> root = queryContext.getRoot();
         
@@ -2029,7 +2062,8 @@ public class QueryBuilder<E, D> {
      * @param request       the server-side request parameters from the grid
      * @return list of orders
      */
-    protected List<OrderMetadata> orderByTreeData(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected List<OrderMetadata> orderByTreeData(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         return this.orderByBasic(queryContext, request);
     }
 
@@ -2040,7 +2074,8 @@ public class QueryBuilder<E, D> {
      * @param request       the server-side request parameters from the grid
      * @return list of orders
      */
-    protected List<OrderMetadata> orderByMasterDetail(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected List<OrderMetadata> orderByMasterDetail(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         return this.orderByBasic(queryContext, request);
     }
 
@@ -2051,7 +2086,8 @@ public class QueryBuilder<E, D> {
      * @param request       the server-side request parameters from the grid
      * @return list of orders
      */
-    protected List<OrderMetadata> orderByGrouping(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected List<OrderMetadata> orderByGrouping(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         Root<E> root = queryContext.getRoot();
 
@@ -2110,7 +2146,8 @@ public class QueryBuilder<E, D> {
      * @param request       the server-side request parameters from the grid
      * @return list of orders
      */
-    protected List<OrderMetadata> orderByPivoting(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected List<OrderMetadata> orderByPivoting(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         Root<E> root = queryContext.getRoot();
         PivotingContext pivotingContext = queryContext.getPivotingContext();
@@ -2159,7 +2196,7 @@ public class QueryBuilder<E, D> {
      * @param request      the AG Grid server-side row request containing {@code startRow} and {@code endRow}
      * @param queryContext the query context to populate with pagination (offset and limit)
      */
-    protected void limitOffset(QueryContext<E> queryContext, ServerSideGetRowsRequest request) {
+    protected void limitOffset(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         queryContext.setFirstResult(request.getStartRow());
         queryContext.setMaxResults(request.getEndRow() - request.getStartRow());
     }
@@ -2170,7 +2207,8 @@ public class QueryBuilder<E, D> {
      * @param tuples the list of JPA tuples to convert
      * @return a list of maps where each map represents a tuple with alias-value pairs
      */
-    protected List<Map<String, Object>> tupleToMap(List<Tuple> tuples) {
+    @NonNull
+    protected List<Map<String, Object>> tupleToMap(@NonNull List<Tuple> tuples) {
         if (tuples == null || tuples.isEmpty()) {
             return new ArrayList<>(0);
         }
@@ -2232,7 +2270,8 @@ public class QueryBuilder<E, D> {
         return result;
     }
     
-    protected Predicate createAdvancedFilterPredicate(CriteriaBuilder cb, Root<E> root, Map<String, Object> filterModel) {
+    @NonNull
+    protected Predicate createAdvancedFilterPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<E> root, @NonNull Map<String, Object> filterModel) {
         if (this.isColumnFilter(filterModel)) {
             throw new IllegalArgumentException("Can not create advanced filter when filter is in column-filter format");
         }
@@ -2241,7 +2280,8 @@ public class QueryBuilder<E, D> {
         return advancedFilterModel.toPredicate(cb, root);
     }
     
-    protected Predicate createColumnFilterPredicate(CriteriaBuilder cb, Root<E> root, Map<String, Object> filterModel) {
+    @NonNull
+    protected Predicate createColumnFilterPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<E> root, @NonNull Map<String, Object> filterModel) {
         if (!this.isColumnFilter(filterModel)) {
             throw new IllegalArgumentException("Can not create column filter when filter is not in column-filter format");
         }
@@ -2307,6 +2347,7 @@ public class QueryBuilder<E, D> {
      * @throws NullPointerException If the input {@code filter} map is {@code null}.
      */
     @SuppressWarnings("unchecked")
+    @NonNull
     protected AdvancedFilterModel<E> recognizeAdvancedFilter(@NonNull Map<String, Object> filter) {
         if (!this.enableAdvancedFilter) {
             throw new IllegalArgumentException("Can not perform advanced filtering, enableAdvancedFilter is set to false!");
@@ -2403,7 +2444,7 @@ public class QueryBuilder<E, D> {
         }
     }
 
-    protected void validateRequest(ServerSideGetRowsRequest request) {
+    protected void validateRequest(@NonNull ServerSideGetRowsRequest request) {
         List<InvalidRequestException.ValidationError> errors = new ArrayList<>();
 
         // validate groups cols
@@ -2604,7 +2645,8 @@ public class QueryBuilder<E, D> {
         }
     }
 
-    protected PivotingContext createPivotingContext(QueryContext<E> queryContext, ServerSideGetRowsRequest request) throws OnPivotMaxColumnsExceededException {
+    @NonNull
+    protected PivotingContext createPivotingContext(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) throws OnPivotMaxColumnsExceededException {
         if (!request.isPivotMode() || request.getPivotCols().isEmpty()) {
             throw new IllegalStateException("Can not create pivoting context when pivoting is turned off");
         }
@@ -2646,7 +2688,8 @@ public class QueryBuilder<E, D> {
      * @param request   request
      * @return map where key is column name and value is distinct column values
      */
-    protected Map<String, List<Object>> getPivotValues(CriteriaBuilder cb, ServerSideGetRowsRequest request) {
+    @NonNull
+    protected Map<String, List<Object>> getPivotValues(@NonNull CriteriaBuilder cb, @NonNull ServerSideGetRowsRequest request) {
         Map<String, List<Object>> pivotValues = new LinkedHashMap<>(request.getPivotCols().size());
         for (ColumnVO column : request.getPivotCols()) {
             String field = column.getField();
@@ -2686,7 +2729,8 @@ public class QueryBuilder<E, D> {
      * @param pivotValues   pivot values
      * @return              pivot pairs
      */
-    protected List<Set<Pair<String, Object>>> createPivotPairs(Map<String, List<Object>> pivotValues) {
+    @NonNull
+    protected List<Set<Pair<String, Object>>> createPivotPairs(@NonNull Map<String, List<Object>> pivotValues) {
         List<Set<Pair<String, Object>>> pivotPairs = new ArrayList<>(pivotValues.size());
         for (var entry : pivotValues.entrySet()) {
             String column = entry.getKey();
@@ -2710,7 +2754,8 @@ public class QueryBuilder<E, D> {
      * @param pivotedName                           pivoted column name
      * @return                                      original name of the column
      */
-    protected String originalColNameFromPivoted(String pivotedName) {
+    @NonNull
+    protected String originalColNameFromPivoted(@NonNull String pivotedName) {
         return pivotedName.substring(pivotedName.lastIndexOf(this.serverSidePivotResultFieldSeparator) + 1);
     }
 
@@ -2726,7 +2771,7 @@ public class QueryBuilder<E, D> {
      * @return The product of distinct counts for all pivot columns.
      *         Returns 0 if pivot mode is disabled or no pivot columns are defined in the request.
      */
-    protected long countPivotColumnsToBeGenerated(CriteriaBuilder cb, ServerSideGetRowsRequest request) {
+    protected long countPivotColumnsToBeGenerated(@NonNull CriteriaBuilder cb, @NonNull ServerSideGetRowsRequest request) {
         if (!request.isPivotMode() || request.getPivotCols().isEmpty()) {
             return 0;
         }
@@ -2748,7 +2793,8 @@ public class QueryBuilder<E, D> {
         return this.entityManager.createQuery(mainQuery).getSingleResult();
     }
 
-    protected Map<String, Expression<?>> createPivotingExpressions(CriteriaBuilder cb, Root<?> root, ServerSideGetRowsRequest request, List<List<Pair<String, Object>>> cartesianProduct) {
+    @NonNull
+    protected Map<String, Expression<?>> createPivotingExpressions(@NonNull CriteriaBuilder cb, @NonNull Root<?> root, @NonNull ServerSideGetRowsRequest request, @NonNull List<List<Pair<String, Object>>> cartesianProduct) {
         Map<String, Expression<?>> pivotingExpressions = new LinkedHashMap<>();
 
         cartesianProduct.forEach(pairs -> {
@@ -2858,12 +2904,14 @@ public class QueryBuilder<E, D> {
             this.masterDetail = true;
         }
         
-        public Builder<E, D> primaryFieldName(String primaryFieldName) {
+        @NonNull
+        public Builder<E, D> primaryFieldName(@NonNull String primaryFieldName) {
             this.primaryFieldName = primaryFieldName;
             return this;
         }
 
-        public Builder<E, D> serverSidePivotResultFieldSeparator(String separator) {
+        @NonNull
+        public Builder<E, D> serverSidePivotResultFieldSeparator(@NonNull String separator) {
             if (separator == null || separator.isEmpty()) {
                 throw new IllegalArgumentException("Server side pivot result field separator cannot be null or empty");
             }
@@ -2871,6 +2919,7 @@ public class QueryBuilder<E, D> {
             return this;
         }
 
+        @NonNull
         public Builder<E, D> pivotMaxGeneratedColumns(Integer pivotMaxGeneratedColumns) {
             if (pivotMaxGeneratedColumns != null && pivotMaxGeneratedColumns <= 0) {
                 throw new IllegalArgumentException("pivot max generated columns must be greater than zero");
@@ -2880,7 +2929,8 @@ public class QueryBuilder<E, D> {
         }
         
         @SafeVarargs
-        public final Builder<E, D> colDefs(ColDef<E, ?>... colDefs) {
+        @NonNull
+        public final Builder<E, D> colDefs(@NonNull ColDef<E, ?>... colDefs) {
             this.colDefs = new HashMap<>(colDefs.length);
             for (ColDef<E, ?> colDef : colDefs) {
                 this.colDefs.put(colDef.getFieldName(), colDef);
@@ -2888,7 +2938,8 @@ public class QueryBuilder<E, D> {
             return this;
         }
         
-        public Builder<E, D> colDefs(Collection<ColDef<E, ?>> colDefs) {
+        @NonNull
+        public Builder<E, D> colDefs(@NonNull Collection<ColDef<E, ?>> colDefs) {
             this.colDefs = new HashMap<>(colDefs.size());
             for (ColDef<E, ?> colDef : colDefs) {
                 this.colDefs.put(colDef.getFieldName(), colDef);
@@ -2896,163 +2947,195 @@ public class QueryBuilder<E, D> {
             return this;
         }
         
+        @NonNull
         public Builder<E, D> enableAdvancedFilter(boolean enableAdvancedFilter) {
             this.enableAdvancedFilter = enableAdvancedFilter;
             return this;
         }
         
+        @NonNull
         public Builder<E, D> paginateChildRows(boolean paginateChildRows) {
             this.paginateChildRows = paginateChildRows;
             return this;
         }
 
+        @NonNull
         public Builder<E, D> suppressFieldDotNotation(boolean suppressFieldDotNotation) {
             this.suppressFieldDotNotation = suppressFieldDotNotation;
             return this;
         }
 
+        @NonNull
         public Builder<E, D> isQuickFilterPresent(boolean isQuickFilterPresent) {
             this.isQuickFilterPresent = isQuickFilterPresent;
             return this;
         }
 
-        public Builder<E, D> quickFilterParser(Function<String, List<String>> quickFilterParser) {
+        @NonNull
+        public Builder<E, D> quickFilterParser(@NonNull Function<String, List<String>> quickFilterParser) {
             this.quickFilterParser = quickFilterParser;
             return this;
         }
 
-        public Builder<E, D> quickFilterMatcher(TriFunction<CriteriaBuilder, Root<E>, List<String>, Predicate> quickFilterMatcher) {
+        @NonNull
+        public Builder<E, D> quickFilterMatcher(@NonNull TriFunction<CriteriaBuilder, Root<E>, List<String>, Predicate> quickFilterMatcher) {
             this.quickFilterMatcher = quickFilterMatcher;
             return this;
         }
 
-        public Builder<E, D> quickFilterSearchInFields(List<String> quickFilterSearchInFields) {
+        @NonNull
+        public Builder<E, D> quickFilterSearchInFields(@NonNull List<String> quickFilterSearchInFields) {
             this.quickFilterSearchInFields = quickFilterSearchInFields;
             return this;
         }
 
-        public Builder<E, D> quickFilterSearchInFields(String... quickFilterSearchInFields) {
+        @NonNull
+        public Builder<E, D> quickFilterSearchInFields(@NonNull String... quickFilterSearchInFields) {
             this.quickFilterSearchInFields = Arrays.asList(quickFilterSearchInFields);
             return this;
         }
 
+        @NonNull
         public Builder<E, D> quickFilterTrimInput(boolean quickFilterTrimInput) {
             this.quickFilterTrimInput = quickFilterTrimInput;
             return this;
         }
 
+        @NonNull
         public Builder<E, D> quickFilterCaseSensitive(boolean quickFilterCaseSensitive) {
             this.quickFilterCaseSensitive = quickFilterCaseSensitive;
             return this;
         }
 
-        public Builder<E, D> quickFilterTextFormatter(BiFunction<CriteriaBuilder, Expression<String>, Expression<String>> quickFilterTextFormatter) {
+        @NonNull
+        public Builder<E, D> quickFilterTextFormatter(@NonNull BiFunction<CriteriaBuilder, Expression<String>, Expression<String>> quickFilterTextFormatter) {
             this.quickFilterTextFormatter = quickFilterTextFormatter;
             return this;
         }
         
+        @NonNull
         public Builder<E, D> suppressAggFilteredOnly(boolean suppressAggFilteredOnly) {
             this.suppressAggFilteredOnly = suppressAggFilteredOnly;
             return this;
         }
 
+        @NonNull
         public Builder<E, D> getChildCount(boolean getChildCount) {
             this.getChildCount = getChildCount;
             return this;
         }
 
-        public Builder<E, D> getChildCountFieldName(String getChildCountFieldName) {
+        @NonNull
+        public Builder<E, D> getChildCountFieldName(@NonNull String getChildCountFieldName) {
             this.getChildCountFieldName = getChildCountFieldName;
             return this;
         }
         
+        @NonNull
         public Builder<E, D> isExternalFilterPresent(boolean isExternalFilterPresent) {
             this.isExternalFilterPresent = isExternalFilterPresent;
             return this;
         }
         
-        public Builder<E, D> doesExternalFilterPass(TriFunction<CriteriaBuilder, Root<E>, Object, Predicate> doesExternalFilterPass) {
+        @NonNull
+        public Builder<E, D> doesExternalFilterPass(@NonNull TriFunction<CriteriaBuilder, Root<E>, Object, Predicate> doesExternalFilterPass) {
             this.doesExternalFilterPass = doesExternalFilterPass;
             return this;
         }
         
         
+        @NonNull
         public Builder<E, D> groupAggFiltering(boolean groupAggFiltering) {
             this.groupAggFiltering = groupAggFiltering;
             return this;
         }
         
+        @NonNull
         public Builder<E, D> treeData(boolean treeData) {
             this.treeData = treeData;
             return this;
         }
         
-        public Builder<E, D> isServerSideGroupFieldName(String isServerSideGroupFieldName) {
+        @NonNull
+        public Builder<E, D> isServerSideGroupFieldName(@NonNull String isServerSideGroupFieldName) {
             this.isServerSideGroupFieldName = isServerSideGroupFieldName;
             return this;
         }
 
-        public Builder<E, D> treeDataParentReferenceField(String treeDataParentReferenceField) {
+        @NonNull
+        public Builder<E, D> treeDataParentReferenceField(@NonNull String treeDataParentReferenceField) {
             this.treeDataParentReferenceField = treeDataParentReferenceField;
             return this;
         }
 
-        public Builder<E, D> treeDataParentIdField(String treeDataParentIdField) {
+        @NonNull
+        public Builder<E, D> treeDataParentIdField(@NonNull String treeDataParentIdField) {
             this.treeDataParentIdField = treeDataParentIdField;
             return this;
         }
 
-        public Builder<E, D> treeDataChildrenField(String treeDataChildrenField) {
+        @NonNull
+        public Builder<E, D> treeDataChildrenField(@NonNull String treeDataChildrenField) {
             this.treeDataChildrenField = treeDataChildrenField;
             return this;
         }
 
-        public Builder<E, D> treeDataDataPathFieldName(String treeDataDataPathFieldName) {
+        @NonNull
+        public Builder<E, D> treeDataDataPathFieldName(@NonNull String treeDataDataPathFieldName) {
             this.treeDataDataPathFieldName = treeDataDataPathFieldName;
             return this;
         }
 
-        public Builder<E, D> treeDataDataPathSeparator(String treeDataDataPathSeparator) {
+        @NonNull
+        public Builder<E, D> treeDataDataPathSeparator(@NonNull String treeDataDataPathSeparator) {
             this.treeDataDataPathSeparator = treeDataDataPathSeparator;
             return this;
         }
         
+        @NonNull
         public Builder<E, D> masterDetail(boolean masterDetail) {
             this.masterDetail = masterDetail;
             return this;
         }
 
+        @NonNull
         public Builder<E, D> masterDetailLazy(boolean masterDetailLazy) {
             this.masterDetailLazy = masterDetailLazy;
             return this;
         }
         
-        public Builder<E, D> masterDetailRowDataFieldName(String masterDetailRowDataFieldName) {
+        @NonNull
+        public Builder<E, D> masterDetailRowDataFieldName(@NonNull String masterDetailRowDataFieldName) {
             this.masterDetailRowDataFieldName = masterDetailRowDataFieldName;
             return this;
         }
 
-        public Builder<E, D> masterDetailParams(MasterDetailParams<E, D> masterDetailParams) {
+        @NonNull
+        public Builder<E, D> masterDetailParams(@NonNull MasterDetailParams<E, D> masterDetailParams) {
             this.masterDetailParams = masterDetailParams;
             return this;
         }
 
-        public Builder<E, D> dynamicMasterDetailParams(Function<Map<String, Object>, MasterDetailParams<E, D>> dynamicMasterDetailParams) {
+        @NonNull
+        public Builder<E, D> dynamicMasterDetailParams(@NonNull Function<Map<String, Object>, MasterDetailParams<E, D>> dynamicMasterDetailParams) {
             this.dynamicMasterDetailParams = dynamicMasterDetailParams;
             return this;
         }
         
+        @NonNull
         public Builder<E, D> grandTotalRow(boolean grandTotalRow) {
             this.grandTotalRow = grandTotalRow;
             return this;
         }
 
         
-        public Builder<E, D> registerCustomAggFunction(String name, BiFunction<CriteriaBuilder, Expression<?>, Expression<?>> function) {
+        @NonNull
+        public Builder<E, D> registerCustomAggFunction(@NonNull String name, @NonNull BiFunction<CriteriaBuilder, Expression<?>, Expression<?>> function) {
             this.aggFuncs.put(name, function);
             return this;
         }
 
+        @NonNull
         public QueryBuilder<E, D> build() {
             this.validateBeforeBuild();
             return new QueryBuilder<>(this);
@@ -3168,6 +3251,7 @@ public class QueryBuilder<E, D> {
         private final SingularAttribute<C, ?> detailMasterIdField;
         private final TriFunction<CriteriaBuilder, Root<C>, Map<String, Object>, Predicate> createMasterRowPredicate;
         
+        @NonNull
         public static <P, C> Builder<P, C> builder() {
             return new Builder<>();
         }
@@ -3189,13 +3273,15 @@ public class QueryBuilder<E, D> {
             
             private Builder() {}
 
-            public Builder<P, C> detailClass(Class<C> detailClass) {
+            @NonNull
+            public Builder<P, C> detailClass(@NonNull Class<C> detailClass) {
                 this.detailClass = detailClass;
                 return this;
             }
 
             @SafeVarargs
-            public final Builder<P, C> detailColDefs(ColDef<C, ?>... colDefs) {
+            @NonNull
+            public final Builder<P, C> detailColDefs(@NonNull ColDef<C, ?>... colDefs) {
                 this.detailColDefs = new HashMap<>(colDefs.length);
                 for (ColDef<C, ?> colDef : colDefs) {
                     this.detailColDefs.put(colDef.getFieldName(), colDef);
@@ -3203,7 +3289,8 @@ public class QueryBuilder<E, D> {
                 return this;
             }
 
-            public Builder<P, C> detailColDefs(Collection<ColDef<C, ?>> colDefs) {
+            @NonNull
+            public Builder<P, C> detailColDefs(@NonNull Collection<ColDef<C, ?>> colDefs) {
                 this.detailColDefs = new HashMap<>(colDefs.size());
                 for (ColDef<C, ?> colDef : colDefs) {
                     this.detailColDefs.put(colDef.getFieldName(), colDef);
@@ -3211,21 +3298,25 @@ public class QueryBuilder<E, D> {
                 return this;
             }
 
-            public Builder<P, C> detailMasterReferenceField(SingularAttribute<C, P> detailMasterReferenceField) {
+            @NonNull
+            public Builder<P, C> detailMasterReferenceField(@NonNull SingularAttribute<C, P> detailMasterReferenceField) {
                 this.detailMasterReferenceField = detailMasterReferenceField;
                 return this;
             }
 
-            public Builder<P, C>  detailMasterIdField(SingularAttribute<C, ?> detailMasterIdField) {
+            @NonNull
+            public Builder<P, C>  detailMasterIdField(@NonNull SingularAttribute<C, ?> detailMasterIdField) {
                 this.detailMasterIdField = detailMasterIdField;
                 return this;
             }
 
-            public Builder<P, C> createMasterRowPredicate(TriFunction<CriteriaBuilder, Root<C>, Map<String, Object>, Predicate> createMasterRowPredicate) {
+            @NonNull
+            public Builder<P, C> createMasterRowPredicate(@NonNull TriFunction<CriteriaBuilder, Root<C>, Map<String, Object>, Predicate> createMasterRowPredicate) {
                 this.createMasterRowPredicate = createMasterRowPredicate;
                 return this;
             }
 
+            @NonNull
             public MasterDetailParams<P, C> build() {
                 this.validateMasterDetailArgs();
                 return new MasterDetailParams<>(this);

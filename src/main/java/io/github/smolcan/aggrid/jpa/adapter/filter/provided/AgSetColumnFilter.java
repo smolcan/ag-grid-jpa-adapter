@@ -17,45 +17,54 @@ import java.util.stream.Collectors;
 
 public abstract class AgSetColumnFilter<T> extends IProvidedFilter<T, SetFilterModel, SetFilterParams> {
 
+    @NonNull
     public static AgSetStringColumnFilter forString() {
         return new AgSetStringColumnFilter();
     }
 
+    @NonNull
     public static <N extends Number> AgSetNumberColumnFilter<N> forNumber() {
         return new AgSetNumberColumnFilter<>();
     }
 
+    @NonNull
     public static AgSetUUIDColumnFilter forUUID() {
         return new AgSetUUIDColumnFilter();
     }
 
-    public static <E extends Enum<E>> AgSetEnumColumnFilter<E> forEnum(Class<E> type) {
+    @NonNull
+    public static <E extends Enum<E>> AgSetEnumColumnFilter<E> forEnum(@NonNull Class<E> type) {
         return new AgSetEnumColumnFilter<>(type);
     }
 
+    @NonNull
     public static AgSetBooleanColumnFilter forBoolean() {
         return new AgSetBooleanColumnFilter();
     }
 
+    @NonNull
     public static AgSetDateColumnFilter forDate() {
         return new AgSetDateColumnFilter();
     }
 
     @Override
+    @NonNull
     @SuppressWarnings("unchecked")
-    public SetFilterModel recognizeFilterModel(Map<String, Object> filterModel) {
+    public SetFilterModel recognizeFilterModel(@NonNull Map<String, Object> filterModel) {
         SetFilterModel setFilter = new SetFilterModel();
         setFilter.setValues((List<String>) filterModel.get("values"));
         return setFilter;
     }
 
     @Override
+    @NonNull
     public SetFilterParams getDefaultFilterParams() {
         return SetFilterParams.builder().build();
     }
 
     @Override
-    protected Predicate toPredicate(CriteriaBuilder cb, Expression<T> expression, SetFilterModel filterModel) {
+    @NonNull
+    protected Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Expression<T> expression, @NonNull SetFilterModel filterModel) {
         if (filterModel.getValues().isEmpty()) {
             // empty values, FALSE predicate
             return cb.disjunction();
@@ -82,22 +91,26 @@ public abstract class AgSetColumnFilter<T> extends IProvidedFilter<T, SetFilterM
         return predicate;
     }
     
+    @NonNull
     protected Expression<T> modifyColumnExpression(@NonNull CriteriaBuilder cb, @NonNull Expression<T> expression) {
         return expression;
     }
 
-    protected abstract Expression<T> parseValueToExpression(CriteriaBuilder cb, String value);
+    @NonNull
+    protected abstract Expression<T> parseValueToExpression(@NonNull CriteriaBuilder cb, @NonNull String value);
 
 
     public static class AgSetStringColumnFilter extends AgSetColumnFilter<String> {
 
         @Override
-        protected Expression<String> modifyColumnExpression(CriteriaBuilder cb, Expression<String> expression) {
+        @NonNull
+        protected Expression<String> modifyColumnExpression(@NonNull CriteriaBuilder cb, @NonNull Expression<String> expression) {
             return this.generateExpressionFromFilterParams(cb, expression);
         }
 
         @Override
-        protected Expression<String> parseValueToExpression(CriteriaBuilder cb, String value) {
+        @NonNull
+        protected Expression<String> parseValueToExpression(@NonNull CriteriaBuilder cb, @NonNull String value) {
             return this.generateExpressionFromFilterParams(cb, cb.literal(value));
         }
 
@@ -108,7 +121,8 @@ public abstract class AgSetColumnFilter<T> extends IProvidedFilter<T, SetFilterM
          * @param expression    expression
          * @return              new expression generated from filter params
          */
-        private Expression<String> generateExpressionFromFilterParams(CriteriaBuilder cb, Expression<String> expression) {
+        @NonNull
+        private Expression<String> generateExpressionFromFilterParams(@NonNull CriteriaBuilder cb, @NonNull Expression<String> expression) {
             if (this.filterParams.getTextFormatter() != null) {
                 // apply custom text formatter
                 expression = this.filterParams.getTextFormatter().apply(cb, expression);
@@ -125,8 +139,9 @@ public abstract class AgSetColumnFilter<T> extends IProvidedFilter<T, SetFilterM
     public static class AgSetNumberColumnFilter<N extends Number> extends AgSetColumnFilter<N> {
 
         @Override
+        @NonNull
         @SuppressWarnings("unchecked")
-        protected Expression<N> parseValueToExpression(CriteriaBuilder cb, String value) {
+        protected Expression<N> parseValueToExpression(@NonNull CriteriaBuilder cb, @NonNull String value) {
             return (Expression<N>) cb.literal(new BigDecimal(value));
         }
     }
@@ -135,7 +150,8 @@ public abstract class AgSetColumnFilter<T> extends IProvidedFilter<T, SetFilterM
     public static class AgSetUUIDColumnFilter extends AgSetColumnFilter<UUID> {
 
         @Override
-        protected Expression<UUID> parseValueToExpression(CriteriaBuilder cb, String value) {
+        @NonNull
+        protected Expression<UUID> parseValueToExpression(@NonNull CriteriaBuilder cb, @NonNull String value) {
             return cb.literal(UUID.fromString(value));
         }
     }
@@ -150,7 +166,8 @@ public abstract class AgSetColumnFilter<T> extends IProvidedFilter<T, SetFilterM
         }
 
         @Override
-        protected Expression<E> parseValueToExpression(CriteriaBuilder cb, String value) {
+        @NonNull
+        protected Expression<E> parseValueToExpression(@NonNull CriteriaBuilder cb, @NonNull String value) {
             return cb.literal(Enum.valueOf(this.enumType, value));
         }
     }
@@ -159,11 +176,13 @@ public abstract class AgSetColumnFilter<T> extends IProvidedFilter<T, SetFilterM
     public static class AgSetBooleanColumnFilter extends AgSetColumnFilter<Boolean> {
 
         @Override
-        protected Expression<Boolean> parseValueToExpression(CriteriaBuilder cb, String value) {
+        @NonNull
+        protected Expression<Boolean> parseValueToExpression(@NonNull CriteriaBuilder cb, @NonNull String value) {
             return cb.literal(parseBoolean(value));
         }
 
-        private static Boolean parseBoolean(String value) {
+        @NonNull
+        private static Boolean parseBoolean(@NonNull String value) {
             if ("true".equalsIgnoreCase(value)) {
                 return Boolean.TRUE;
             } else if ("false".equalsIgnoreCase(value)) {
@@ -178,7 +197,8 @@ public abstract class AgSetColumnFilter<T> extends IProvidedFilter<T, SetFilterM
     public static class AgSetDateColumnFilter extends AgSetColumnFilter<LocalDate> {
 
         @Override
-        protected Expression<LocalDate> parseValueToExpression(CriteriaBuilder cb, String value) {
+        @NonNull
+        protected Expression<LocalDate> parseValueToExpression(@NonNull CriteriaBuilder cb, @NonNull String value) {
             // ag-grid sends set filter dates in ISO format (yyyy-MM-dd), which LocalDate.parse handles directly
             return cb.literal(LocalDate.parse(value));
         }

@@ -29,7 +29,8 @@ public class DateAdvancedFilterModel<E, T> extends ColumnAdvancedFilterModel<E, 
     }
     
     @Override
-    public Predicate toPredicate(CriteriaBuilder cb, Root<E> root) {
+    @NonNull
+    public Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<E> root) {
         this.filterParams.validateDate(this.filter);
         Predicate predicate;
         

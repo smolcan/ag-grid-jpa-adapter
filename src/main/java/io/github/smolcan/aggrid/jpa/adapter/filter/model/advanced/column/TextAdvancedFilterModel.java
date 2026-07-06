@@ -26,7 +26,8 @@ public class TextAdvancedFilterModel<E> extends ColumnAdvancedFilterModel<E, Str
     }
     
     @Override
-    public Predicate toPredicate(CriteriaBuilder cb, Root<E> root) {
+    @NonNull
+    public Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<E> root) {
 
         Expression<String> filterExpression = this.filterParams.generateExpressionFromFilterParams(cb, cb.literal(this.filter));
         Expression<String> valueExpression = this.filterParams.generateExpressionFromFilterParams(cb, this.getColumnField().getPath(root));

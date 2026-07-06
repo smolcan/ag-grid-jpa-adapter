@@ -18,5 +18,6 @@ public abstract class AdvancedFilterModel<E> {
     @NonNull
     private String filterType;
 
-    public abstract Predicate toPredicate(CriteriaBuilder cb, Root<E> root);
+    @NonNull
+    public abstract Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<E> root);
 }

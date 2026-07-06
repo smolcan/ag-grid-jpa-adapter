@@ -23,6 +23,7 @@ public class MultiFilterParams<T> implements IFilterParams {
         private List<IFilter<T, ?, ?>> filters = new ArrayList<>();
 
         @Tolerate
+        @NonNull
         public Builder<T> filters(@NonNull IFilter<T, ?, ?>... filters) {
             this.filters = Arrays.asList(filters);
             return this;

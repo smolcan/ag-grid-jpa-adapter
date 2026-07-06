@@ -29,7 +29,8 @@ public class NumberAdvancedFilterModel<E, T extends Number> extends ColumnAdvanc
     }
     
     @Override
-    public Predicate toPredicate(CriteriaBuilder cb, Root<E> root) {
+    @NonNull
+    public Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<E> root) {
         Predicate predicate;
 
         // ensuring number compatibility

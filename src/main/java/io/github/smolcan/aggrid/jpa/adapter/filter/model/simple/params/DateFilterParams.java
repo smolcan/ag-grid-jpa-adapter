@@ -67,12 +67,14 @@ public class DateFilterParams extends ScalarFilterParams {
         private Set<SimpleFilterModelType> filterOptions = Collections.emptySet();
         private Integer minValidYear = 1000;
 
-        public B filterOptions(SimpleFilterModelType... type) {
+        @NonNull
+        public B filterOptions(@NonNull SimpleFilterModelType... type) {
             this.filterOptions = new HashSet<>(Arrays.asList(type));
             return self();
         }
 
-        public B filterOptions(Collection<SimpleFilterModelType> type) {
+        @NonNull
+        public B filterOptions(@NonNull Collection<SimpleFilterModelType> type) {
             this.filterOptions = new HashSet<>(type);
             return self();
         }

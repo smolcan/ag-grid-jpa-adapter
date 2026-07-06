@@ -1,16 +1,18 @@
 package io.github.smolcan.aggrid.jpa.adapter.utils;
 
 import jakarta.persistence.criteria.*;
+import lombok.NonNull;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
 public class Utils {
-    
+
     private Utils() {}
-    
-    public static <T> List<List<T>> cartesianProduct(List<Set<T>> sets) {
+
+    @NonNull
+    public static <T> List<List<T>> cartesianProduct(@NonNull List<Set<T>> sets) {
         return cartesianProduct(0, sets);
     }
 
@@ -31,7 +33,8 @@ public class Utils {
     }
 
     
-    public static Path<?> getPath(From<?, ?> from, String fieldName) {
+    @NonNull
+    public static Path<?> getPath(@NonNull From<?, ?> from, @NonNull String fieldName) {
         if (!fieldName.contains(".")) {
             // no dot notation in fieldName
             return from.get(fieldName);

@@ -24,20 +24,24 @@ import java.util.Optional;
 @SuppressWarnings("java:S119")
 public abstract class AgDateColumnFilter<DT extends Temporal & Comparable<? super DT>> extends SimpleFilter<DT, DateFilterModel, DateFilterParams> {
 
+    @NonNull
     public static AgLocalDateColumnFilter forLocalDate() {
         return new AgLocalDateColumnFilter();
     }
 
+    @NonNull
     public static AgLocalDateTimeColumnFilter forLocalDateTime() {
         return new AgLocalDateTimeColumnFilter();
     }
 
+    @NonNull
     public static AgInstantColumnFilter forInstant(@NonNull ZoneId zone) {
         return new AgInstantColumnFilter(zone);
     }
 
     @Override
-    public DateFilterModel recognizeFilterModel(Map<String, Object> filterModel) {
+    @NonNull
+    public DateFilterModel recognizeFilterModel(@NonNull Map<String, Object> filterModel) {
         DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         
         DateFilterModel dateFilterModel = new DateFilterModel();
@@ -49,14 +53,17 @@ public abstract class AgDateColumnFilter<DT extends Temporal & Comparable<? supe
     }
 
     @Override
+    @NonNull
     public DateFilterParams getDefaultFilterParams() {
         return DateFilterParams.builder().build();
     }
-    
+
+    @NonNull
     protected abstract DT convertFromLocalDateTime(@NonNull LocalDateTime dateTime);
 
     @Override
-    protected Predicate toPredicate(CriteriaBuilder cb, Expression<DT> expression, DateFilterModel filterModel) {
+    @NonNull
+    protected Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Expression<DT> expression, @NonNull DateFilterModel filterModel) {
         this.filterParams.validateDate(filterModel.getDateFrom());
         this.filterParams.validateDate(filterModel.getDateTo());
         Predicate predicate;
@@ -169,7 +176,8 @@ public abstract class AgDateColumnFilter<DT extends Temporal & Comparable<? supe
     }
 
 
-    protected Predicate createNamedAndRelativeDateRangePredicate(CriteriaBuilder cb, Expression<DT> expression, SimpleFilterModelType type) {
+    @NonNull
+    protected Predicate createNamedAndRelativeDateRangePredicate(@NonNull CriteriaBuilder cb, @NonNull Expression<DT> expression, @NonNull SimpleFilterModelType type) {
         if (!this.filterParams.getFilterOptions().contains(type)) {
             throw new IllegalArgumentException("Tried to use relative date filter " + type + ", but filter is not present in date filter params -> filter options");
         }
@@ -306,6 +314,7 @@ public abstract class AgDateColumnFilter<DT extends Temporal & Comparable<? supe
     public static class AgLocalDateColumnFilter extends AgDateColumnFilter<LocalDate> {
 
         @Override
+        @NonNull
         protected LocalDate convertFromLocalDateTime(@NonNull LocalDateTime dateTime) {
             return dateTime.toLocalDate();
         }
@@ -315,6 +324,7 @@ public abstract class AgDateColumnFilter<DT extends Temporal & Comparable<? supe
     public static class AgLocalDateTimeColumnFilter extends AgDateColumnFilter<LocalDateTime> {
 
         @Override
+        @NonNull
         protected LocalDateTime convertFromLocalDateTime(@NonNull LocalDateTime dateTime) {
             return dateTime;
         }
@@ -331,6 +341,7 @@ public abstract class AgDateColumnFilter<DT extends Temporal & Comparable<? supe
         }
 
         @Override
+        @NonNull
         protected Instant convertFromLocalDateTime(@NonNull LocalDateTime dateTime) {
             return dateTime.atZone(this.zone).toInstant();
         }

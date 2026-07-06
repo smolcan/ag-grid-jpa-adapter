@@ -19,18 +19,21 @@ import java.util.stream.Collectors;
 public class FieldPath<E, T> {
 
     @Getter
+    @NonNull
     private final List<Attribute<?, ?>> hops;
 
     private FieldPath(List<Attribute<?, ?>> hops) {
         this.hops = Collections.unmodifiableList(hops);
     }
 
+    @NonNull
     public static <E, T> FieldPath<E, T> of(@NonNull SingularAttribute<E, T> attribute) {
         List<Attribute<?, ?>> hops = new ArrayList<>(1);
         hops.add(attribute);
         return new FieldPath<>(hops);
     }
 
+    @NonNull
     public <N> FieldPath<E, N> to(@NonNull SingularAttribute<? super T, N> next) {
         List<Attribute<?, ?>> extended = new ArrayList<>(this.hops.size() + 1);
         extended.addAll(this.hops);

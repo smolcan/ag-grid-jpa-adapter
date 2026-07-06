@@ -6,15 +6,17 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.NumberFil
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
+import lombok.NonNull;
 
 import java.math.BigDecimal;
 import java.util.Map;
 import java.util.Optional;
 
 public class AgNumberColumnFilter<N extends Number> extends SimpleFilter<N, NumberFilterModel, NumberFilterParams> {
-    
+
     @Override
-    public NumberFilterModel recognizeFilterModel(Map<String, Object> model) {
+    @NonNull
+    public NumberFilterModel recognizeFilterModel(@NonNull Map<String, Object> model) {
         NumberFilterModel numberFilter = new NumberFilterModel();
         numberFilter.setType(SimpleFilterModelType.valueOf(model.get("type").toString()));
         numberFilter.setFilter(Optional.ofNullable(model.get("filter")).map(Object::toString).map(BigDecimal::new).orElse(null));
@@ -23,13 +25,15 @@ public class AgNumberColumnFilter<N extends Number> extends SimpleFilter<N, Numb
     }
 
     @Override
+    @NonNull
     public NumberFilterParams getDefaultFilterParams() {
         return NumberFilterParams.builder().build();
     }
 
 
     @Override
-    protected Predicate toPredicate(CriteriaBuilder cb, Expression<N> numberExpression, NumberFilterModel filterModel) {
+    @NonNull
+    protected Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Expression<N> numberExpression, @NonNull NumberFilterModel filterModel) {
         Predicate predicate;
         
         switch (filterModel.getType()) {

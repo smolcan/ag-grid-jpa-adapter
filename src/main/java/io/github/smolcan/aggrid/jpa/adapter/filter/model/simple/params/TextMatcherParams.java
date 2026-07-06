@@ -4,6 +4,7 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.SimpleFilterMode
 import jakarta.persistence.criteria.Expression;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NonNull;
 
 @Getter
 @Builder
@@ -12,6 +13,7 @@ public class TextMatcherParams {
     /**
      * The applicable filter option being tested.
      */
+    @NonNull
     private final SimpleFilterModelType filterOption;
 
     /**
@@ -20,6 +22,7 @@ public class TextMatcherParams {
      * If no `textFormatter` is provided and `caseSensitive` is not provided or is `false`,
      * the value will have been converted to lower case.
      */
+    @NonNull
     private final Expression<String> value;
 
     /**
@@ -28,6 +31,7 @@ public class TextMatcherParams {
      * If no `textFormatter` is provided and `caseSensitive` is not provided or is `false`,
      * the value will have been converted to lower case.
      */
+    @NonNull
     private final Expression<String> filterText;
     
 }

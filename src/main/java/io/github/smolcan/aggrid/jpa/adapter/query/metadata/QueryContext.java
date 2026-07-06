@@ -5,6 +5,7 @@ import jakarta.persistence.criteria.AbstractQuery;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Root;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 
 import java.util.*;
@@ -35,7 +36,7 @@ public class QueryContext<E> {
     private int maxResults;
     private PivotingContext pivotingContext = new PivotingContext();
 
-    public QueryContext(CriteriaBuilder criteriaBuilder, AbstractQuery<?> query, Root<E> root) {
+    public QueryContext(@NonNull CriteriaBuilder criteriaBuilder, @NonNull AbstractQuery<?> query, @NonNull Root<E> root) {
         this.criteriaBuilder = criteriaBuilder;
         this.query = query;
         this.root = root;
