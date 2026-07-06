@@ -14,19 +14,19 @@ import java.util.stream.Collectors;
 
 @Setter
 @Getter
-public class JoinAdvancedFilterModel extends AdvancedFilterModel {
+public class JoinAdvancedFilterModel<E> extends AdvancedFilterModel<E> {
 
     @Setter(onMethod_ = {@NonNull})
     private JoinOperator type;
     @NonNull
-    private List<AdvancedFilterModel> conditions = new ArrayList<>();
+    private List<AdvancedFilterModel<E>> conditions = new ArrayList<>();
     
     public JoinAdvancedFilterModel() {
         super("join");
     }
 
     @Override
-    public Predicate toPredicate(CriteriaBuilder cb, Root<?> root) {
+    public Predicate toPredicate(CriteriaBuilder cb, Root<E> root) {
         List<Predicate> predicates = this.conditions.stream().map(c -> c.toPredicate(cb, root)).collect(Collectors.toList());
         if (this.type == JoinOperator.AND) {
             return cb.and(predicates.toArray(new Predicate[0]));

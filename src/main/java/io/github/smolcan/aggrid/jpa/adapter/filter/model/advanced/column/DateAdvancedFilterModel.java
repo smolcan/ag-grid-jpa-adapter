@@ -1,8 +1,8 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.column;
 
+import io.github.smolcan.aggrid.jpa.adapter.column.FieldPath;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.ColumnAdvancedFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.DateFilterParams;
-import io.github.smolcan.aggrid.jpa.adapter.utils.Utils;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
@@ -16,7 +16,7 @@ import java.time.LocalDate;
 
 @Getter
 @Setter
-public class DateAdvancedFilterModel extends ColumnAdvancedFilterModel {
+public class DateAdvancedFilterModel<E, T> extends ColumnAdvancedFilterModel<E, T> {
 
     @Setter(onMethod_ = {@NonNull})
     private ScalarAdvancedFilterModelType type;
@@ -24,16 +24,16 @@ public class DateAdvancedFilterModel extends ColumnAdvancedFilterModel {
     @NonNull
     private DateFilterParams filterParams = DateFilterParams.builder().build();
     
-    public DateAdvancedFilterModel(String colId) {
-        super("date", colId);
+    public DateAdvancedFilterModel(@NonNull FieldPath<E, T> columnField) {
+        super("date", columnField);
     }
     
     @Override
-    public Predicate toPredicate(CriteriaBuilder cb, Root<?> root) {
+    public Predicate toPredicate(CriteriaBuilder cb, Root<E> root) {
         this.filterParams.validateDate(this.filter);
         Predicate predicate;
-
-        Expression<LocalDate> path = Utils.getPath(root, this.getColId()).as(LocalDate.class);
+        
+        Expression<LocalDate> path = this.getColumnField().getPath(root).as(LocalDate.class);
         switch (this.type) {
             case blank: {
                 predicate = cb.isNull(path);

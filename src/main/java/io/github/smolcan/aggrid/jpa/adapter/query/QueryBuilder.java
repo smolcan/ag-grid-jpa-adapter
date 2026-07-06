@@ -7,9 +7,9 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.IFilter;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.JoinOperator;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.JoinAdvancedFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.column.*;
-import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.DateFilterParams;
-import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.NumberFilterParams;
-import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextFilterParams;
+import io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple.AgDateColumnFilter;
+import io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple.AgNumberColumnFilter;
+import io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple.AgTextColumnFilter;
 import io.github.smolcan.aggrid.jpa.adapter.query.metadata.*;
 import io.github.smolcan.aggrid.jpa.adapter.request.*;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.AdvancedFilterModel;
@@ -2237,7 +2237,7 @@ public class QueryBuilder<E, D> {
             throw new IllegalArgumentException("Can not create advanced filter when filter is in column-filter format");
         }
 
-        AdvancedFilterModel advancedFilterModel = this.recognizeAdvancedFilter(filterModel);
+        AdvancedFilterModel<E> advancedFilterModel = this.recognizeAdvancedFilter(filterModel);
         return advancedFilterModel.toPredicate(cb, root);
     }
     
@@ -2307,8 +2307,7 @@ public class QueryBuilder<E, D> {
      * @throws NullPointerException If the input {@code filter} map is {@code null}.
      */
     @SuppressWarnings("unchecked")
-    protected AdvancedFilterModel recognizeAdvancedFilter(Map<String, Object> filter) {
-        Objects.requireNonNull(filter);
+    protected AdvancedFilterModel<E> recognizeAdvancedFilter(@NonNull Map<String, Object> filter) {
         if (!this.enableAdvancedFilter) {
             throw new IllegalArgumentException("Can not perform advanced filtering, enableAdvancedFilter is set to false!");
         }
@@ -2316,7 +2315,7 @@ public class QueryBuilder<E, D> {
         String filterType = filter.get("filterType").toString();
         if (filterType.equals("join")) {
             // join
-            JoinAdvancedFilterModel joinAdvancedFilterModel = new JoinAdvancedFilterModel();
+            JoinAdvancedFilterModel<E> joinAdvancedFilterModel = new JoinAdvancedFilterModel<>();
             joinAdvancedFilterModel.setType(JoinOperator.valueOf(filter.get("type").toString()));
             joinAdvancedFilterModel.setConditions(((List<Map<String, Object>>) filter.get("conditions")).stream().map(this::recognizeAdvancedFilter).collect(Collectors.toList()));
 
@@ -2327,47 +2326,67 @@ public class QueryBuilder<E, D> {
             if (!this.colDefs.containsKey(colId)) {
                 throw new IllegalArgumentException("Can not filter on column not defined in col defs!");
             }
+            ColDef<E, ?> columnField = this.colDefs.get(colId);
+            IFilter<?, ?, ?> columnFilter = columnField.getFilter();
             // assert the filter has enabled filtering
-            if (this.colDefs.get(colId).getFilter() == null) {
+            if (columnFilter == null) {
                 throw new IllegalArgumentException("Can not filter on column which has filtering turned-off");
             }
             
             switch (filterType) {
                 case "text": case "object": {
-                    TextAdvancedFilterModel textAdvancedFilterModel = new TextAdvancedFilterModel(colId);
+                    if (!(columnFilter instanceof AgTextColumnFilter)) {
+                        throw new IllegalArgumentException("Can not apply text filter on non-text column");
+                    }
+                    
+                    ColDef<E, String> textColumnField = (ColDef<E, String>) columnField;
+                    AgTextColumnFilter textColumnFilter = (AgTextColumnFilter) textColumnField.getFilter();
+                    
+                    TextAdvancedFilterModel<E> textAdvancedFilterModel = new TextAdvancedFilterModel<>(textColumnField.getField());
                     textAdvancedFilterModel.setType(TextAdvancedFilterModelType.valueOf(filter.get("type").toString()));
                     textAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).orElse(null));
-                    Optional.ofNullable(this.colDefs.get(colId).getFilter())
-                            .map(IFilter::getFilterParams)
-                            .filter(TextFilterParams.class::isInstance)
-                            .map(fp -> (TextFilterParams) fp)
-                            .ifPresent(textAdvancedFilterModel::setFilterParams);
+                    if (textColumnFilter.getFilterParams() != null) {
+                        textAdvancedFilterModel.setFilterParams(textAdvancedFilterModel.getFilterParams());
+                    }
+                    
                     return textAdvancedFilterModel;
                 }
                 case "date": case "dateString": {
-                    DateAdvancedFilterModel dateAdvancedFilterModel = new DateAdvancedFilterModel(colId);
+                    if (!(columnFilter instanceof AgDateColumnFilter)) {
+                        throw new IllegalArgumentException("Can not apply date filter on non-date column");
+                    }
+
+                    ColDef<E, ?> dateColumnField = columnField;
+                    AgDateColumnFilter<?> dateColumnFilter = (AgDateColumnFilter<?>) dateColumnField.getFilter();
+                    
+                    DateAdvancedFilterModel<E, ?> dateAdvancedFilterModel = new DateAdvancedFilterModel<>(dateColumnField.getField());
                     dateAdvancedFilterModel.setType(ScalarAdvancedFilterModelType.valueOf(filter.get("type").toString()));
                     dateAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).map(f -> LocalDate.parse(f, DATE_FORMATTER_FOR_DATE_ADVANCED_FILTER)).orElse(null));
-                    Optional.ofNullable(this.colDefs.get(colId).getFilter())
-                            .map(IFilter::getFilterParams)
-                            .filter(DateFilterParams.class::isInstance)
-                            .map(fp -> (DateFilterParams) fp)
-                            .ifPresent(dateAdvancedFilterModel::setFilterParams);
+                    if (dateColumnFilter.getFilterParams() != null) {
+                        dateAdvancedFilterModel.setFilterParams(dateColumnFilter.getFilterParams());
+                    }
                     return dateAdvancedFilterModel;
                 }
                 case "number": {
-                    NumberAdvancedFilterModel numberAdvancedFilterModel = new NumberAdvancedFilterModel(colId);
+                    if (!(columnFilter instanceof AgNumberColumnFilter)) {
+                        throw new IllegalArgumentException("Can not apply number filter on non-number column");
+                    }
+                    
+                    ColDef<E, ? extends Number> numberColumnField = (ColDef<E, ? extends Number>) columnField;
+                    AgNumberColumnFilter<?> numberColumnFilter = (AgNumberColumnFilter<?>) columnField.getFilter();
+                    
+                    NumberAdvancedFilterModel<E, ?> numberAdvancedFilterModel = new NumberAdvancedFilterModel<>(numberColumnField.getField());
                     numberAdvancedFilterModel.setType(ScalarAdvancedFilterModelType.valueOf(filter.get("type").toString()));
                     numberAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).map(BigDecimal::new).orElse(null));
-                    Optional.ofNullable(this.colDefs.get(colId).getFilter())
-                            .map(IFilter::getFilterParams)
-                            .filter(NumberFilterParams.class::isInstance)
-                            .map(fp -> (NumberFilterParams) fp)
-                            .ifPresent(numberAdvancedFilterModel::setFilterParams);
+                    if (numberColumnFilter.getFilterParams() != null) {
+                        numberAdvancedFilterModel.setFilterParams(numberColumnFilter.getFilterParams());
+                    }
                     return numberAdvancedFilterModel;
                 }
                 case "boolean": {
-                    BooleanAdvancedFilterModel booleanAdvancedFilterModel = new BooleanAdvancedFilterModel(colId);
+                    ColDef<E, Boolean> booleanColDef = (ColDef<E, Boolean>) columnField;
+                    
+                    BooleanAdvancedFilterModel<E> booleanAdvancedFilterModel = new BooleanAdvancedFilterModel<>(booleanColDef.getField());
                     booleanAdvancedFilterModel.setType(Optional.ofNullable(filter.get("type")).map(Object::toString).map(v -> {
                         if (v.equalsIgnoreCase("true")) {
                             return BooleanAdvancedFilterModelType.TRUE;

@@ -14,9 +14,9 @@ import static lombok.AccessLevel.PROTECTED;
 @Setter
 @Getter
 @AllArgsConstructor(access = PROTECTED)
-public abstract class AdvancedFilterModel {
+public abstract class AdvancedFilterModel<E> {
     @NonNull
     private String filterType;
 
-    public abstract Predicate toPredicate(CriteriaBuilder cb, Root<?> root);
+    public abstract Predicate toPredicate(CriteriaBuilder cb, Root<E> root);
 }

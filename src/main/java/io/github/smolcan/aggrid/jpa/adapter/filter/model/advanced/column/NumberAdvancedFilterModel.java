@@ -1,8 +1,8 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.column;
 
+import io.github.smolcan.aggrid.jpa.adapter.column.FieldPath;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.ColumnAdvancedFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.NumberFilterParams;
-import io.github.smolcan.aggrid.jpa.adapter.utils.Utils;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
@@ -16,7 +16,7 @@ import java.math.BigDecimal;
 
 @Getter
 @Setter
-public class NumberAdvancedFilterModel extends ColumnAdvancedFilterModel {
+public class NumberAdvancedFilterModel<E, T extends Number> extends ColumnAdvancedFilterModel<E, T> {
 
     @Setter(onMethod_ = {@NonNull})
     private ScalarAdvancedFilterModelType type;
@@ -24,17 +24,17 @@ public class NumberAdvancedFilterModel extends ColumnAdvancedFilterModel {
     @NonNull
     private NumberFilterParams filterParams = NumberFilterParams.builder().build();
     
-    public NumberAdvancedFilterModel(String colId) {
-        super("number", colId);
+    public NumberAdvancedFilterModel(@NonNull FieldPath<E, T> columnField) {
+        super("number", columnField);
     }
     
     @Override
-    public Predicate toPredicate(CriteriaBuilder cb, Root<?> root) {
+    public Predicate toPredicate(CriteriaBuilder cb, Root<E> root) {
         Predicate predicate;
 
         // ensuring number compatibility
         // comparing any number types without problem, cast both to big decimal
-        Expression<BigDecimal> path = Utils.getPath(root, this.getColId()).as(BigDecimal.class);
+        Expression<? extends Number> path = this.getColumnField().getPath(root);
         switch (this.type) {
             case blank: {
                 predicate = cb.isNull(path);
