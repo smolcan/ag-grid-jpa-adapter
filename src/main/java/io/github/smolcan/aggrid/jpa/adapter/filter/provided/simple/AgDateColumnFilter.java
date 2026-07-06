@@ -6,9 +6,13 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.DateFilte
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
+import lombok.NonNull;
 
+import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.Temporal;
 import java.time.temporal.WeekFields;
@@ -18,8 +22,20 @@ import java.util.Objects;
 import java.util.Optional;
 
 @SuppressWarnings("java:S119")
-public class AgDateColumnFilter<DT extends Temporal & Comparable<? super DT>> extends SimpleFilter<DT, DateFilterModel, DateFilterParams> {
-    
+public abstract class AgDateColumnFilter<DT extends Temporal & Comparable<? super DT>> extends SimpleFilter<DT, DateFilterModel, DateFilterParams> {
+
+    public static AgLocalDateColumnFilter forLocalDate() {
+        return new AgLocalDateColumnFilter();
+    }
+
+    public static AgLocalDateTimeColumnFilter forLocalDateTime() {
+        return new AgLocalDateTimeColumnFilter();
+    }
+
+    public static AgInstantColumnFilter forInstant(@NonNull ZoneId zone) {
+        return new AgInstantColumnFilter(zone);
+    }
+
     @Override
     public DateFilterModel recognizeFilterModel(Map<String, Object> filterModel) {
         DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -36,89 +52,91 @@ public class AgDateColumnFilter<DT extends Temporal & Comparable<? super DT>> ex
     public DateFilterParams getDefaultFilterParams() {
         return DateFilterParams.builder().build();
     }
+    
+    protected abstract DT convertFromLocalDateTime(@NonNull LocalDateTime dateTime);
 
     @Override
     protected Predicate toPredicate(CriteriaBuilder cb, Expression<DT> expression, DateFilterModel filterModel) {
         this.filterParams.validateDate(filterModel.getDateFrom());
         this.filterParams.validateDate(filterModel.getDateTo());
         Predicate predicate;
-        // todo: add converter
-        Expression<LocalDateTime> dateExpression = expression.as(LocalDateTime.class);
         switch (filterModel.getType()) {
             case empty: case blank: {
-                predicate = cb.isNull(dateExpression);
+                predicate = cb.isNull(expression);
                 break;
             }
             case notBlank: {
-                predicate = cb.isNotNull(dateExpression);
+                predicate = cb.isNotNull(expression);
                 break;
             }
             case equals: {
                 Objects.requireNonNull(filterModel.getDateFrom());
-                predicate = cb.equal(dateExpression, filterModel.getDateFrom());
+                predicate = cb.equal(expression, this.convertFromLocalDateTime(filterModel.getDateFrom()));
                 if (filterParams.isIncludeBlanksInEquals()) {
-                    predicate = cb.or(predicate, cb.isNull(dateExpression));
+                    predicate = cb.or(predicate, cb.isNull(expression));
                 }
                 break;
             }
             case notEqual: {
                 Objects.requireNonNull(filterModel.getDateFrom());
-                predicate = cb.notEqual(dateExpression, filterModel.getDateFrom());
+                predicate = cb.notEqual(expression, this.convertFromLocalDateTime(filterModel.getDateFrom()));
                 if (filterParams.isIncludeBlanksInNotEqual()) {
-                    predicate = cb.or(predicate, cb.isNull(dateExpression));
+                    predicate = cb.or(predicate, cb.isNull(expression));
                 }
                 break;
             }
             case lessThan: {
                 Objects.requireNonNull(filterModel.getDateFrom());
-                predicate = cb.lessThan(dateExpression, filterModel.getDateFrom());
+                predicate = cb.lessThan(expression, this.convertFromLocalDateTime(filterModel.getDateFrom()));
                 if (filterParams.isIncludeBlanksInLessThan()) {
-                    predicate = cb.or(predicate, cb.isNull(dateExpression));
+                    predicate = cb.or(predicate, cb.isNull(expression));
                 }
                 break;
             }
             case lessThanOrEqual: {
                 Objects.requireNonNull(filterModel.getDateFrom());
-                predicate = cb.lessThanOrEqualTo(dateExpression, filterModel.getDateFrom());
+                predicate = cb.lessThanOrEqualTo(expression, this.convertFromLocalDateTime(filterModel.getDateFrom()));
                 if (filterParams.isIncludeBlanksInLessThan()) {
-                    predicate = cb.or(predicate, cb.isNull(dateExpression));
+                    predicate = cb.or(predicate, cb.isNull(expression));
                 }
                 break;
             }
             case greaterThan: {
                 Objects.requireNonNull(filterModel.getDateFrom());
-                predicate = cb.greaterThan(dateExpression, filterModel.getDateFrom());
+                predicate = cb.greaterThan(expression, this.convertFromLocalDateTime(filterModel.getDateFrom()));
                 if (filterParams.isIncludeBlanksInGreaterThan()) {
-                    predicate = cb.or(predicate, cb.isNull(dateExpression));
+                    predicate = cb.or(predicate, cb.isNull(expression));
                 }
                 break;
             }
             case greaterThanOrEqual: {
                 Objects.requireNonNull(filterModel.getDateFrom());
-                predicate = cb.greaterThanOrEqualTo(dateExpression, filterModel.getDateFrom());
+                predicate = cb.greaterThanOrEqualTo(expression, this.convertFromLocalDateTime(filterModel.getDateFrom()));
                 if (filterParams.isIncludeBlanksInGreaterThan()) {
-                    predicate = cb.or(predicate, cb.isNull(dateExpression));
+                    predicate = cb.or(predicate, cb.isNull(expression));
                 }
                 break;
             }
             case inRange: {
                 Objects.requireNonNull(filterModel.getDateFrom());
                 Objects.requireNonNull(filterModel.getDateTo());
+                DT dateFrom = this.convertFromLocalDateTime(filterModel.getDateFrom());
+                DT dateTo = this.convertFromLocalDateTime(filterModel.getDateTo());
                 if (filterParams.isInRangeInclusive()) {
-                    predicate = cb.and(cb.greaterThanOrEqualTo(dateExpression, filterModel.getDateFrom()), cb.lessThanOrEqualTo(dateExpression, filterModel.getDateTo()));
+                    predicate = cb.and(cb.greaterThanOrEqualTo(expression, dateFrom), cb.lessThanOrEqualTo(expression, dateTo));
                 } else {
-                    predicate = cb.and(cb.greaterThan(dateExpression, filterModel.getDateFrom()), cb.lessThan(dateExpression, filterModel.getDateTo()));
+                    predicate = cb.and(cb.greaterThan(expression, dateFrom), cb.lessThan(expression, dateTo));
                 }
                 if (filterParams.isIncludeBlanksInRange()) {
-                    predicate = cb.or(predicate, cb.isNull(dateExpression));
+                    predicate = cb.or(predicate, cb.isNull(expression));
                 }
                 break;
             }
-            
+
             // relative times
-            case today: 
+            case today:
             case yesterday:
-            case tomorrow:    
+            case tomorrow:
             case thisWeek:
             case lastWeek:
             case nextWeek:
@@ -138,7 +156,7 @@ public class AgDateColumnFilter<DT extends Temporal & Comparable<? super DT>> ex
             case last6Months:
             case last12Months:
             case last24Months: {
-                predicate = this.createNamedAndRelativeDateRangePredicate(cb, dateExpression, filterModel.getType());
+                predicate = this.createNamedAndRelativeDateRangePredicate(cb, expression, filterModel.getType());
                 break;
             }
 
@@ -151,11 +169,11 @@ public class AgDateColumnFilter<DT extends Temporal & Comparable<? super DT>> ex
     }
 
 
-    protected Predicate createNamedAndRelativeDateRangePredicate(CriteriaBuilder cb, Expression<LocalDateTime> dateExpression, SimpleFilterModelType type) {
+    protected Predicate createNamedAndRelativeDateRangePredicate(CriteriaBuilder cb, Expression<DT> expression, SimpleFilterModelType type) {
         if (!this.filterParams.getFilterOptions().contains(type)) {
             throw new IllegalArgumentException("Tried to use relative date filter " + type + ", but filter is not present in date filter params -> filter options");
         }
-        
+
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startOfToday = now.with(LocalTime.MIN);
 
@@ -262,25 +280,59 @@ public class AgDateColumnFilter<DT extends Temporal & Comparable<? super DT>> ex
                 dateFrom = startOfToday.minusMonths(24);
                 dateTo = startOfToday.plusDays(1);
                 break;
-            default: 
+            default:
                 throw new IllegalStateException("Unexpected value: " + type);
         }
-        
+
         // validate before using
         this.filterParams.validateDate(dateFrom);
         this.filterParams.validateDate(dateTo);
 
         Predicate predicate = cb.and(
                 // 	Time Range Start >=
-                cb.greaterThanOrEqualTo(dateExpression, dateFrom),
+                cb.greaterThanOrEqualTo(expression, this.convertFromLocalDateTime(dateFrom)),
                 // 	Time Range End <
-                cb.lessThan(dateExpression, dateTo)
+                cb.lessThan(expression, this.convertFromLocalDateTime(dateTo))
         );
-        
+
         if (this.filterParams.isIncludeBlanksInRange()) {
-            predicate = cb.or(predicate, cb.isNull(dateExpression));
+            predicate = cb.or(predicate, cb.isNull(expression));
         }
-        
+
         return predicate;
+    }
+
+
+    public static class AgLocalDateColumnFilter extends AgDateColumnFilter<LocalDate> {
+
+        @Override
+        protected LocalDate convertFromLocalDateTime(@NonNull LocalDateTime dateTime) {
+            return dateTime.toLocalDate();
+        }
+    }
+
+
+    public static class AgLocalDateTimeColumnFilter extends AgDateColumnFilter<LocalDateTime> {
+
+        @Override
+        protected LocalDateTime convertFromLocalDateTime(@NonNull LocalDateTime dateTime) {
+            return dateTime;
+        }
+    }
+
+
+    public static class AgInstantColumnFilter extends AgDateColumnFilter<Instant> {
+
+        @NonNull
+        private final ZoneId zone;
+
+        public AgInstantColumnFilter(@NonNull ZoneId zone) {
+            this.zone = zone;
+        }
+
+        @Override
+        protected Instant convertFromLocalDateTime(@NonNull LocalDateTime dateTime) {
+            return dateTime.atZone(this.zone).toInstant();
+        }
     }
 }
