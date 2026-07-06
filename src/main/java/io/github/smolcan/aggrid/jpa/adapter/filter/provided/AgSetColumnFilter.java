@@ -8,6 +8,7 @@ import jakarta.persistence.criteria.Predicate;
 import lombok.NonNull;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -36,6 +37,10 @@ public abstract class AgSetColumnFilter<T> extends IProvidedFilter<T, SetFilterM
         return new AgSetBooleanColumnFilter();
     }
 
+    public static AgSetDateColumnFilter forDate() {
+        return new AgSetDateColumnFilter();
+    }
+
     @Override
     @SuppressWarnings("unchecked")
     public SetFilterModel recognizeFilterModel(Map<String, Object> filterModel) {
@@ -62,7 +67,7 @@ public abstract class AgSetColumnFilter<T> extends IProvidedFilter<T, SetFilterM
             return cb.isNull(expression);
         }
 
-        // type-specific IN predicate over the non-null selected values
+        // IN predicate over the non-null selected values
         Predicate predicate = this.toSetPredicate(cb, expression, filterModel);
         if (hasNullInValues) {
             predicate = cb.or(predicate, cb.isNull(expression));
@@ -70,21 +75,36 @@ public abstract class AgSetColumnFilter<T> extends IProvidedFilter<T, SetFilterM
         return predicate;
     }
     
-    protected abstract @NonNull Predicate toSetPredicate(@NonNull CriteriaBuilder cb, @NonNull Expression<T> expression, @NonNull SetFilterModel filterModel);
+    
+    protected Predicate toSetPredicate(CriteriaBuilder cb, Expression<T> expression, SetFilterModel filterModel) {
+        Expression<T> columnExpression = this.modifyColumnExpression(cb, expression);
+        List<Expression<?>> valueExpressions = filterModel.getValues()
+                .stream()
+                .filter(Objects::nonNull)
+                .map(value -> this.parseValueToExpression(cb, value))
+                .collect(Collectors.toList());
+
+        return columnExpression.in(valueExpressions);
+    }
+    
+    
+    protected Expression<T> modifyColumnExpression(CriteriaBuilder cb, Expression<T> expression) {
+        return expression;
+    }
+
+    protected abstract Expression<T> parseValueToExpression(CriteriaBuilder cb, String value);
 
 
     public static class AgSetStringColumnFilter extends AgSetColumnFilter<String> {
 
         @Override
-        protected Predicate toSetPredicate(CriteriaBuilder cb, Expression<String> expression, SetFilterModel filterModel) {
-            Expression<String> stringExpression = this.generateExpressionFromFilterParams(cb, expression);
-            List<Expression<String>> inExpressions = filterModel.getValues()
-                    .stream()
-                    .filter(Objects::nonNull)
-                    .map(v -> this.generateExpressionFromFilterParams(cb, cb.literal(v)))
-                    .collect(Collectors.toList());
+        protected Expression<String> modifyColumnExpression(CriteriaBuilder cb, Expression<String> expression) {
+            return this.generateExpressionFromFilterParams(cb, expression);
+        }
 
-            return stringExpression.in(inExpressions);
+        @Override
+        protected Expression<String> parseValueToExpression(CriteriaBuilder cb, String value) {
+            return this.generateExpressionFromFilterParams(cb, cb.literal(value));
         }
 
         /**
@@ -111,16 +131,9 @@ public abstract class AgSetColumnFilter<T> extends IProvidedFilter<T, SetFilterM
     public static class AgSetNumberColumnFilter<N extends Number> extends AgSetColumnFilter<N> {
 
         @Override
-        protected Predicate toSetPredicate(CriteriaBuilder cb, Expression<N> expression, SetFilterModel filterModel) {
-            // column is statically known to be numeric, so parse each value into a BigDecimal
-            // (lossless for any Number type, compared numerically by the database in the IN clause)
-            List<BigDecimal> values = filterModel.getValues()
-                    .stream()
-                    .filter(Objects::nonNull)
-                    .map(BigDecimal::new)
-                    .collect(Collectors.toList());
-
-            return expression.in(values);
+        @SuppressWarnings("unchecked")
+        protected Expression<N> parseValueToExpression(CriteriaBuilder cb, String value) {
+            return (Expression<N>) cb.literal(new BigDecimal(value));
         }
     }
 
@@ -128,15 +141,8 @@ public abstract class AgSetColumnFilter<T> extends IProvidedFilter<T, SetFilterM
     public static class AgSetUUIDColumnFilter extends AgSetColumnFilter<UUID> {
 
         @Override
-        protected Predicate toSetPredicate(CriteriaBuilder cb, Expression<UUID> expression, SetFilterModel filterModel) {
-            // column is statically known to be a UUID, so parse each value straight into a UUID
-            List<UUID> values = filterModel.getValues()
-                    .stream()
-                    .filter(Objects::nonNull)
-                    .map(UUID::fromString)
-                    .collect(Collectors.toList());
-
-            return expression.in(values);
+        protected Expression<UUID> parseValueToExpression(CriteriaBuilder cb, String value) {
+            return cb.literal(UUID.fromString(value));
         }
     }
 
@@ -145,19 +151,13 @@ public abstract class AgSetColumnFilter<T> extends IProvidedFilter<T, SetFilterM
 
         private final Class<E> enumType;
 
-        public AgSetEnumColumnFilter(Class<E> enumType) {
-            this.enumType = Objects.requireNonNull(enumType);
+        public AgSetEnumColumnFilter(@NonNull Class<E> enumType) {
+            this.enumType = enumType;
         }
 
         @Override
-        protected Predicate toSetPredicate(CriteriaBuilder cb, Expression<E> expression, SetFilterModel filterModel) {
-            List<E> values = filterModel.getValues()
-                    .stream()
-                    .filter(Objects::nonNull)
-                    .map(v -> Enum.valueOf(this.enumType, v))
-                    .collect(Collectors.toList());
-
-            return expression.in(values);
+        protected Expression<E> parseValueToExpression(CriteriaBuilder cb, String value) {
+            return cb.literal(Enum.valueOf(this.enumType, value));
         }
     }
 
@@ -165,15 +165,8 @@ public abstract class AgSetColumnFilter<T> extends IProvidedFilter<T, SetFilterM
     public static class AgSetBooleanColumnFilter extends AgSetColumnFilter<Boolean> {
 
         @Override
-        protected Predicate toSetPredicate(CriteriaBuilder cb, Expression<Boolean> expression, SetFilterModel filterModel) {
-            // column is statically known to be a Boolean, so parse each value into a Boolean
-            List<Boolean> values = filterModel.getValues()
-                    .stream()
-                    .filter(Objects::nonNull)
-                    .map(AgSetBooleanColumnFilter::parseBoolean)
-                    .collect(Collectors.toList());
-
-            return expression.in(values);
+        protected Expression<Boolean> parseValueToExpression(CriteriaBuilder cb, String value) {
+            return cb.literal(parseBoolean(value));
         }
 
         private static Boolean parseBoolean(String value) {
@@ -184,6 +177,16 @@ public abstract class AgSetColumnFilter<T> extends IProvidedFilter<T, SetFilterM
             } else {
                 throw new IllegalArgumentException("Cannot parse boolean value: " + value);
             }
+        }
+    }
+
+
+    public static class AgSetDateColumnFilter extends AgSetColumnFilter<LocalDate> {
+
+        @Override
+        protected Expression<LocalDate> parseValueToExpression(CriteriaBuilder cb, String value) {
+            // ag-grid sends set filter dates in ISO format (yyyy-MM-dd), which LocalDate.parse handles directly
+            return cb.literal(LocalDate.parse(value));
         }
     }
 
