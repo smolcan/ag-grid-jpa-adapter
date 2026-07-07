@@ -28,6 +28,7 @@ This project is under active development. Breaking changes may occur between ver
 **Requirements 🛠️**
 - **Java**: Version **11** or higher.
 - **JPA**: Version **3.1.0**.
+- **JPA static metamodel**: an annotation processor that generates the `*_` metamodel classes (e.g. `hibernate-jpamodelgen`) — see [step 2](#complete-example) below.
 
 ## Using AG Grid JPA Adapter
 When enabling 'serverSide' row model type in your AG Grid, you must provide [datasource](https://ag-grid.com/react-data-grid/server-side-model-datasource/),
@@ -82,23 +83,39 @@ public class Trade {
 }
 ```
 
-**2. Build a `QueryBuilder` once (e.g. in a Spring `@Service`):**
+**2. Generate the JPA static metamodel:**
+
+Columns are declared with the generated **JPA static metamodel** attributes (`Trade_.product`), 
+so you need a metamodel generator on your build — for example `hibernate-jpamodelgen`:
+
+```xml
+<annotationProcessorPaths>
+    <path>
+        <groupId>org.hibernate.orm</groupId>
+        <artifactId>hibernate-jpamodelgen</artifactId>
+        <version>${hibernate.version}</version>
+    </path>
+</annotationProcessorPaths>
+```
+
+**3. Build a `QueryBuilder` once (e.g. in a Spring `@Service`):**
 
 ```java
 @Service
 public class TradeService {
 
-    private final QueryBuilder<Trade> queryBuilder;
+    // second type parameter is the master-detail *detail* entity type;
+    // use Void when you are not using master-detail
+    private final QueryBuilder<Trade, Void> queryBuilder;
 
-    public TradeService(EntityManager entityManager) {
+    public TradeService(@Autowired EntityManager entityManager) {
         this.queryBuilder = QueryBuilder.builder(Trade.class, entityManager)
             .colDefs(
-                ColDef.builder().field("id").sortable(true).build(),
-                ColDef.builder().field("product").filter(new AgTextColumnFilter()).build(),
-                ColDef.builder().field("portfolio").filter(new AgSetColumnFilter()).build(),
-                ColDef.builder()
-                    .field("currentValue")
-                    .filter(new AgNumberColumnFilter())
+                ColDef.builder(Trade_.id).sortable(true).build(),
+                ColDef.builder(Trade_.product).filter(new AgTextColumnFilter()).build(),
+                ColDef.builder(Trade_.portfolio).filter(AgSetColumnFilter.forString()).build(),
+                ColDef.builder(Trade_.currentValue)
+                    .filter(new AgNumberColumnFilter<BigDecimal>())
                     .enableValue(true)
                     .enableRowGroup(true)
                     .build()
@@ -112,7 +129,16 @@ public class TradeService {
 }
 ```
 
-**3. Expose an endpoint:**
+To map a column onto a **related entity**, build the path with `FieldPath` instead of a single
+attribute:
+
+```java
+ColDef.builder(FieldPath.of(Trade_.submitter).to(Submitter_.id))
+    .filter(new AgNumberColumnFilter<Long>())
+    .build()
+```
+
+**4. Expose an endpoint:**
 
 ```java
 @RestController
@@ -128,7 +154,7 @@ public class TradeController {
 }
 ```
 
-**4. Point AG Grid at your endpoint:**
+**5. Point AG Grid at your endpoint:**
 
 ```javascript
 const datasource = {
