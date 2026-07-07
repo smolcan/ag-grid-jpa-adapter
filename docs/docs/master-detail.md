@@ -20,14 +20,14 @@ To enable Master/Detail, set `.masterDetail(true)` in the builder.
 
 Unlike standard configuration, Master/Detail settings are grouped into a `MasterDetailParams` object. You must configure **what** to display (the detail entity class and columns) and **how** to link the detail records to the master record.
 
-The detail entity type is the second type parameter of `QueryBuilder<E, D>` — pass the detail entity class as the second argument to `QueryBuilder.builder(masterClass, detailClass, em)`.
+The type parameters are `QueryBuilder<E, E_ID, D>` (master entity, master ID type, detail entity). Pass the master's `@Id` attribute as the second argument and the detail entity class as the third: `QueryBuilder.builder(masterClass, masterPrimaryField, detailClass, em)`.
 
 ### Configuration Parameters
 
 | Method | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
 | `masterDetail` | `boolean` | **Yes** | Enables the functionality. |
-| `primaryFieldName` | `SingularAttribute<E, ?>` | **Yes** | The ID attribute of the **Master** entity (e.g. `MasterEntity_.id`). |
+| `builder(…, primaryField, …)` | `SingularAttribute<E, E_ID>` | **Yes** | The **Master** entity's `@Id` attribute (e.g. `MasterEntity_.id`), passed as the second argument to `QueryBuilder.builder(...)`. |
 | `masterDetailParams` | `MasterDetailParams` | **Yes*** | Configuration object containing detail class, columns, and joining logic. |
 
 *\*Required unless using dynamic params.*
@@ -42,13 +42,12 @@ Inside `MasterDetailParams`, you must define how the adapter finds the detail re
 
 
 ```java
-QueryBuilder.builder(MasterEntity.class, DetailEntity.class, em)
+QueryBuilder.builder(MasterEntity.class, MasterEntity_.id, DetailEntity.class, em)
     .masterDetail(true)
-    .primaryFieldName(MasterEntity_.id) // Master ID
     
     // Group Detail Configuration
     .masterDetailParams(
-        QueryBuilder.MasterDetailParams.<MasterEntity, DetailEntity>builder()
+        QueryBuilder.MasterDetailParams.<MasterEntity, Long, DetailEntity>builder()
             .detailClass(DetailEntity.class)
             .detailColDefs(
                 ColDef.builder(DetailEntity_.detailId).build(),
@@ -108,14 +107,13 @@ Requirements:
 2. This field name must not exist in the `detailColDefs`.
 
 ```java
-QueryBuilder.builder(MasterEntity.class, DetailEntity.class, em)
+QueryBuilder.builder(MasterEntity.class, MasterEntity_.id, DetailEntity.class, em)
     .masterDetail(true)
     .masterDetailLazy(false) // Turn off lazy loading
     .masterDetailRowDataFieldName("detailRows") // JSON key for nested list
-    .primaryFieldName(MasterEntity_.id)
     
     .masterDetailParams(
-        QueryBuilder.MasterDetailParams.<MasterEntity, DetailEntity>builder()
+        QueryBuilder.MasterDetailParams.<MasterEntity, Long, DetailEntity>builder()
             .detailClass(DetailEntity.class)
             .detailColDefs(
                  ColDef.builder(DetailEntity_.detailId).build()
@@ -156,12 +154,11 @@ If standard ID or Reference mapping is insufficient (e.g., for composite keys or
 This function provides access to the JPA `CriteriaBuilder`, the detail entity `Root`, and the raw `masterRow` data map, allowing you to construct any valid JPA Predicate to filter the detail records.
 
 ```java
-QueryBuilder.builder(Trade.class, Trade.class, entityManager)
+QueryBuilder.builder(Trade.class, Trade_.tradeId, Trade.class, entityManager)
                 .colDefs(...)
                 .masterDetail(true)
-                .primaryFieldName(Trade_.tradeId)
                 .masterDetailParams(
-                        QueryBuilder.MasterDetailParams.<Trade, Trade>builder()
+                        QueryBuilder.MasterDetailParams.<Trade, Long, Trade>builder()
                                 .detailClass(Trade.class)
                                 .detailColDefs(...)
                                 .createMasterRowPredicate((cb, detailRoot, masterRow) -> {
@@ -208,16 +205,15 @@ The detail **entity class** is fixed for a given `QueryBuilder` (the second argu
 :::
 
 ```java
-QueryBuilder.builder(Vehicle.class, VehicleDetail.class, em)
+QueryBuilder.builder(Vehicle.class, Vehicle_.id, VehicleDetail.class, em)
     .masterDetail(true)
-    .primaryFieldName(Vehicle_.id)
     
     // Dynamic Configuration
     .dynamicMasterDetailParams(masterRow -> {
         String type = (String) masterRow.get("type");
         
         if ("CAR".equals(type)) {
-            return QueryBuilder.MasterDetailParams.<Vehicle, VehicleDetail>builder()
+            return QueryBuilder.MasterDetailParams.<Vehicle, Long, VehicleDetail>builder()
                     .detailClass(VehicleDetail.class)
                     .detailColDefs(
                         ColDef.builder(VehicleDetail_.wheels).build(),
@@ -226,7 +222,7 @@ QueryBuilder.builder(Vehicle.class, VehicleDetail.class, em)
                     .detailMasterReferenceField(VehicleDetail_.vehicle)
                     .build();
         } else {
-             return QueryBuilder.MasterDetailParams.<Vehicle, VehicleDetail>builder()
+             return QueryBuilder.MasterDetailParams.<Vehicle, Long, VehicleDetail>builder()
                     .detailClass(VehicleDetail.class)
                     .detailColDefs(
                         ColDef.builder(VehicleDetail_.propeller).build(),

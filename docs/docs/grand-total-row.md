@@ -8,7 +8,7 @@ A grand total row aggregates values across all rows in the grid and is displayed
 To enable it, set `grandTotalRow(true)` on the `QueryBuilder`. Without this flag the adapter will not compute the grand total even if the frontend requests it.
 
 ```java
-QueryBuilder<Entity, Void> queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
+QueryBuilder<Entity, Long, Void> queryBuilder = QueryBuilder.builder(Entity.class, Entity_.id, entityManager)
     .colDefs(...)
     .grandTotalRow(true)
     .build();

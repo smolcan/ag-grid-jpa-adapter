@@ -35,7 +35,7 @@ To enable child counts, you need to set `getChildCount` on query builder to `tru
 and also provide name of the field where child count will be returned (this is the same field you will use in `getChildCount` callback in client).
 
 ```java
-this.queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
+this.queryBuilder = QueryBuilder.builder(Entity.class, Entity_.id, entityManager)
     .colDefs(
         // colDefs
     )

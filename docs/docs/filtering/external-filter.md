@@ -13,7 +13,7 @@ AG Grid's frontend does not natively wire external filters in Server-Side Row Mo
 You must configure the QueryBuilder with two key parameters: `isExternalFilterPresent` and `doesExternalFilterPass`
 
 ```java
-QueryBuilder.builder(Trade.class, entityManager)
+QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
     .colDefs(/* ... */)
     .isExternalFilterPresent(true)
     .doesExternalFilterPass((cb, root, filterValue) -> {

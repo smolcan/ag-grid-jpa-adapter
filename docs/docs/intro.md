@@ -104,12 +104,13 @@ so you need a metamodel generator on your build — for example `hibernate-jpamo
 @Service
 public class TradeService {
 
-    // second type parameter is the master-detail *detail* entity type;
-    // use Void when you are not using master-detail
-    private final QueryBuilder<Trade, Void> queryBuilder;
+    // type parameters are <entity, id type, master-detail detail type>;
+    // use Void for the detail type when not using master-detail
+    private final QueryBuilder<Trade, Long, Void> queryBuilder;
 
     public TradeService(@Autowired EntityManager entityManager) {
-        this.queryBuilder = QueryBuilder.builder(Trade.class, entityManager)
+        // pass the entity's @Id attribute as the second argument
+        this.queryBuilder = QueryBuilder.builder(Trade.class, Trade_.id, entityManager)
             .colDefs(
                 ColDef.builder(Trade_.id).sortable(true).build(),
                 ColDef.builder(Trade_.product).filter(new AgTextColumnFilter()).build(),

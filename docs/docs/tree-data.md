@@ -5,12 +5,11 @@ sidebar_position: 9
 
 # Tree Data
 
-To enable Tree Data, set `.treeData(true)` and configure the field mappings needed to traverse the hierarchy.
+To enable Tree Data, set `.treeData(true)` and configure the field mappings needed to traverse the hierarchy. The entity's ID attribute is passed as the second argument to `QueryBuilder.builder(entityClass, primaryField, ...)` (it is not a chained method).
 
 | Method | Type | Required      | Description                                                                                                                                                                                                                                  |
 | :--- | :--- |:--------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `treeData` | `boolean` | **Yes**       | Enables Tree Data mode.                                                                                                                                                                                                                      |
-| `primaryFieldName` | `SingularAttribute<E, ?>` | **Yes**       | The entity's unique ID attribute (e.g. `Trade_.tradeId`). Matches field used in [getServerSideGroupKey](https://www.ag-grid.com/react-data-grid/server-side-model-tree-data/#reference-serverSideRowModel-getServerSideGroupKey) callback.                       |
 | `isServerSideGroupFieldName` | `String` | **Yes**       | Name of the virtual boolean field indicating if a row has children. Matches field used in [isServerSideGroup](https://www.ag-grid.com/react-data-grid/server-side-model-tree-data/#reference-serverSideRowModel-isServerSideGroup) callback. |
 | `treeDataParentReferenceField` | `SingularAttribute<E, ?>` | *Conditional* | The parent-reference attribute (e.g. `Trade_.parentTrade`). **Required** if not using `treeDataParentIdField`.                                                                                                                                                          |
 | `treeDataParentIdField` | `SingularAttribute<E, ?>` | *Conditional* | The raw parent-ID attribute. **Required** if not using `treeDataParentReferenceField`.                                                                                                                                                  |
@@ -21,16 +20,13 @@ To enable Tree Data, set `.treeData(true)` and configure the field mappings need
 Example:
 
 ```java
-this.queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
+this.queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager) // primary key attribute is the 2nd arg
     .colDefs(
         // colDefs
     )
     
     // turn on treeData
     .treeData(true)
-    
-    // Id attribute of your entity (required)
-    .primaryFieldName(Trade_.tradeId)
     
     // name of field in which we return whether has children (required)
     .isServerSideGroupFieldName("hasChildren")

@@ -22,7 +22,7 @@ You can also fine-tune text handling with optional parameters like trimming, cas
 
 
 ```java
-QueryBuilder.builder(Trade.class, entityManager)
+QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
     // 1. Enable Quick Filter support
     .isQuickFilterPresent(true)
     

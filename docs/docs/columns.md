@@ -36,7 +36,7 @@ var nameColumn = ColDef.builder(Entity_.name)
     .sortable(false)
     .build();
 
-QueryBuilder<Entity, Void> queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
+QueryBuilder<Entity, Long, Void> queryBuilder = QueryBuilder.builder(Entity.class, Entity_.id, entityManager)
     .colDefs(priceColumn, nameColumn)
     .build();
 ```
@@ -84,7 +84,7 @@ By default, dot notation fields are returned as **nested JSON objects** to align
 To return flat keys (e.g., `"category.name": "Value"`), you must enable `suppressFieldDotNotation` in the `QueryBuilder`.
 
 ```java
-QueryBuilder<Entity, Void> queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
+QueryBuilder<Entity, Long, Void> queryBuilder = QueryBuilder.builder(Entity.class, Entity_.id, entityManager)
     .colDefs(
         // ...col defs
     )

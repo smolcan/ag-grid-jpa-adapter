@@ -38,7 +38,7 @@ When the grid generates a number of pivot columns exceeding this value, it halts
 the [`OnPivotMaxColumnsExceededException`](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/exceptions/OnPivotMaxColumnsExceededException.java).
 
 ```java
-this.queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
+this.queryBuilder = QueryBuilder.builder(Entity.class, Entity_.id, entityManager)
                 .colDefs(
                         // colDefs
                 )

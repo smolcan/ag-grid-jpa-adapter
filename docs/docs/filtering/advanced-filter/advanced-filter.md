@@ -9,7 +9,7 @@ sidebar_position: 5
 To enable the advanced filter, set the value of the `enableAdvancedFilter` variable in `QueryBuilder` to `true`:
 
 ```java
-this.queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
+this.queryBuilder = QueryBuilder.builder(Entity.class, Entity_.id, entityManager)
                 .colDefs(
                         // colDefs
                 )
