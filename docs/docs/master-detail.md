@@ -27,7 +27,7 @@ The detail entity type is the second type parameter of `QueryBuilder<E, D>` — 
 | Method | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
 | `masterDetail` | `boolean` | **Yes** | Enables the functionality. |
-| `primaryFieldName` | `String` | **Yes** | The ID field name of the **Master** entity. |
+| `primaryFieldName` | `SingularAttribute<E, ?>` | **Yes** | The ID attribute of the **Master** entity (e.g. `MasterEntity_.id`). |
 | `masterDetailParams` | `MasterDetailParams` | **Yes*** | Configuration object containing detail class, columns, and joining logic. |
 
 *\*Required unless using dynamic params.*
@@ -44,7 +44,7 @@ Inside `MasterDetailParams`, you must define how the adapter finds the detail re
 ```java
 QueryBuilder.builder(MasterEntity.class, DetailEntity.class, em)
     .masterDetail(true)
-    .primaryFieldName("id") // Master ID
+    .primaryFieldName(MasterEntity_.id) // Master ID
     
     // Group Detail Configuration
     .masterDetailParams(
@@ -112,7 +112,7 @@ QueryBuilder.builder(MasterEntity.class, DetailEntity.class, em)
     .masterDetail(true)
     .masterDetailLazy(false) // Turn off lazy loading
     .masterDetailRowDataFieldName("detailRows") // JSON key for nested list
-    .primaryFieldName("id")
+    .primaryFieldName(MasterEntity_.id)
     
     .masterDetailParams(
         QueryBuilder.MasterDetailParams.<MasterEntity, DetailEntity>builder()
@@ -159,7 +159,7 @@ This function provides access to the JPA `CriteriaBuilder`, the detail entity `R
 QueryBuilder.builder(Trade.class, Trade.class, entityManager)
                 .colDefs(...)
                 .masterDetail(true)
-                .primaryFieldName("id")
+                .primaryFieldName(Trade_.tradeId)
                 .masterDetailParams(
                         QueryBuilder.MasterDetailParams.<Trade, Trade>builder()
                                 .detailClass(Trade.class)
@@ -210,7 +210,7 @@ The detail **entity class** is fixed for a given `QueryBuilder` (the second argu
 ```java
 QueryBuilder.builder(Vehicle.class, VehicleDetail.class, em)
     .masterDetail(true)
-    .primaryFieldName("id")
+    .primaryFieldName(Vehicle_.id)
     
     // Dynamic Configuration
     .dynamicMasterDetailParams(masterRow -> {

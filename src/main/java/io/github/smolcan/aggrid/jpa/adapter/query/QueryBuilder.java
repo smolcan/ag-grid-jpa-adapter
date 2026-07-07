@@ -24,6 +24,7 @@ import jakarta.persistence.Tuple;
 import jakarta.persistence.TupleElement;
 import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.*;
+import jakarta.persistence.metamodel.PluralAttribute;
 import jakarta.persistence.metamodel.SingularAttribute;
 import lombok.Getter;
 import lombok.NonNull;
@@ -65,13 +66,13 @@ import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.cartesianProduct;
  * @param <D> the type of the detail entity for master-detail (use {@code Void} when not used)
  * @author Samuel Molčan
  */
-@SuppressWarnings({"unused", "java:S3776"})
-public class QueryBuilder<E, D> {
+@SuppressWarnings({"unused", "java:S3776", "java:S119"})
+public class QueryBuilder<E, E_ID, D> {
     protected static final DateTimeFormatter DATE_FORMATTER_FOR_DATE_ADVANCED_FILTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     protected static final String AUTO_GROUP_COLUMN_NAME = "ag-Grid-AutoColumn";
 
     protected final Class<E> entityClass;
-    protected final String primaryFieldName;
+    protected final SingularAttribute<E, E_ID> primaryField;
     protected final EntityManager entityManager;
     protected final String serverSidePivotResultFieldSeparator;
     protected final boolean enableAdvancedFilter;
@@ -96,36 +97,36 @@ public class QueryBuilder<E, D> {
 
     protected final boolean treeData;
     protected final String isServerSideGroupFieldName;
-    protected final String treeDataParentReferenceField;
-    protected final String treeDataParentIdField;
-    protected final String treeDataChildrenField;
-    protected final String treeDataDataPathFieldName;
+    protected final SingularAttribute<E, E> treeDataParentReferenceField;
+    protected final SingularAttribute<E, E_ID> treeDataParentIdField;
+    protected final PluralAttribute<E, ? extends Collection<E>, E> treeDataChildrenField;
+    protected final SingularAttribute<E, String> treeDataDataPathFieldName;
     protected final String treeDataDataPathSeparator;
 
     protected final boolean masterDetail;
     protected final boolean masterDetailLazy;
     protected final String masterDetailRowDataFieldName;
-    protected final MasterDetailParams<E, D> masterDetailParams;
-    protected final Function<Map<String, Object>, MasterDetailParams<E, D>> dynamicMasterDetailParams;
+    protected final MasterDetailParams<E, E_ID, D> masterDetailParams;
+    protected final Function<Map<String, Object>, MasterDetailParams<E, E_ID, D>> dynamicMasterDetailParams;
     protected final boolean grandTotalRow;
 
 
     protected final Map<String, ColDef<E, ?>> colDefs;
     
     @NonNull
-    public static <E> Builder<E, Void> builder(@NonNull Class<E> entityClass, @NonNull EntityManager entityManager) {
-        return new Builder<>(entityClass, entityManager);
+    public static <E, E_ID> Builder<E, E_ID, Void> builder(@NonNull Class<E> entityClass, @NonNull SingularAttribute<E, E_ID> primaryField, @NonNull EntityManager entityManager) {
+        return new Builder<>(entityClass, primaryField, entityManager);
     }
     
     @NonNull
-    public static <E, D> Builder<E, D> builder(@NonNull Class<E> entityClass, @NonNull Class<D> detailClass, @NonNull EntityManager entityManager) {
-        return new Builder<>(entityClass, detailClass, entityManager);
+    public static <E, E_ID, D> Builder<E, E_ID, D> builder(@NonNull Class<E> entityClass, @NonNull SingularAttribute<E, E_ID> primaryField, @NonNull Class<D> detailClass, @NonNull EntityManager entityManager) {
+        return new Builder<>(entityClass, primaryField, detailClass, entityManager);
     }
     
-    protected QueryBuilder(@NonNull Builder<E, D> builder) {
+    protected QueryBuilder(@NonNull Builder<E, E_ID, D> builder) {
         this.entityClass = builder.entityClass;
         this.entityManager = builder.entityManager;
-        this.primaryFieldName = builder.primaryFieldName;
+        this.primaryField = builder.primaryField;
         this.serverSidePivotResultFieldSeparator = builder.serverSidePivotResultFieldSeparator;
         this.enableAdvancedFilter = builder.enableAdvancedFilter;
         this.pivotMaxGeneratedColumns = builder.pivotMaxGeneratedColumns;
@@ -391,7 +392,7 @@ public class QueryBuilder<E, D> {
         }
         
         // find params for detail grid
-        MasterDetailParams<E, D> params = this.dynamicMasterDetailParams != null
+        MasterDetailParams<E, E_ID, D> params = this.dynamicMasterDetailParams != null
                 ? this.dynamicMasterDetailParams.apply(masterRow)   // dynamic
                 : this.masterDetailParams;                          // static
         
@@ -609,6 +610,7 @@ public class QueryBuilder<E, D> {
      *
      * @param masters the list of master row data maps to be populated
      */
+    @SuppressWarnings("unchecked")
     protected void attachDetailRowDataToMasters(@NonNull List<Map<String, Object>> masters) {
         if (masters.isEmpty()) {
             return;
@@ -631,22 +633,22 @@ public class QueryBuilder<E, D> {
                 .map(colDef -> colDef.getField().getPath(detailRoot).alias(colDef.getFieldName()))
                 .collect(Collectors.toList());
         // master rows map by primary field (as string)
-        Map<String, Map<String, Object>> masterRowsGroupedByPrimaryField = masters.stream()
+        Map<E_ID, Map<String, Object>> masterRowsGroupedByPrimaryField = masters.stream()
                 .collect(Collectors.toMap(
-                        v -> String.valueOf(v.get(this.primaryFieldName)),
+                        v -> (E_ID) v.get(this.primaryField.getName()),
                         Function.identity(),
                         (existing, replacement) -> existing
                 ));
         
-        Set<Object> masterIds = masters.stream()
-                .map(v -> v.get(this.primaryFieldName))
+        Set<E_ID> masterIds = masters.stream()
+                .map(v -> (E_ID) v.get(this.primaryField.getName()))
                 .collect(Collectors.toSet());
         
         // helper selections for master id
         String masterPrimaryFieldAlias = "__fk_helper__";
-        Path<?> masterPrimaryFieldPath;
+        Path<E_ID> masterPrimaryFieldPath;
         if (this.masterDetailParams.getDetailMasterReferenceField() != null) {
-            masterPrimaryFieldPath = detailRoot.get(this.masterDetailParams.getDetailMasterReferenceField()).get(this.primaryFieldName);
+            masterPrimaryFieldPath = detailRoot.get(this.masterDetailParams.getDetailMasterReferenceField()).get(this.primaryField);
         } else {
             masterPrimaryFieldPath = detailRoot.get(this.masterDetailParams.getDetailMasterIdField());
         }
@@ -656,11 +658,11 @@ public class QueryBuilder<E, D> {
         query.where(masterPrimaryFieldPath.in(masterIds));
 
         List<Tuple> detailTuples = this.entityManager.createQuery(query).getResultList();
-        Map<String, List<Map<String, Object>>> detailsGroupedByMaster = this.tupleToMap(detailTuples).stream()
-                .collect(Collectors.groupingBy(v -> String.valueOf(v.get(masterPrimaryFieldAlias))));
+        Map<E_ID, List<Map<String, Object>>> detailsGroupedByMaster = this.tupleToMap(detailTuples).stream()
+                .collect(Collectors.groupingBy(v -> (E_ID) v.get(masterPrimaryFieldAlias)));
         
-        masterRowsGroupedByPrimaryField.forEach((masterIdStr, masterRow) -> {
-            List<Map<String, Object>> detailRows = detailsGroupedByMaster.getOrDefault(masterIdStr, new ArrayList<>());
+        masterRowsGroupedByPrimaryField.forEach((masterId, masterRow) -> {
+            List<Map<String, Object>> detailRows = detailsGroupedByMaster.getOrDefault(masterId, new ArrayList<>());
             
             detailRows.forEach(dr -> dr.remove(masterPrimaryFieldAlias));
             masterRow.put(this.masterDetailRowDataFieldName, detailRows);
@@ -679,23 +681,24 @@ public class QueryBuilder<E, D> {
      * @param params    params for the detail grid             
      * @return the filtering {@link Predicate} used to select only relevant child records
      */
-    protected Predicate createMasterRowPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<D> root, @NonNull Map<String, Object> masterRow, @NonNull MasterDetailParams<E, D> params) {
+    @SuppressWarnings("unchecked")
+    protected Predicate createMasterRowPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<D> root, @NonNull Map<String, Object> masterRow, @NonNull MasterDetailParams<E, E_ID, D> params) {
         // add to wherePredicates predicate for parent
         Predicate masterRowPredicate;
         if (params.getCreateMasterRowPredicate() != null) {
             // must have provided predicate function
             masterRowPredicate = params.getCreateMasterRowPredicate().apply(cb, root, masterRow);
         } else {
-            Object masterIdValue = masterRow.get(this.primaryFieldName);
+            E_ID masterIdValue = (E_ID) masterRow.get(this.primaryField.getName());
             if (masterIdValue == null) {
                 throw new IllegalArgumentException(
-                        String.format("Master row data is missing value for primary field '%s'. Ensure this field is included in Master Grid columns.", this.primaryFieldName)
+                        String.format("Master row data is missing value for primary field '%s'. Ensure this field is included in Master Grid columns.", this.primaryField)
                 );
             }
 
-            Path<?> pathToCheck;
+            Path<E_ID> pathToCheck;
             if (params.getDetailMasterReferenceField() != null) {
-                pathToCheck = root.get(params.getDetailMasterReferenceField()).get(this.primaryFieldName);
+                pathToCheck = root.get(params.getDetailMasterReferenceField()).get(this.primaryField);
             } else {
                 pathToCheck = root.get(params.getDetailMasterIdField());
             }
@@ -1077,7 +1080,7 @@ public class QueryBuilder<E, D> {
 
             Predicate treeParentPredicate;
             if (this.treeDataParentReferenceField != null) {
-                Path<?> parentIdPath = root.get(this.treeDataParentReferenceField).get(this.primaryFieldName);
+                Path<E_ID> parentIdPath = root.get(this.treeDataParentReferenceField).get(this.primaryField);
                 // try to synchronize col and key to same data type to prevent errors
                 // for example, group key is date as string, but field is date, need to parse to date and then compare
                 TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(parentIdPath, parentKey);
@@ -1701,7 +1704,7 @@ public class QueryBuilder<E, D> {
                 subquery.where(
                         cb.equal(
                                 subRoot.get(this.treeDataParentIdField),
-                                root.get(this.primaryFieldName))
+                                root.get(this.primaryField))
                 );
             }
 
@@ -1805,7 +1808,7 @@ public class QueryBuilder<E, D> {
         Predicate parentPrimaryKeyPredicate = cb.or(
                 request.getGroupKeys().stream()
                         .map(k -> {
-                            TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(parentRoot.get(this.primaryFieldName), k);
+                            TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(parentRoot.get(this.primaryField), k);
                             return cb.equal(synchronizedValueType.getSynchronizedPath(), synchronizedValueType.getSynchronizedValue());
                         })
                         .toArray(Predicate[]::new)
@@ -2868,7 +2871,7 @@ public class QueryBuilder<E, D> {
         return pivotingExpressions;
     }
     
-    public static class Builder<E, D> {
+    public static class Builder<E, E_ID, D> {
         private static final String DEFAULT_SERVER_SIDE_PIVOT_RESULT_FIELD_SEPARATOR = "_";
         private static final Function<String, List<String>> DEFAULT_QUICK_FILTER_PARSER = input -> Arrays.asList(input.trim().split("\\s+")); 
         
@@ -2876,7 +2879,7 @@ public class QueryBuilder<E, D> {
         private final Class<D> detailClass;
         private final EntityManager entityManager;
 
-        private String primaryFieldName;
+        private SingularAttribute<E, E_ID> primaryField;
         private String serverSidePivotResultFieldSeparator = DEFAULT_SERVER_SIDE_PIVOT_RESULT_FIELD_SEPARATOR;
         private Integer pivotMaxGeneratedColumns;
         private boolean enableAdvancedFilter;
@@ -2901,44 +2904,42 @@ public class QueryBuilder<E, D> {
         
         private boolean treeData;
         private String isServerSideGroupFieldName;
-        private String treeDataParentReferenceField;
-        private String treeDataParentIdField;
-        private String treeDataChildrenField;
-        private String treeDataDataPathFieldName;
+        private SingularAttribute<E, E> treeDataParentReferenceField;
+        private SingularAttribute<E, E_ID> treeDataParentIdField;
+        private PluralAttribute<E, ? extends Collection<E>, E> treeDataChildrenField;
+        private SingularAttribute<E, String> treeDataDataPathFieldName;
         private String treeDataDataPathSeparator;
         
         private boolean masterDetail;
         private boolean masterDetailLazy = true;
         private String masterDetailRowDataFieldName;
-        private MasterDetailParams<E, D> masterDetailParams;
-        private Function<Map<String, Object>, MasterDetailParams<E, D>> dynamicMasterDetailParams;
+        private MasterDetailParams<E, E_ID, D> masterDetailParams;
+        private Function<Map<String, Object>, MasterDetailParams<E, E_ID, D>> dynamicMasterDetailParams;
         private boolean grandTotalRow;
         
         private Map<String, ColDef<E, ?>> colDefs;
 
-
-        protected Builder(Class<E> entityClass, EntityManager entityManager) {
-            this.entityClass = entityClass;
-            this.detailClass = null;
-            this.entityManager = entityManager;
+        protected Builder(@NonNull Class<E> entityClass, @NonNull SingularAttribute<E, E_ID> primaryField, @NonNull EntityManager entityManager) {
+            this(entityClass, primaryField, null, entityManager);
         }
         
-        protected Builder(Class<E> entityClass, Class<D> detailClass, EntityManager entityManager) {
+        protected Builder(@NonNull Class<E> entityClass, @NonNull SingularAttribute<E, E_ID> primaryField, Class<D> detailClass, @NonNull EntityManager entityManager) {
             this.entityClass = entityClass;
+            this.primaryField = primaryField;
             this.detailClass = detailClass;
             this.entityManager = entityManager;
 
-            this.masterDetail = true;
+            this.masterDetail = detailClass != null;
         }
         
         @NonNull
-        public Builder<E, D> primaryFieldName(@NonNull String primaryFieldName) {
-            this.primaryFieldName = primaryFieldName;
+        public Builder<E, E_ID, D> primaryField(@NonNull SingularAttribute<E, E_ID> primaryField) {
+            this.primaryField = primaryField;
             return this;
         }
 
         @NonNull
-        public Builder<E, D> serverSidePivotResultFieldSeparator(@NonNull String separator) {
+        public Builder<E, E_ID, D> serverSidePivotResultFieldSeparator(@NonNull String separator) {
             if (separator.isEmpty()) {
                 throw new IllegalArgumentException("Server side pivot result field separator cannot be null or empty");
             }
@@ -2947,7 +2948,7 @@ public class QueryBuilder<E, D> {
         }
 
         @NonNull
-        public Builder<E, D> pivotMaxGeneratedColumns(Integer pivotMaxGeneratedColumns) {
+        public Builder<E, E_ID, D> pivotMaxGeneratedColumns(Integer pivotMaxGeneratedColumns) {
             if (pivotMaxGeneratedColumns != null && pivotMaxGeneratedColumns <= 0) {
                 throw new IllegalArgumentException("pivot max generated columns must be greater than zero");
             }
@@ -2957,7 +2958,7 @@ public class QueryBuilder<E, D> {
         
         @SafeVarargs
         @NonNull
-        public final Builder<E, D> colDefs(@NonNull ColDef<E, ?>... colDefs) {
+        public final Builder<E, E_ID, D> colDefs(@NonNull ColDef<E, ?>... colDefs) {
             this.colDefs = new HashMap<>(colDefs.length);
             for (ColDef<E, ?> colDef : colDefs) {
                 this.colDefs.put(colDef.getFieldName(), colDef);
@@ -2966,7 +2967,7 @@ public class QueryBuilder<E, D> {
         }
         
         @NonNull
-        public Builder<E, D> colDefs(@NonNull Collection<ColDef<E, ?>> colDefs) {
+        public Builder<E, E_ID, D> colDefs(@NonNull Collection<ColDef<E, ?>> colDefs) {
             this.colDefs = new HashMap<>(colDefs.size());
             for (ColDef<E, ?> colDef : colDefs) {
                 this.colDefs.put(colDef.getFieldName(), colDef);
@@ -2975,196 +2976,196 @@ public class QueryBuilder<E, D> {
         }
         
         @NonNull
-        public Builder<E, D> enableAdvancedFilter(boolean enableAdvancedFilter) {
+        public Builder<E, E_ID, D> enableAdvancedFilter(boolean enableAdvancedFilter) {
             this.enableAdvancedFilter = enableAdvancedFilter;
             return this;
         }
         
         @NonNull
-        public Builder<E, D> paginateChildRows(boolean paginateChildRows) {
+        public Builder<E, E_ID, D> paginateChildRows(boolean paginateChildRows) {
             this.paginateChildRows = paginateChildRows;
             return this;
         }
 
         @NonNull
-        public Builder<E, D> suppressFieldDotNotation(boolean suppressFieldDotNotation) {
+        public Builder<E, E_ID, D> suppressFieldDotNotation(boolean suppressFieldDotNotation) {
             this.suppressFieldDotNotation = suppressFieldDotNotation;
             return this;
         }
 
         @NonNull
-        public Builder<E, D> isQuickFilterPresent(boolean isQuickFilterPresent) {
+        public Builder<E, E_ID, D> isQuickFilterPresent(boolean isQuickFilterPresent) {
             this.isQuickFilterPresent = isQuickFilterPresent;
             return this;
         }
 
         @NonNull
-        public Builder<E, D> quickFilterParser(@NonNull Function<String, List<String>> quickFilterParser) {
+        public Builder<E, E_ID, D> quickFilterParser(@NonNull Function<String, List<String>> quickFilterParser) {
             this.quickFilterParser = quickFilterParser;
             return this;
         }
 
         @NonNull
-        public Builder<E, D> quickFilterMatcher(@NonNull TriFunction<CriteriaBuilder, Root<E>, List<String>, Predicate> quickFilterMatcher) {
+        public Builder<E, E_ID, D> quickFilterMatcher(@NonNull TriFunction<CriteriaBuilder, Root<E>, List<String>, Predicate> quickFilterMatcher) {
             this.quickFilterMatcher = quickFilterMatcher;
             return this;
         }
 
         @NonNull
-        public Builder<E, D> quickFilterSearchInFields(@NonNull List<FieldPath<E, String>> quickFilterSearchInFields) {
+        public Builder<E, E_ID, D> quickFilterSearchInFields(@NonNull List<FieldPath<E, String>> quickFilterSearchInFields) {
             this.quickFilterSearchInFields = quickFilterSearchInFields;
             return this;
         }
 
         @SafeVarargs
         @NonNull
-        public final Builder<E, D> quickFilterSearchInFields(@NonNull FieldPath<E, String>... quickFilterSearchInFields) {
+        public final Builder<E, E_ID, D> quickFilterSearchInFields(@NonNull FieldPath<E, String>... quickFilterSearchInFields) {
             this.quickFilterSearchInFields = Arrays.asList(quickFilterSearchInFields);
             return this;
         }
 
         @NonNull
-        public Builder<E, D> quickFilterTrimInput(boolean quickFilterTrimInput) {
+        public Builder<E, E_ID, D> quickFilterTrimInput(boolean quickFilterTrimInput) {
             this.quickFilterTrimInput = quickFilterTrimInput;
             return this;
         }
 
         @NonNull
-        public Builder<E, D> quickFilterCaseSensitive(boolean quickFilterCaseSensitive) {
+        public Builder<E, E_ID, D> quickFilterCaseSensitive(boolean quickFilterCaseSensitive) {
             this.quickFilterCaseSensitive = quickFilterCaseSensitive;
             return this;
         }
 
         @NonNull
-        public Builder<E, D> quickFilterTextFormatter(@NonNull BiFunction<CriteriaBuilder, Expression<String>, Expression<String>> quickFilterTextFormatter) {
+        public Builder<E, E_ID, D> quickFilterTextFormatter(@NonNull BiFunction<CriteriaBuilder, Expression<String>, Expression<String>> quickFilterTextFormatter) {
             this.quickFilterTextFormatter = quickFilterTextFormatter;
             return this;
         }
         
         @NonNull
-        public Builder<E, D> suppressAggFilteredOnly(boolean suppressAggFilteredOnly) {
+        public Builder<E, E_ID, D> suppressAggFilteredOnly(boolean suppressAggFilteredOnly) {
             this.suppressAggFilteredOnly = suppressAggFilteredOnly;
             return this;
         }
 
         @NonNull
-        public Builder<E, D> getChildCount(boolean getChildCount) {
+        public Builder<E, E_ID, D> getChildCount(boolean getChildCount) {
             this.getChildCount = getChildCount;
             return this;
         }
 
         @NonNull
-        public Builder<E, D> getChildCountFieldName(@NonNull String getChildCountFieldName) {
+        public Builder<E, E_ID, D> getChildCountFieldName(@NonNull String getChildCountFieldName) {
             this.getChildCountFieldName = getChildCountFieldName;
             return this;
         }
         
         @NonNull
-        public Builder<E, D> isExternalFilterPresent(boolean isExternalFilterPresent) {
+        public Builder<E, E_ID, D> isExternalFilterPresent(boolean isExternalFilterPresent) {
             this.isExternalFilterPresent = isExternalFilterPresent;
             return this;
         }
         
         @NonNull
-        public Builder<E, D> doesExternalFilterPass(@NonNull TriFunction<CriteriaBuilder, Root<E>, Object, Predicate> doesExternalFilterPass) {
+        public Builder<E, E_ID, D> doesExternalFilterPass(@NonNull TriFunction<CriteriaBuilder, Root<E>, Object, Predicate> doesExternalFilterPass) {
             this.doesExternalFilterPass = doesExternalFilterPass;
             return this;
         }
         
         
         @NonNull
-        public Builder<E, D> groupAggFiltering(boolean groupAggFiltering) {
+        public Builder<E, E_ID, D> groupAggFiltering(boolean groupAggFiltering) {
             this.groupAggFiltering = groupAggFiltering;
             return this;
         }
         
         @NonNull
-        public Builder<E, D> treeData(boolean treeData) {
+        public Builder<E, E_ID, D> treeData(boolean treeData) {
             this.treeData = treeData;
             return this;
         }
         
         @NonNull
-        public Builder<E, D> isServerSideGroupFieldName(@NonNull String isServerSideGroupFieldName) {
+        public Builder<E, E_ID, D> isServerSideGroupFieldName(@NonNull String isServerSideGroupFieldName) {
             this.isServerSideGroupFieldName = isServerSideGroupFieldName;
             return this;
         }
 
         @NonNull
-        public Builder<E, D> treeDataParentReferenceField(@NonNull String treeDataParentReferenceField) {
+        public Builder<E, E_ID, D> treeDataParentReferenceField(@NonNull SingularAttribute<E, E> treeDataParentReferenceField) {
             this.treeDataParentReferenceField = treeDataParentReferenceField;
             return this;
         }
 
         @NonNull
-        public Builder<E, D> treeDataParentIdField(@NonNull String treeDataParentIdField) {
+        public Builder<E, E_ID, D> treeDataParentIdField(@NonNull SingularAttribute<E, E_ID> treeDataParentIdField) {
             this.treeDataParentIdField = treeDataParentIdField;
             return this;
         }
 
         @NonNull
-        public Builder<E, D> treeDataChildrenField(@NonNull String treeDataChildrenField) {
+        public Builder<E, E_ID, D> treeDataChildrenField(@NonNull PluralAttribute<E, ? extends Collection<E>, E> treeDataChildrenField) {
             this.treeDataChildrenField = treeDataChildrenField;
             return this;
         }
 
         @NonNull
-        public Builder<E, D> treeDataDataPathFieldName(@NonNull String treeDataDataPathFieldName) {
-            this.treeDataDataPathFieldName = treeDataDataPathFieldName;
+        public Builder<E, E_ID, D> treeDataDataPathFieldName(@NonNull SingularAttribute<E, String> treeDataDataPathField) {
+            this.treeDataDataPathFieldName = treeDataDataPathField;
             return this;
         }
 
         @NonNull
-        public Builder<E, D> treeDataDataPathSeparator(@NonNull String treeDataDataPathSeparator) {
+        public Builder<E, E_ID, D> treeDataDataPathSeparator(@NonNull String treeDataDataPathSeparator) {
             this.treeDataDataPathSeparator = treeDataDataPathSeparator;
             return this;
         }
         
         @NonNull
-        public Builder<E, D> masterDetail(boolean masterDetail) {
+        public Builder<E, E_ID, D> masterDetail(boolean masterDetail) {
             this.masterDetail = masterDetail;
             return this;
         }
 
         @NonNull
-        public Builder<E, D> masterDetailLazy(boolean masterDetailLazy) {
+        public Builder<E, E_ID, D> masterDetailLazy(boolean masterDetailLazy) {
             this.masterDetailLazy = masterDetailLazy;
             return this;
         }
         
         @NonNull
-        public Builder<E, D> masterDetailRowDataFieldName(@NonNull String masterDetailRowDataFieldName) {
+        public Builder<E, E_ID, D> masterDetailRowDataFieldName(@NonNull String masterDetailRowDataFieldName) {
             this.masterDetailRowDataFieldName = masterDetailRowDataFieldName;
             return this;
         }
 
         @NonNull
-        public Builder<E, D> masterDetailParams(@NonNull MasterDetailParams<E, D> masterDetailParams) {
+        public Builder<E, E_ID, D> masterDetailParams(@NonNull MasterDetailParams<E, E_ID, D> masterDetailParams) {
             this.masterDetailParams = masterDetailParams;
             return this;
         }
 
         @NonNull
-        public Builder<E, D> dynamicMasterDetailParams(@NonNull Function<Map<String, Object>, MasterDetailParams<E, D>> dynamicMasterDetailParams) {
+        public Builder<E, E_ID, D> dynamicMasterDetailParams(@NonNull Function<Map<String, Object>, MasterDetailParams<E, E_ID, D>> dynamicMasterDetailParams) {
             this.dynamicMasterDetailParams = dynamicMasterDetailParams;
             return this;
         }
         
         @NonNull
-        public Builder<E, D> grandTotalRow(boolean grandTotalRow) {
+        public Builder<E, E_ID, D> grandTotalRow(boolean grandTotalRow) {
             this.grandTotalRow = grandTotalRow;
             return this;
         }
 
         
         @NonNull
-        public Builder<E, D> registerCustomAggFunction(@NonNull String name, @NonNull BiFunction<CriteriaBuilder, Expression<?>, Expression<?>> function) {
+        public Builder<E, E_ID, D> registerCustomAggFunction(@NonNull String name, @NonNull BiFunction<CriteriaBuilder, Expression<?>, Expression<?>> function) {
             this.aggFuncs.put(name, function);
             return this;
         }
 
         @NonNull
-        public QueryBuilder<E, D> build() {
+        public QueryBuilder<E, E_ID, D> build() {
             this.validateBeforeBuild();
             return new QueryBuilder<>(this);
         }
@@ -3205,7 +3206,7 @@ public class QueryBuilder<E, D> {
                 if (this.masterDetailParams == null && this.dynamicMasterDetailParams == null) {
                     throw new IllegalStateException("When masterDetail is set to true, masterDetailParams or dynamicMasterDetailParams must be provided");
                 }
-                if (this.dynamicMasterDetailParams == null && this.primaryFieldName == null) {
+                if (this.dynamicMasterDetailParams == null && this.primaryField == null) {
                     throw new IllegalStateException("Must provide primaryFieldName for master-detail relationship");
                 }
                 if (!this.masterDetailLazy) {
@@ -3247,7 +3248,7 @@ public class QueryBuilder<E, D> {
         
         private void validateTreeDataArgs() {
             List<String> treeDataErrorMessages = new ArrayList<>();
-            if (this.primaryFieldName == null) {
+            if (this.primaryField == null) {
                 treeDataErrorMessages.add("When treeData is set to true, primaryFieldName must be provided");
             }
             if (this.isServerSideGroupFieldName == null) {
@@ -3272,19 +3273,19 @@ public class QueryBuilder<E, D> {
     }
 
     @Getter
-    public static class MasterDetailParams<P, C> {
+    public static class MasterDetailParams<P, P_ID, C> {
         private final Class<C> detailClass;
         private final Map<String, ColDef<C, ?>> detailColDefs;
         private final SingularAttribute<C, P> detailMasterReferenceField;
-        private final SingularAttribute<C, ?> detailMasterIdField;
+        private final SingularAttribute<C, P_ID> detailMasterIdField;
         private final TriFunction<CriteriaBuilder, Root<C>, Map<String, Object>, Predicate> createMasterRowPredicate;
         
         @NonNull
-        public static <P, C> Builder<P, C> builder() {
+        public static <P, P_ID, C> Builder<P, P_ID, C> builder() {
             return new Builder<>();
         }
 
-        private MasterDetailParams(Builder<P, C> builder) {
+        private MasterDetailParams(Builder<P, P_ID, C> builder) {
             this.detailClass = builder.detailClass;
             this.detailColDefs = builder.detailColDefs;
             this.detailMasterReferenceField = builder.detailMasterReferenceField;
@@ -3292,24 +3293,24 @@ public class QueryBuilder<E, D> {
             this.createMasterRowPredicate = builder.createMasterRowPredicate;
         }
 
-        public static class Builder<P, C> {
+        public static class Builder<P, P_ID, C> {
             private Class<C> detailClass;
             private Map<String, ColDef<C, ?>> detailColDefs;
             private SingularAttribute<C, P> detailMasterReferenceField;
-            private SingularAttribute<C, ?> detailMasterIdField;
+            private SingularAttribute<C, P_ID> detailMasterIdField;
             private TriFunction<CriteriaBuilder, Root<C>, Map<String, Object>, Predicate> createMasterRowPredicate;
             
             private Builder() {}
 
             @NonNull
-            public Builder<P, C> detailClass(@NonNull Class<C> detailClass) {
+            public Builder<P, P_ID, C> detailClass(@NonNull Class<C> detailClass) {
                 this.detailClass = detailClass;
                 return this;
             }
 
             @SafeVarargs
             @NonNull
-            public final Builder<P, C> detailColDefs(@NonNull ColDef<C, ?>... colDefs) {
+            public final Builder<P, P_ID, C> detailColDefs(@NonNull ColDef<C, ?>... colDefs) {
                 this.detailColDefs = new HashMap<>(colDefs.length);
                 for (ColDef<C, ?> colDef : colDefs) {
                     this.detailColDefs.put(colDef.getFieldName(), colDef);
@@ -3318,7 +3319,7 @@ public class QueryBuilder<E, D> {
             }
 
             @NonNull
-            public Builder<P, C> detailColDefs(@NonNull Collection<ColDef<C, ?>> colDefs) {
+            public Builder<P, P_ID, C> detailColDefs(@NonNull Collection<ColDef<C, ?>> colDefs) {
                 this.detailColDefs = new HashMap<>(colDefs.size());
                 for (ColDef<C, ?> colDef : colDefs) {
                     this.detailColDefs.put(colDef.getFieldName(), colDef);
@@ -3327,25 +3328,25 @@ public class QueryBuilder<E, D> {
             }
 
             @NonNull
-            public Builder<P, C> detailMasterReferenceField(@NonNull SingularAttribute<C, P> detailMasterReferenceField) {
+            public Builder<P, P_ID, C> detailMasterReferenceField(@NonNull SingularAttribute<C, P> detailMasterReferenceField) {
                 this.detailMasterReferenceField = detailMasterReferenceField;
                 return this;
             }
 
             @NonNull
-            public Builder<P, C>  detailMasterIdField(@NonNull SingularAttribute<C, ?> detailMasterIdField) {
+            public Builder<P, P_ID, C>  detailMasterIdField(@NonNull SingularAttribute<C, P_ID> detailMasterIdField) {
                 this.detailMasterIdField = detailMasterIdField;
                 return this;
             }
 
             @NonNull
-            public Builder<P, C> createMasterRowPredicate(@NonNull TriFunction<CriteriaBuilder, Root<C>, Map<String, Object>, Predicate> createMasterRowPredicate) {
+            public Builder<P, P_ID, C> createMasterRowPredicate(@NonNull TriFunction<CriteriaBuilder, Root<C>, Map<String, Object>, Predicate> createMasterRowPredicate) {
                 this.createMasterRowPredicate = createMasterRowPredicate;
                 return this;
             }
 
             @NonNull
-            public MasterDetailParams<P, C> build() {
+            public MasterDetailParams<P, P_ID, C> build() {
                 this.validateMasterDetailArgs();
                 return new MasterDetailParams<>(this);
             }

@@ -10,12 +10,12 @@ To enable Tree Data, set `.treeData(true)` and configure the field mappings need
 | Method | Type | Required      | Description                                                                                                                                                                                                                                  |
 | :--- | :--- |:--------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `treeData` | `boolean` | **Yes**       | Enables Tree Data mode.                                                                                                                                                                                                                      |
-| `primaryFieldName` | `String` | **Yes**       | Name of the entity's unique ID field. Matches field used in [getServerSideGroupKey](https://www.ag-grid.com/react-data-grid/server-side-model-tree-data/#reference-serverSideRowModel-getServerSideGroupKey) callback.                       |
+| `primaryFieldName` | `SingularAttribute<E, ?>` | **Yes**       | The entity's unique ID attribute (e.g. `Trade_.tradeId`). Matches field used in [getServerSideGroupKey](https://www.ag-grid.com/react-data-grid/server-side-model-tree-data/#reference-serverSideRowModel-getServerSideGroupKey) callback.                       |
 | `isServerSideGroupFieldName` | `String` | **Yes**       | Name of the virtual boolean field indicating if a row has children. Matches field used in [isServerSideGroup](https://www.ag-grid.com/react-data-grid/server-side-model-tree-data/#reference-serverSideRowModel-isServerSideGroup) callback. |
-| `treeDataParentReferenceField` | `String` | *Conditional* | Name of the parent entity field. **Required** if not using `treeDataParentIdField`.                                                                                                                                                          |
-| `treeDataParentIdField` | `String` | *Conditional* | Name of the raw parent ID column. **Required** if not using `treeDataParentReferenceField`.                                                                                                                                                  |
-| `treeDataChildrenField` | `String` | No            | Name of the child collection field.                                                                                                                                                                                                          |
-| `treeDataDataPathFieldName` | `String` | No            | The name of the column storing the path string. Use if you want to utilize standard tree filtering.                                                                                                                                          |
+| `treeDataParentReferenceField` | `SingularAttribute<E, ?>` | *Conditional* | The parent-reference attribute (e.g. `Trade_.parentTrade`). **Required** if not using `treeDataParentIdField`.                                                                                                                                                          |
+| `treeDataParentIdField` | `SingularAttribute<E, ?>` | *Conditional* | The raw parent-ID attribute. **Required** if not using `treeDataParentReferenceField`.                                                                                                                                                  |
+| `treeDataChildrenField` | `PluralAttribute<E, ?, ?>` | No            | The child-collection attribute (e.g. `Trade_.childTrades`).                                                                                                                                                                                                          |
+| `treeDataDataPathFieldName` | `SingularAttribute<E, String>` | No            | The attribute storing the path string. Use if you want to utilize standard tree filtering.                                                                                                                                          |
 | `treeDataDataPathSeparator` | `String` | No            | The string separator used in your path. For example, in path `1/2/3`, this would be `/`.                                                                                                                                                     |
 
 Example:
@@ -29,18 +29,18 @@ this.queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
     // turn on treeData
     .treeData(true)
     
-    // name of Id field in your entity (required)
-    .primaryFieldName("tradeId")
+    // Id attribute of your entity (required)
+    .primaryFieldName(Trade_.tradeId)
     
     // name of field in which we return whether has children (required)
     .isServerSideGroupFieldName("hasChildren")
     
-    // name of field that references the parent (provide one of them)
-    .treeDataParentReferenceField("parentTrade") // mapped parent entity
-    // .treeDataParentIdField("parentTradeId") // raw parent ID field
+    // attribute that references the parent (provide one of them)
+    .treeDataParentReferenceField(Trade_.parentTrade) // mapped parent entity
+    // .treeDataParentIdField(Trade_.parentTradeId) // raw parent ID field
     
-    // name of field which holds child collection (optional)
-    .treeDataChildrenField("childTrades")
+    // attribute which holds child collection (optional)
+    .treeDataChildrenField(Trade_.childTrades)
     .build();
 ```
 
