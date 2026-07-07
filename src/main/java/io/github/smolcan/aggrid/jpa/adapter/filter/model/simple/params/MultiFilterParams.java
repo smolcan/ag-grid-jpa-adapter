@@ -22,9 +22,10 @@ public class MultiFilterParams<T> implements IFilterParams {
     public static class Builder<T> {
         private List<IFilter<T, ?, ?>> filters = new ArrayList<>();
 
+        @SafeVarargs
         @Tolerate
         @NonNull
-        public Builder<T> filters(@NonNull IFilter<T, ?, ?>... filters) {
+        public final Builder<T> filters(@NonNull IFilter<T, ?, ?>... filters) {
             this.filters = Arrays.asList(filters);
             return this;
         }

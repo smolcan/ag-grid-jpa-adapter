@@ -50,12 +50,12 @@ const DotNotationFlatDataGrid = () => {
         },
         {
             headerName: 'Parent Trade Id',
-            field: 'parentTrade.id',
+            field: 'parentTrade.tradeId',
             cellDataType: 'number',
         },
         {
             headerName: 'Parent Trade -> Parent Trade Id',
-            field: 'parentTrade.parentTrade.id',
+            field: 'parentTrade.parentTrade.tradeId',
             cellDataType: 'number',
         },
     ] as ColDef[], []);

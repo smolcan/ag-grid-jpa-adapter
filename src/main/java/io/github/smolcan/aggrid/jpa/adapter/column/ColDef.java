@@ -49,10 +49,12 @@ public class ColDef<P, T> {
     public static class Builder<P, T> {
         
         // default builder values
+        private FieldPath<P, T> field;
         private boolean sortable = true;
+        private Set<String> allowedAggFuncs;
         
-        private Builder<P, T> field(FieldPath<P, T> field) {
-            // no-op
+        private Builder<P, T> field(@NonNull FieldPath<P, T> field) {
+            this.field = field;
             return this;
         }
         
