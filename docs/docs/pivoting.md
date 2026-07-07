@@ -10,8 +10,7 @@ To make a column available for pivoting, set the `enablePivot` parameter to `tru
 otherwise a pivoting attempt on this column will result in a runtime exception.
 
 ```java
-ColDef priceColumn = ColDef.builder()
-    .field("price")
+var priceColumn = ColDef.builder(Entity_.price)
     .enablePivot(true)
     .build();
 ```
