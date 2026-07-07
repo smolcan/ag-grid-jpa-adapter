@@ -1,6 +1,7 @@
 package io.github.smolcan.aggrid.jpa.adapter.query;
 
 import io.github.smolcan.aggrid.jpa.adapter.column.ColDef;
+import io.github.smolcan.aggrid.jpa.adapter.column.FieldPath;
 import io.github.smolcan.aggrid.jpa.adapter.exceptions.InvalidRequestException;
 import io.github.smolcan.aggrid.jpa.adapter.exceptions.OnPivotMaxColumnsExceededException;
 import io.github.smolcan.aggrid.jpa.adapter.filter.IFilter;
@@ -338,7 +339,7 @@ public class QueryBuilder<E, D> {
 
         // select value cols
         for (ColumnVO columnVO : request.getValueCols()) {
-            Expression<?> path = getPath(root, columnVO.getField());
+            Expression<?> path = this.colDefs.get(columnVO.getField()).getField().getPath(root);
             var aggregateFunction = this.aggFuncs.get(columnVO.getAggFunc());
             Expression<?> aggregatedField = aggregateFunction.apply(cb, path);
             queryContext.getSelections().add(
@@ -401,7 +402,7 @@ public class QueryBuilder<E, D> {
         // select
         query.multiselect(
                 params.getDetailColDefs().values().stream()
-                .map(colDef -> getPath(root, colDef.getFieldName()).alias(colDef.getFieldName()))
+                .map(colDef -> params.getDetailColDefs().get(colDef.getFieldName()).getField().getPath(root).alias(colDef.getFieldName()))
                 .collect(Collectors.toList())
         );
 
@@ -423,8 +424,9 @@ public class QueryBuilder<E, D> {
      * @return a sorted list of distinct values present in the database.
      */
     @NonNull
-    public List<Object> supplySetFilterValues(@NonNull String field) {
-        ColDef<E, ?> colDef = this.colDefs.get(field);
+    @SuppressWarnings("unchecked")
+    public <T> List<T> supplySetFilterValues(@NonNull FieldPath<E, T> field) {
+        ColDef<E, T> colDef = (ColDef<E, T>) this.colDefs.get(field.getName());
         if (colDef == null) {
             throw new IllegalArgumentException(String.format("Column definition for field '%s' not found.", field));
         }
@@ -433,9 +435,9 @@ public class QueryBuilder<E, D> {
         }
 
         CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
-        CriteriaQuery<Object> query = cb.createQuery(Object.class);
+        CriteriaQuery<T> query = cb.createQuery(field.getJavaType());
         Root<E> root = query.from(this.entityClass);
-        Path<?> path = getPath(root, colDef.getFieldName());
+        Path<T> path = colDef.getField().getPath(root);
         
         // select
         query.select(path).distinct(true);

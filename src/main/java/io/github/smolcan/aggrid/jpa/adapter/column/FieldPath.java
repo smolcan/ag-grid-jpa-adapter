@@ -46,6 +46,11 @@ public class FieldPath<E, T> {
         return this.hops.stream().map(Attribute::getName).collect(Collectors.joining("."));
     }
     
+    @SuppressWarnings("unchecked")
+    public Class<T> getJavaType() {
+        return (Class<T>) hops.get(hops.size() - 1).getJavaType();
+    }
+    
     @NonNull
     public Path<T> getPath(@NonNull Root<E> root) {
         From<?, ?> currentFrom = root;
