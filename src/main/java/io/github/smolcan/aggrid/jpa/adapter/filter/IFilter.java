@@ -12,6 +12,7 @@ import java.util.Map;
 
 /**
  * General interface for each available filter
+ * @param <T>   the column value type the filter operates on
  * @param <FM>  model the filter receives
  * @param <FP>  filter params for filter
  */

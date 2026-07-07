@@ -62,6 +62,7 @@ import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.cartesianProduct;
  *
  *
  * @param <E> the type of the root JPA entity being queried
+ * @param <D> the type of the detail entity for master-detail (use {@code Void} when not used)
  * @author Samuel Molčan
  */
 @SuppressWarnings({"unused", "java:S3776"})
@@ -419,7 +420,7 @@ public class QueryBuilder<E, D> {
      * Supplies a list of unique values for an AG Grid Set Filter for the specified field.
      * Fetches distinct values from the database and returns them sorted in ascending order.
      *
-     * @param field the name of the field to retrieve unique values for.
+     * @param field the column field path to retrieve unique values for.
      * @return a sorted list of distinct values present in the database.
      */
     @NonNull

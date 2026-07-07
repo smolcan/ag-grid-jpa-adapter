@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 
 /**
  * Simple provided filters: agTextColumnFilter, agNumberColumnFilter, agDateColumnFilter
+ * @param <T>   the column value type the filter operates on
  * @param <FM>  model the filter receives
  * @param <FP>  filter params for filter
  */

@@ -6,6 +6,7 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.IFilterPa
 
 /**
  * Class every provided filter (not custom) should extend
+ * @param <T>   the column value type the filter operates on
  * @param <FM>  model the filter receives
  * @param <FP>  filter params for filter
  */
