@@ -6,12 +6,11 @@ sidebar_position: 3
 Date Filters allow you to filter date data.
 
 ## Using Date Filter
-Date filter is represented by class [AgDateColumnFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/provided/simple/AgDateColumnFilter.java).
+Date filter is represented by the abstract class [AgDateColumnFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/provided/simple/AgDateColumnFilter.java). Create it with the factory method that matches your column's temporal type — `AgDateColumnFilter.forLocalDate()`, `AgDateColumnFilter.forLocalDateTime()` or `AgDateColumnFilter.forInstant(zoneId)`.
 
 ```java
-ColDef colDef = ColDef.builder()
-    .field("birthDate")
-    .filter(new AgDateColumnFilter())
+var colDef = ColDef.builder(Trade_.birthDate)
+    .filter(AgDateColumnFilter.forLocalDate())
     .build()
 ```
 
@@ -34,9 +33,8 @@ Date Filters are configured though the filter params ([DateFilterParams](https:/
 
 Example of using filter parameters.
 ```java
-ColDef colDef = ColDef.builder()
-    .field("birthDate")
-    .filter(new AgDateColumnFilter()
+var colDef = ColDef.builder(Trade_.birthDate)
+    .filter(AgDateColumnFilter.forLocalDate()
         .filterParams(
             DateFilterParams.builder()
                 .inRangeInclusive(true)
@@ -95,9 +93,8 @@ otherwise relative filtering attempt will result to error.
 ```java
 import static io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.SimpleFilterModelType.*;
 
-ColDef colDef = ColDef.builder()
-    .field("birthDate")
-    .filter(new AgDateColumnFilter()
+var colDef = ColDef.builder(Trade_.birthDate)
+    .filter(AgDateColumnFilter.forLocalDate()
         .filterParams(
             DateFilterParams.builder()
                 .filterOptions(
