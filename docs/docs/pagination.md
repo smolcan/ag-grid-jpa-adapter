@@ -29,7 +29,7 @@ Set `paginateChildRows=true` in `QueryBuilder` to maintain exact page size. This
 count rows within expanded groups rather than number of root groups.
 
 ```java
-QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
+QueryBuilder<Entity, Void> queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
     .colDefs(...)
     .paginateChildRows(true)
     .build();
