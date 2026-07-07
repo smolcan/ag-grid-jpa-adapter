@@ -5,12 +5,17 @@ sidebar_position: 5
 # Row Grouping
 The Grid can group rows with equivalent cell values under shared parent rows.
 
-If you want to make column available for grouping, you need to set the `enableRowGroup` parameter to `true` on `ColDef`,
-otherwise grouping attempt on this column will result to runtime exception.
+If you want to make a column available for grouping, enable `enableRowGroup` on its `ColDef`,
+otherwise a grouping attempt on this column will result in a runtime exception.
+
+`enableRowGroup` takes two arguments: `true`, and a converter `Function<String, T>` from the group key
+to the column's Java type `T`. AG Grid sends group keys as strings, so the adapter uses this converter
+to turn the key back into the column type when building the query (e.g. a `String` column uses `s -> s`,
+a number column `BigDecimal::new` / `Integer::valueOf`, a date column `LocalDate::parse`).
 
 ```java
 var priceColumn = ColDef.builder(Entity_.price)
-    .enableRowGroup(true)
+    .enableRowGroup(true, BigDecimal::new)
     .build();
 ```
 

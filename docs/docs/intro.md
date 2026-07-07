@@ -118,7 +118,8 @@ public class TradeService {
                 ColDef.builder(Trade_.currentValue)
                     .filter(new AgNumberColumnFilter<BigDecimal>())
                     .enableValue(true)
-                    .enableRowGroup(true)
+                    // row grouping needs a converter from the string group key to the column type
+                    .enableRowGroup(true, BigDecimal::new)
                     .build()
             )
             .build();

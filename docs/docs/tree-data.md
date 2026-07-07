@@ -11,8 +11,9 @@ To enable Tree Data, set `.treeData(true)` and configure the field mappings need
 | :--- | :--- |:--------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `treeData` | `boolean` | **Yes**       | Enables Tree Data mode.                                                                                                                                                                                                                      |
 | `isServerSideGroupFieldName` | `String` | **Yes**       | Name of the virtual boolean field indicating if a row has children. Matches field used in [isServerSideGroup](https://www.ag-grid.com/react-data-grid/server-side-model-tree-data/#reference-serverSideRowModel-isServerSideGroup) callback. |
-| `treeDataParentReferenceField` | `SingularAttribute<E, ?>` | *Conditional* | The parent-reference attribute (e.g. `Trade_.parentTrade`). **Required** if not using `treeDataParentIdField`.                                                                                                                                                          |
-| `treeDataParentIdField` | `SingularAttribute<E, ?>` | *Conditional* | The raw parent-ID attribute. **Required** if not using `treeDataParentReferenceField`.                                                                                                                                                  |
+| `treeDataParentReferenceField` | `SingularAttribute<E, E>` | *Conditional* | The parent-reference attribute (e.g. `Trade_.parentTrade`). **Required** if not using `treeDataParentIdField`.                                                                                                                                                          |
+| `treeDataParentIdField` | `SingularAttribute<E, E_ID>` | *Conditional* | The raw parent-ID attribute. **Required** if not using `treeDataParentReferenceField`.                                                                                                                                                  |
+| `treeDataStringToParentIdTypeConverter` | `Function<String, E_ID>` | **Yes** | Converts a parent group key (String) to the parent id type `E_ID` (e.g. `Long::valueOf`). Group keys arrive as strings, so this rebuilds the id used to match parent rows. |
 | `treeDataChildrenField` | `PluralAttribute<E, ?, ?>` | No            | The child-collection attribute (e.g. `Trade_.childTrades`).                                                                                                                                                                                                          |
 | `treeDataDataPathFieldName` | `SingularAttribute<E, String>` | No            | The attribute storing the path string. Use if you want to utilize standard tree filtering.                                                                                                                                          |
 | `treeDataDataPathSeparator` | `String` | No            | The string separator used in your path. For example, in path `1/2/3`, this would be `/`.                                                                                                                                                     |
@@ -34,6 +35,9 @@ this.queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityMana
     // attribute that references the parent (provide one of them)
     .treeDataParentReferenceField(Trade_.parentTrade) // mapped parent entity
     // .treeDataParentIdField(Trade_.parentTradeId) // raw parent ID field
+    
+    // converts a parent group key (String) to the parent id type (required)
+    .treeDataStringToParentIdTypeConverter(Long::valueOf)
     
     // attribute which holds child collection (optional)
     .treeDataChildrenField(Trade_.childTrades)
