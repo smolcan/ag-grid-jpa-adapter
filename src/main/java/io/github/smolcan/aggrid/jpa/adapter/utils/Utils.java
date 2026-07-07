@@ -1,6 +1,5 @@
 package io.github.smolcan.aggrid.jpa.adapter.utils;
 
-import jakarta.persistence.criteria.*;
 import lombok.NonNull;
 
 import java.util.ArrayList;
@@ -30,39 +29,5 @@ public class Utils {
             }
         }
         return result;
-    }
-
-    
-    @NonNull
-    public static Path<?> getPath(@NonNull From<?, ?> from, @NonNull String fieldName) {
-        if (!fieldName.contains(".")) {
-            // no dot notation in fieldName
-            return from.get(fieldName);
-        }
-
-        String[] parts = fieldName.split("\\.");
-        From<?, ?> currentFrom = from;
-        
-        for (int i = 0; i < parts.length - 1; i++) {
-            String relation = parts[i];
-
-            Join<?, ?> foundJoin = null;
-            Set<? extends Join<?, ?>> joins = currentFrom.getJoins();
-
-            for (Join<?, ?> join : joins) {
-                if (join.getAttribute().getName().equals(relation) && join.getJoinType() == JoinType.LEFT) {
-                    foundJoin = join;
-                    break;
-                }
-            }
-            
-            if (foundJoin != null) {
-                currentFrom = foundJoin;
-            } else {
-                currentFrom = currentFrom.join(relation, JoinType.LEFT);
-            }
-        }
-        
-        return currentFrom.get(parts[parts.length - 1]);
     }
 }
