@@ -9,14 +9,13 @@ The Multi Filter allows multiple [Column filters](column-filter.md) (Provided Fi
 Multi filter is represented by class [AgMultiColumnFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/provided/AgMultiColumnFilter.java).
 
 ```java
-ColDef colDef = ColDef.builder()
-    .field("tradeId")
-    .filter(new AgMultiColumnFilter()
+var colDef = ColDef.builder(Trade_.tradeId)
+    .filter(new AgMultiColumnFilter<Long>()
         .filterParams(
-            MultiFilterParams.builder()
+            MultiFilterParams.<Long>builder()
                 .filters(
-                    new AgNumberColumnFilter(),
-                    new CustomNumberFilter()
+                    new AgNumberColumnFilter<Long>(),
+                    new CustomNumberFilter<Long>()
                 )
                 .build()
         )
@@ -29,24 +28,23 @@ Multi Filters are configured though the filter params ([MultiFilterParams](https
 
 | Property            | Type                                                                  | Default | Description     |
 |---------------------|-----------------------------------------------------------------------|---------|-----------------|
-| **`filters`**       | `List<IFilter<?, ?>>`                                                             | -       | List of filters |
+| **`filters`**       | `List<IFilter<T, ?, ?>>`                                                             | -       | List of filters (all typed to the column type `T`) |
 
 Example of using filter parameters (also with child filters parameters).
 ```java
-ColDef colDef = ColDef.builder()
-    .field("tradeId")
-    .filter(new AgMultiColumnFilter()
+var colDef = ColDef.builder(Trade_.tradeId)
+    .filter(new AgMultiColumnFilter<Long>()
         .filterParams(
-            MultiFilterParams.builder()
+            MultiFilterParams.<Long>builder()
                 .filters(
-                    new AgNumberColumnFilter()
+                    new AgNumberColumnFilter<Long>()
                         .filterParams(
                             NumberFilterParams.builder()
                                 .inRangeInclusive(true)
                                 .includeBlanksInEquals(true)
                                 .build()
                         ),
-                    new CustomNumberFilter()
+                    new CustomNumberFilter<Long>()
                         .filterParams(
                             new CustomNumberFilterParams(false)
                         )
