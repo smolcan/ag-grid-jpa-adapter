@@ -7,14 +7,16 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextMatch
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
+import lombok.NonNull;
 
 import java.util.Map;
 import java.util.Optional;
 
-public class AgTextColumnFilter extends SimpleFilter<TextFilterModel, TextFilterParams> {
-    
+public class AgTextColumnFilter extends SimpleFilter<String, TextFilterModel, TextFilterParams> {
+
     @Override
-    public TextFilterModel recognizeFilterModel(Map<String, Object> filterModel) {
+    @NonNull
+    public TextFilterModel recognizeFilterModel(@NonNull Map<String, Object> filterModel) {
         TextFilterModel textFilter = new TextFilterModel();
         textFilter.setType(SimpleFilterModelType.valueOf(filterModel.get("type").toString()));
         textFilter.setFilter(Optional.ofNullable(filterModel.get("filter")).map(Object::toString).orElse(null));
@@ -23,18 +25,20 @@ public class AgTextColumnFilter extends SimpleFilter<TextFilterModel, TextFilter
     }
 
     @Override
+    @NonNull
     public TextFilterParams getDefaultFilterParams() {
         return TextFilterParams.builder().build();
     }
 
     @Override
-    protected Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, TextFilterModel filterModel) {
+    @NonNull
+    protected Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Expression<String> expression, @NonNull TextFilterModel filterModel) {
         if (!this.filterParams.getFilterOptions().contains(filterModel.getType())) {
             throw new IllegalArgumentException("Filter type " + filterModel.getType() + " not allowed for this column");
         }
         
         Expression<String> filterExpression = this.filterParams.generateExpressionFromFilterParams(cb, cb.literal(filterModel.getFilter()));
-        Expression<String> valueExpression = this.filterParams.generateExpressionFromFilterParams(cb, expression.as(String.class));
+        Expression<String> valueExpression = this.filterParams.generateExpressionFromFilterParams(cb, expression);
         
         // check if provided custom text matcher
         if (this.filterParams.getTextMatcher() != null) {

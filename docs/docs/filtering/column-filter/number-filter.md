@@ -9,9 +9,8 @@ Number Filters allow you to filter number data.
 Number filter is represented by class [AgNumberColumnFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/provided/simple/AgNumberColumnFilter.java).
 
 ```java
-ColDef colDef = ColDef.builder()
-    .field("currentValue")
-    .filter(new AgNumberColumnFilter())
+var colDef = ColDef.builder(Trade_.currentValue)
+    .filter(new AgNumberColumnFilter<BigDecimal>())
     .build()
 ```
 
@@ -29,9 +28,8 @@ Number Filters are configured though the filter params ([NumberFilterParams](htt
 
 Example of using filter parameters.
 ```java
-ColDef colDef = ColDef.builder()
-    .field("currentValue")
-    .filter(new AgNumberColumnFilter()
+var colDef = ColDef.builder(Trade_.currentValue)
+    .filter(new AgNumberColumnFilter<BigDecimal>()
         .filterParams(
             NumberFilterParams.builder()
                 .inRangeInclusive(true)

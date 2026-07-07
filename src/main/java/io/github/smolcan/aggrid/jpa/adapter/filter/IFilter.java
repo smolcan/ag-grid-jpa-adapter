@@ -6,6 +6,7 @@ import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 import lombok.Getter;
+import lombok.NonNull;
 
 import java.util.Map;
 
@@ -15,7 +16,7 @@ import java.util.Map;
  * @param <FP>  filter params for filter
  */
 @SuppressWarnings("java:S119")
-public abstract class IFilter<FM extends IFilterModel, FP extends IFilterParams> {
+public abstract class IFilter<T, FM extends IFilterModel, FP extends IFilterParams> {
     @Getter
     protected FP filterParams = this.getDefaultFilterParams();
 
@@ -30,6 +31,7 @@ public abstract class IFilter<FM extends IFilterModel, FP extends IFilterParams>
      * Provide filter params with default values
      * @return default filter params
      */
+    @NonNull
     public abstract FP getDefaultFilterParams();
 
     /**
@@ -41,7 +43,8 @@ public abstract class IFilter<FM extends IFilterModel, FP extends IFilterParams>
      * @param filterModel   filter model as Map
      * @return              predicate for expression
      */
-    public Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, Map<String, Object> filterModel) {
+    @NonNull
+    public Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Expression<T> expression, Map<String, Object> filterModel) {
         FM model = this.recognizeFilterModel(filterModel);
         return this.toPredicate(cb, expression, model);
     }
@@ -53,9 +56,11 @@ public abstract class IFilter<FM extends IFilterModel, FP extends IFilterParams>
      * @param filterModel   filter model
      * @return              predicate for expression
      */
-    protected abstract Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, FM filterModel);
-    
-    public IFilter<FM, FP> filterParams(FP filterParams) {
+    @NonNull
+    protected abstract Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Expression<T> expression, FM filterModel);
+
+    @NonNull
+    public IFilter<T, FM, FP> filterParams(@NonNull FP filterParams) {
         this.filterParams = filterParams;
         return this;
     }

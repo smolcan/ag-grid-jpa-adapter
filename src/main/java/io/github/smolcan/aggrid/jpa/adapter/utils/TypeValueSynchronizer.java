@@ -2,6 +2,7 @@ package io.github.smolcan.aggrid.jpa.adapter.utils;
 
 
 import jakarta.persistence.criteria.Expression;
+import lombok.NonNull;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -39,8 +40,9 @@ public class TypeValueSynchronizer {
      * @return A Result object containing the expression and the converted value, both of which are compatible.
      * @throws IllegalArgumentException if the type of the expression is not supported or if parsing fails.
      */
+    @NonNull
     @SuppressWarnings({"unchecked", "rawtypes", "java:S1452"})
-    public static Result<?> synchronizeTypes(Expression<?> expr, String value) {
+    public static Result<?> synchronizeTypes(@NonNull Expression<?> expr, String value) {
         if (value == null) {
             return new Result<>(expr, null);
         }
@@ -119,11 +121,12 @@ public class TypeValueSynchronizer {
         private final Expression<E> synchronizedPath;
         private final E synchronizedValue;
         
-        public Result(Expression<E> synchronizedPath, E synchronizedValue) {
+        public Result(@NonNull Expression<E> synchronizedPath, E synchronizedValue) {
             this.synchronizedPath = synchronizedPath;
             this.synchronizedValue = synchronizedValue;
         }
 
+        @NonNull
         public Expression<?> getSynchronizedPath() {
             return synchronizedPath;
         }

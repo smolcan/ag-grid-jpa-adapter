@@ -9,8 +9,7 @@ If you want to make column available for grouping, you need to set the `enableRo
 otherwise grouping attempt on this column will result to runtime exception.
 
 ```java
-ColDef priceColumn = ColDef.builder()
-    .field("price")
+var priceColumn = ColDef.builder(Entity_.price)
     .enableRowGroup(true)
     .build();
 ```

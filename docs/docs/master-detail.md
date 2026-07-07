@@ -20,6 +20,8 @@ To enable Master/Detail, set `.masterDetail(true)` in the builder.
 
 Unlike standard configuration, Master/Detail settings are grouped into a `MasterDetailParams` object. You must configure **what** to display (the detail entity class and columns) and **how** to link the detail records to the master record.
 
+The detail entity type is the second type parameter of `QueryBuilder<E, D>` — pass the detail entity class as the second argument to `QueryBuilder.builder(masterClass, detailClass, em)`.
+
 ### Configuration Parameters
 
 | Method | Type | Required | Description |
@@ -34,27 +36,27 @@ Unlike standard configuration, Master/Detail settings are grouped into a `Master
 
 Inside `MasterDetailParams`, you must define how the adapter finds the detail records for a specific master row. Provide **one** of the following:
 
-1.  **Reference Field (`detailMasterReferenceField`):** Use if the Detail entity has a `@ManyToOne` mapping to the Master.
-2.  **ID Field (`detailMasterIdField`):** Use if the Detail entity only holds the raw Foreign Key ID.
+1.  **Reference Field (`detailMasterReferenceField`):** Use if the Detail entity has a `@ManyToOne` mapping to the Master. Pass the detail's metamodel attribute, e.g. `DetailEntity_.parentEntity`.
+2.  **ID Field (`detailMasterIdField`):** Use if the Detail entity only holds the raw Foreign Key ID. Pass the metamodel attribute, e.g. `DetailEntity_.parentId`.
 3.  **Custom Predicate (`createMasterRowPredicate`):** Use for complex joining logic.
 
 
 ```java
-QueryBuilder.builder(MasterEntity.class, em)
+QueryBuilder.builder(MasterEntity.class, DetailEntity.class, em)
     .masterDetail(true)
     .primaryFieldName("id") // Master ID
     
     // Group Detail Configuration
     .masterDetailParams(
-        QueryBuilder.MasterDetailParams.builder()
+        QueryBuilder.MasterDetailParams.<MasterEntity, DetailEntity>builder()
             .detailClass(DetailEntity.class)
             .detailColDefs(
-                ColDef.builder().field("detailId").build(),
-                ColDef.builder().field("amount").build()
+                ColDef.builder(DetailEntity_.detailId).build(),
+                ColDef.builder(DetailEntity_.amount).build()
             )
             // Define Relationship (Choose One)
-            .detailMasterReferenceField("parentEntity") 
-            // .detailMasterIdField("parentId")
+            .detailMasterReferenceField(DetailEntity_.parentEntity) 
+            // .detailMasterIdField(DetailEntity_.parentId)
             .build()
     )
     .build();
@@ -106,19 +108,19 @@ Requirements:
 2. This field name must not exist in the `detailColDefs`.
 
 ```java
-QueryBuilder.builder(MasterEntity.class, em)
+QueryBuilder.builder(MasterEntity.class, DetailEntity.class, em)
     .masterDetail(true)
     .masterDetailLazy(false) // Turn off lazy loading
     .masterDetailRowDataFieldName("detailRows") // JSON key for nested list
     .primaryFieldName("id")
     
     .masterDetailParams(
-        QueryBuilder.MasterDetailParams.builder()
+        QueryBuilder.MasterDetailParams.<MasterEntity, DetailEntity>builder()
             .detailClass(DetailEntity.class)
             .detailColDefs(
-                 ColDef.builder().field("detailId").build()
+                 ColDef.builder(DetailEntity_.detailId).build()
             )
-            .detailMasterReferenceField("parentEntity")
+            .detailMasterReferenceField(DetailEntity_.parentEntity)
             .build()
     )
     .build();
@@ -154,13 +156,13 @@ If standard ID or Reference mapping is insufficient (e.g., for composite keys or
 This function provides access to the JPA `CriteriaBuilder`, the detail entity `Root`, and the raw `masterRow` data map, allowing you to construct any valid JPA Predicate to filter the detail records.
 
 ```java
-QueryBuilder.builder(Trade.class, entityManager)
+QueryBuilder.builder(Trade.class, Trade.class, entityManager)
                 .colDefs(...)
                 .masterDetail(true)
                 .primaryFieldName("id")
                 .masterDetailParams(
-                        QueryBuilder.MasterDetailParams.builder()
-                                .detailClass(...)
+                        QueryBuilder.MasterDetailParams.<Trade, Trade>builder()
+                                .detailClass(Trade.class)
                                 .detailColDefs(...)
                                 .createMasterRowPredicate((cb, detailRoot, masterRow) -> {
                                     // detail will have all the trades that have the same submitter
@@ -170,7 +172,7 @@ QueryBuilder.builder(Trade.class, entityManager)
                                     }
 
                                     Long submitterId = Optional.ofNullable(submitterObj.get("id")).map(String::valueOf).map(Long::parseLong).orElse(null);
-                                    Path<?> path = Utils.getPath(detailRoot, "submitter.id");
+                                    Path<?> path = detailRoot.get("submitter").get("id");
                                     if (submitterId == null) {
                                         return cb.isNull(path);
                                     } else {
@@ -194,17 +196,19 @@ QueryBuilder.builder(Trade.class, entityManager)
 
 ## Dynamic Detail Definitions
 
-For advanced use cases, the structure of the detail grid can change based on the data in the master row. 
-For example, a "Vehicle" master row might show "Car Details" or "Boat Details" depending on the vehicle type.
+For advanced use cases, the configuration of the detail grid can change based on the data in the master row. 
+For example, a "Vehicle" master row might show a different set of detail columns depending on the vehicle type.
 
 You can provide a function to resolve the `MasterDetailParams` dynamically at runtime using `dynamicMasterDetailParams`.
 
-:::info Runtime 
-Resolution This function receives the masterRow (as a Map) as an argument, allowing you to inspect values to decide which Detail Class, Columns, and Relationships to use. 
+:::info Runtime resolution
+This function receives the masterRow (as a Map) as an argument, allowing you to inspect values to decide which columns and relationship to use.
+
+The detail **entity class** is fixed for a given `QueryBuilder` (the second argument to `builder(...)`); dynamic params vary the columns, relationship and predicate — not the entity type.
 :::
 
 ```java
-QueryBuilder.builder(Vehicle.class, em)
+QueryBuilder.builder(Vehicle.class, VehicleDetail.class, em)
     .masterDetail(true)
     .primaryFieldName("id")
     
@@ -213,22 +217,22 @@ QueryBuilder.builder(Vehicle.class, em)
         String type = (String) masterRow.get("type");
         
         if ("CAR".equals(type)) {
-            return QueryBuilder.MasterDetailParams.builder()
-                    .detailClass(CarDetail.class)
+            return QueryBuilder.MasterDetailParams.<Vehicle, VehicleDetail>builder()
+                    .detailClass(VehicleDetail.class)
                     .detailColDefs(
-                        ColDef.builder().field("wheels").build(),
-                        ColDef.builder().field("engine").build()
+                        ColDef.builder(VehicleDetail_.wheels).build(),
+                        ColDef.builder(VehicleDetail_.engine).build()
                     )
-                    .detailMasterReferenceField("vehicle")
+                    .detailMasterReferenceField(VehicleDetail_.vehicle)
                     .build();
         } else {
-             return QueryBuilder.MasterDetailParams.builder()
-                    .detailClass(BoatDetail.class)
+             return QueryBuilder.MasterDetailParams.<Vehicle, VehicleDetail>builder()
+                    .detailClass(VehicleDetail.class)
                     .detailColDefs(
-                        ColDef.builder().field("propeller").build(),
-                        ColDef.builder().field("sails").build()
+                        ColDef.builder(VehicleDetail_.propeller).build(),
+                        ColDef.builder(VehicleDetail_.sails).build()
                     )
-                    .detailMasterReferenceField("vehicle")
+                    .detailMasterReferenceField(VehicleDetail_.vehicle)
                     .build();
         }
     })

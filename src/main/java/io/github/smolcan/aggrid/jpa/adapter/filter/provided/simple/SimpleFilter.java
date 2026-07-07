@@ -8,6 +8,7 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.provided.IProvidedFilter;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
+import lombok.NonNull;
 
 import java.util.List;
 import java.util.Map;
@@ -19,7 +20,7 @@ import java.util.stream.Collectors;
  * @param <FP>  filter params for filter
  */
 @SuppressWarnings("java:S119")
-public abstract class SimpleFilter<FM extends SimpleFilterModel, FP extends IFilterParams> extends IProvidedFilter<FM, FP> {
+public abstract class SimpleFilter<T, FM extends SimpleFilterModel, FP extends IFilterParams> extends IProvidedFilter<T, FM, FP> {
 
     /**
      * Overrides this method because in simple filter, we must first check if filter is combined
@@ -31,7 +32,8 @@ public abstract class SimpleFilter<FM extends SimpleFilterModel, FP extends IFil
      * @return              predicate
      */
     @Override
-    public Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, Map<String, Object> filterModel) {
+    @NonNull
+    public Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Expression<T> expression, Map<String, Object> filterModel) {
         if (this.isCombinedFilter(filterModel)) {
             CombinedSimpleModel<FM> combinedSimpleModel = this.getCombinedFilterModel(filterModel);
             return this.toCombinedPredicate(cb, expression, combinedSimpleModel);
@@ -52,15 +54,17 @@ public abstract class SimpleFilter<FM extends SimpleFilterModel, FP extends IFil
         return filterModel != null && filterModel.containsKey("conditions") && filterModel.containsKey("operator");
     }
 
+    @NonNull
     @SuppressWarnings("unchecked")
-    private CombinedSimpleModel<FM> getCombinedFilterModel(Map<String, Object> filterModel) {
+    private CombinedSimpleModel<FM> getCombinedFilterModel(@NonNull Map<String, Object> filterModel) {
         CombinedSimpleModel<FM> combinedSimpleModel = new CombinedSimpleModel<>();
         combinedSimpleModel.setOperator(JoinOperator.valueOf(filterModel.get("operator").toString()));
         combinedSimpleModel.setConditions(((List<Map<String, Object>>) filterModel.get("conditions")).stream().map(this::recognizeFilterModel).collect(Collectors.toList()));
         return combinedSimpleModel;
     }
     
-    private Predicate toCombinedPredicate(CriteriaBuilder cb, Expression<?> expression, CombinedSimpleModel<FM> combinedSimpleModel) {
+    @NonNull
+    private Predicate toCombinedPredicate(@NonNull CriteriaBuilder cb, @NonNull Expression<T> expression, @NonNull CombinedSimpleModel<FM> combinedSimpleModel) {
         List<Predicate> predicates = combinedSimpleModel.getConditions().stream().map(c -> this.toPredicate(cb, expression, c)).collect(Collectors.toList());
         if (combinedSimpleModel.getOperator() == JoinOperator.AND) {
             return cb.and(predicates.toArray(new Predicate[0]));

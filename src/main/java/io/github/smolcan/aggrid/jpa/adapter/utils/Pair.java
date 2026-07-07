@@ -1,6 +1,7 @@
 package io.github.smolcan.aggrid.jpa.adapter.utils;
 
 import lombok.Getter;
+import lombok.NonNull;
 
 import java.util.Objects;
 
@@ -32,10 +33,12 @@ public class Pair<K, V> {
     }
 
     @Override
+    @NonNull
     public String toString() {
         return "(" + key + ", " + value + ")";
     }
 
+    @NonNull
     public static <K, V> Pair<K, V> of(K key, V value) {
         return new Pair<>(key, value);
     }

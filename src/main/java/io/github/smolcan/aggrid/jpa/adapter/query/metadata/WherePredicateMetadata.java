@@ -33,7 +33,7 @@ public class WherePredicateMetadata {
     private final boolean isFilterPredicate;
     private final boolean isColumnFilterPredicate;
     private final boolean isAdvancedFilterPredicate;
-    private final AdvancedFilterModel advancedFilterModel;
+    private final AdvancedFilterModel<?> advancedFilterModel;
     private final boolean isExternalFilterPredicate;
     private final boolean isQuickFilterPredicate;
     

@@ -24,8 +24,7 @@ To limit which aggregation functions ([AggregationFunction](https://github.com/s
 can be used on the column, provide an array of allowed functions (otherwise all aggregation functions are allowed).
 
 ```java
-ColDef priceColumn = ColDef.builder()
-    .field("price")
+var priceColumn = ColDef.builder(Entity_.price)
     .enableValue(true)
     .allowedAggFuncs(AggregationFunction.avg, AggregationFunction.count)
     // or just use string names
@@ -59,7 +58,7 @@ Custom functions are registered within the `QueryBuilder` using the `.registerCu
 The following example demonstrates registering functions specifically for the Postgres database.
 
 ```java
-QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
+QueryBuilder<Entity, Void> queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
     .colDefs(colDefs)
     // Registering custom aggregation functions
     .registerCustomAggFunction("bool_and", (cb, expr) -> cb.function("BOOL_AND", Boolean.class, expr))
@@ -84,7 +83,7 @@ When using Filters and Aggregations together, the aggregated values reflect only
 This can be changed to instead ignore applied filters by using the `suppressAggFilteredOnly` grid option.
 
 ```java
-QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
+QueryBuilder<Entity, Void> queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
     .colDefs(
         // ...col defs
     )
@@ -105,7 +104,7 @@ The grid only applies filters to leaf level rows, this can be toggled to instead
 allowing filters to also apply against the aggregated values.
 
 ```java
-QueryBuilder<Entity> queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
+QueryBuilder<Entity, Void> queryBuilder = QueryBuilder.builder(Entity.class, entityManager)
     .colDefs(
         // ...col defs
     )

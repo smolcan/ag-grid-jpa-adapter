@@ -6,6 +6,7 @@ import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.experimental.Tolerate;
 
 import java.util.Set;
@@ -24,6 +25,7 @@ public class TextFilterParams implements ISimpleFilterParams {
     // If true, the input that the user enters will be trimmed when the filter is applied, so any leading or trailing whitespace will be removed. 
     // If only whitespace is entered, it will be left as-is. 
     private final boolean trimInput;
+    @NonNull
     private final Set<SimpleFilterModelType> filterOptions;
 
     /**
@@ -33,7 +35,8 @@ public class TextFilterParams implements ISimpleFilterParams {
      * @param expression    expression
      * @return              new expression generated from filter params
      */
-    public Expression<String> generateExpressionFromFilterParams(CriteriaBuilder cb, Expression<String> expression) {
+    @NonNull
+    public Expression<String> generateExpressionFromFilterParams(@NonNull CriteriaBuilder cb, @NonNull Expression<String> expression) {
         if (this.trimInput) {
             expression = cb.trim(expression);
         }
@@ -54,7 +57,8 @@ public class TextFilterParams implements ISimpleFilterParams {
         private Set<SimpleFilterModelType> filterOptions = Set.of(SimpleFilterModelType.values());
 
         @Tolerate
-        public Builder filterOptions(SimpleFilterModelType ...values) {
+        @NonNull
+        public Builder filterOptions(@NonNull SimpleFilterModelType ...values) {
             this.filterOptions = Set.of(values);
             return this;
         }

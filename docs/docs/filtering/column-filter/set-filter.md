@@ -6,12 +6,11 @@ sidebar_position: 4
 The Set Filter takes inspiration from Excel's AutoFilter and allows filtering on sets of data.
 
 ## Using Set Filter
-Set filter is represented by class [AgSetColumnFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/provided/AgSetColumnFilter.java).
+Set filter is represented by the abstract class [AgSetColumnFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/provided/AgSetColumnFilter.java). Create it with the factory method matching the column's type — `AgSetColumnFilter.forString()`, `forNumber()`, `forBoolean()`, `forDate()`, `forUUID()` or `forEnum(MyEnum.class)`.
 
 ```java
-ColDef colDef = ColDef.builder()
-    .field("product")
-    .filter(new AgSetColumnFilter())
+var colDef = ColDef.builder(Trade_.product)
+    .filter(AgSetColumnFilter.forString())
     .build()
 ```
 
@@ -26,13 +25,12 @@ Set Filters are configured though the filter params ([SetFilterParams](https://g
 
 Example of using filter parameters.
 ```java
-ColDef colDef = ColDef.builder()
-    .field("product")
-    .filter(new AgSetColumnFilter()
+var colDef = ColDef.builder(Trade_.product)
+    .filter(AgSetColumnFilter.forString()
         .filterParams(
             SetFilterParams.builder()
                 .caseSensitive(false)
-                .textFormatter((cb, expr) => {
+                .textFormatter((cb, expr) -> {
                     Expression<String> newExpression = expr;
                     // lower input
                     newExpression = cb.lower(newExpression);
@@ -58,7 +56,17 @@ Since the Server-Side Row Model does not have all data loaded in the browser,
 you must provide the list of unique values for the set filter manually.
 
 The adapter provides the `supplySetFilterValues` method, which automatically 
-fetches distinct sorted values from the database for a given column.
+fetches distinct sorted values from the database for a given column. It takes the column's `FieldPath`:
+
+```java
+List<String> values = queryBuilder.supplySetFilterValues(FieldPath.of(Trade_.product));
+```
+
+There is also an untyped overload that resolves the column by its field name and returns `List<Object>` — handy when the field comes in as a string (e.g. from a request):
+
+```java
+List<Object> values = queryBuilder.supplySetFilterValues("product");
+```
 
 ## Grid using Server Side Set Filter
 - `Product` uses default set filter

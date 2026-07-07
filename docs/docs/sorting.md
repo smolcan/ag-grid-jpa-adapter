@@ -11,8 +11,7 @@ Sorting can be either **ascending** or **descending**, represented by the enum [
 To prevent sorting on a column, set the `sortable` property in the column definition to `false`:
 
 ```java
-ColDef priceColumn = ColDef.builder()
-    .field("price")
+var priceColumn = ColDef.builder(Entity_.price)
     .sortable(false)
     .build();
 ```

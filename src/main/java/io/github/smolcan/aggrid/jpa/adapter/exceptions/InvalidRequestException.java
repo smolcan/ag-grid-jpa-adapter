@@ -1,6 +1,7 @@
 package io.github.smolcan.aggrid.jpa.adapter.exceptions;
 
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 
@@ -16,21 +17,22 @@ public class InvalidRequestException extends RuntimeException {
 
     private final List<ValidationError> validationErrors;
 
-    public InvalidRequestException(List<ValidationError> validationErrors) {
+    public InvalidRequestException(@NonNull List<ValidationError> validationErrors) {
         super(formatErrorMessage(validationErrors));
         this.validationErrors = new ArrayList<>(validationErrors);
     }
 
-    public InvalidRequestException(String field, String message) {
+    public InvalidRequestException(@NonNull String field, @NonNull String message) {
         this(List.of(new ValidationError(field, message)));
     }
 
-    public boolean hasErrorsForField(String field) {
+    public boolean hasErrorsForField(@NonNull String field) {
         return validationErrors.stream()
                 .anyMatch(error -> field.equals(error.getField()));
     }
 
-    private static String formatErrorMessage(List<ValidationError> errors) {
+    @NonNull
+    private static String formatErrorMessage(@NonNull List<ValidationError> errors) {
         if (errors.isEmpty()) {
             return "Request validation failed";
         }
@@ -49,11 +51,13 @@ public class InvalidRequestException extends RuntimeException {
     @RequiredArgsConstructor
     @ToString
     public static class ValidationError {
+        @NonNull
         private final String field;
+        @NonNull
         private final String message;
         private final Object rejectedValue;
 
-        public ValidationError(String field, String message) {
+        public ValidationError(@NonNull String field, @NonNull String message) {
             this(field, message, null);
         }
     }

@@ -14,9 +14,8 @@ AG Grid's frontend does not natively wire quick filter in Server-Side Row Model.
 
 To enable quick filtering, you must set `.isQuickFilterPresent(true)` and define which fields should be searched using `.quickFilterSearchInFields()`.
 
-:::warning Database Compatibility
-Including non-string fields in `quickFilterSearchInFields` may result in runtime exceptions on some databases.
-Always test this feature against your database engine.
+:::info String fields only
+`quickFilterSearchInFields` accepts only `String` columns — its argument type is `FieldPath<E, String>`, so non-string fields are rejected at compile time.
 :::
 
 You can also fine-tune text handling with optional parameters like trimming, case sensitivity, or custom formatters.
@@ -28,7 +27,7 @@ QueryBuilder.builder(Trade.class, entityManager)
     .isQuickFilterPresent(true)
     
     // 2. Define fields to search in
-    .quickFilterSearchInFields("product", "portfolio")
+    .quickFilterSearchInFields(FieldPath.of(Trade_.product), FieldPath.of(Trade_.portfolio))
     
     // 3. Optional configuration
     .quickFilterTrimInput(true)       // Trim spaces from input

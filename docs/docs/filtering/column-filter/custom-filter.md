@@ -14,7 +14,7 @@ To implement a custom filter, follow these steps:
    Create a class representing the parameters for your filter by implementing the [`IFilterParams`](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/model/simple/params/IFilterParams.java) interface.
 
 3. **Extend the `IFilter` abstract class**  
-   Create a class representing your custom filter by extending the [`IFilter`](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/IFilter.java) abstract class.
+   Create a class representing your custom filter by extending the [`IFilter`](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/IFilter.java) abstract class. `IFilter<T, FM, FP>` is parameterised by the column value type `T`, your filter model `FM`, and your filter params `FP`.
 
 
 ## Example
@@ -41,7 +41,7 @@ public class CustomNumberFilterParams implements IFilterParams {
 ### 3. **Extend the `IFilter` abstract class** 
 Extend and overwrite the required methods.
 ```java
-public class CustomNumberFilter extends IFilter<CustomNumberFilterModel, CustomNumberFilterParams> {
+public class CustomNumberFilter<T extends Number> extends IFilter<T, CustomNumberFilterModel, CustomNumberFilterParams> {
     
     @Override
     // map to filter model object
@@ -59,7 +59,7 @@ public class CustomNumberFilter extends IFilter<CustomNumberFilterModel, CustomN
 
     @Override
     // create predicate from expression
-    public Predicate toPredicate(CriteriaBuilder cb, Expression<?> expression, CustomNumberFilterModel customNumberFilterModel) {
+    public Predicate toPredicate(CriteriaBuilder cb, Expression<T> expression, CustomNumberFilterModel customNumberFilterModel) {
         String value = customNumberFilterModel.getValue();
         if (value == null || value.equalsIgnoreCase("All")) {
             // not active, always true
@@ -89,10 +89,9 @@ Set your filter with filter params to column definition.
 ```java
 boolean includeNullValues = true;
 
-ColDef colDef = ColDef.builder()
-    .field("tradeId")
+var colDef = ColDef.builder(Trade_.tradeId)
     .filter(
-        new CustomNumberFilter()
+        new CustomNumberFilter<Long>()
             .filterParams(new CustomNumberFilterParams(includeNullValues))
     )
     .build();
