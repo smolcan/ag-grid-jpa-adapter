@@ -10,7 +10,9 @@ import lombok.experimental.Tolerate;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -26,6 +28,7 @@ public class ColDef<P, T> {
     private final boolean sortable;
     // Set to `true` if you want to be able to row group by this column
     private final boolean enableRowGroup;
+    private final Function<@NonNull String, @NonNull T> groupKeyToType;
     // Set to `true` if you want to be able to aggregate by this column
     private final boolean enableValue;
     private final boolean enablePivot;
@@ -52,9 +55,27 @@ public class ColDef<P, T> {
         private FieldPath<P, T> field;
         private boolean sortable = true;
         private Set<String> allowedAggFuncs;
+        private boolean enableRowGroup;
+        private Function<@NonNull String, @NonNull T> groupKeyToType;
         
         private Builder<P, T> field(@NonNull FieldPath<P, T> field) {
             this.field = field;
+            return this;
+        }
+
+        @Tolerate
+        @NonNull
+        public Builder<P, T> enableRowGroup(boolean enableRowGroup, Function<@NonNull String, @NonNull T> groupKeyToType) {
+            this.enableRowGroup = enableRowGroup;
+            if (this.enableRowGroup) {
+                this.groupKeyToType = Objects.requireNonNull(groupKeyToType);
+            } else {
+                this.groupKeyToType = null;
+            }
+            return this;
+        }
+        // hide default builder
+        private Builder<P, T> enableRowGroup(boolean enableRowGroup) {
             return this;
         }
         

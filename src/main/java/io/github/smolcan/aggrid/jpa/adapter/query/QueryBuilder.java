@@ -704,8 +704,7 @@ public class QueryBuilder<E, E_ID, D> {
                 pathToCheck = root.get(params.getDetailMasterIdField());
             }
 
-            TypeValueSynchronizer.Result<?> sync = TypeValueSynchronizer.synchronizeTypes(pathToCheck, String.valueOf(masterIdValue));
-            masterRowPredicate = cb.equal(sync.getSynchronizedPath(), sync.getSynchronizedValue());
+            masterRowPredicate = cb.equal(pathToCheck, masterIdValue);
         }
 
         return masterRowPredicate;
@@ -1166,18 +1165,16 @@ public class QueryBuilder<E, E_ID, D> {
             String groupKey = request.getGroupKeys().get(i);
             String groupCol = request.getRowGroupCols().get(i).getField();
             ColDef<E, ?> groupColDef = this.colDefs.get(groupCol);
-
-            // try to synchronize col and key to same data type to prevent errors
-            // for example, group key is date as string, but field is date, need to parse to date and then compare
-            TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(groupColDef.getField().getPath(root), groupKey);
-            Predicate groupPredicate = cb.equal(synchronizedValueType.getSynchronizedPath(), synchronizedValueType.getSynchronizedValue());
+            Path<?> groupColPath = groupColDef.getField().getPath(root);
+            Object groupKeyConverted = groupColDef.getGroupKeyToType().apply(groupKey);
+            Predicate groupPredicate = cb.equal(groupColPath, groupKeyConverted);
 
             // wrap in predicate info object
             WherePredicateMetadata groupPredicateInfo = WherePredicateMetadata
                     .builder()
                     .predicate(groupPredicate)
                     .isGroupPredicate(true)
-                    .groupKey(synchronizedValueType.getSynchronizedValue())
+                    .groupKey(groupKeyConverted)
                     .groupCol(groupCol)
                     .build();
             wherePredicates.add(groupPredicateInfo);
@@ -1208,18 +1205,17 @@ public class QueryBuilder<E, E_ID, D> {
             String groupKey = request.getGroupKeys().get(i);
             String groupCol = request.getRowGroupCols().get(i).getField();
             ColDef<E, ?> groupColDef = this.colDefs.get(groupCol);
-
-            // try to synchronize col and key to same data type to prevent errors
-            // for example, group key is date as string, but field is date, need to parse to date and then compare
-            TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(groupColDef.getField().getPath(root), groupKey);
-            Predicate groupPredicate = cb.equal(synchronizedValueType.getSynchronizedPath(), synchronizedValueType.getSynchronizedValue());
+            
+            Path<?> groupColPath = groupColDef.getField().getPath(root);
+            Object groupKeyConverted = groupColDef.getGroupKeyToType().apply(groupKey);
+            Predicate groupPredicate = cb.equal(groupColPath, groupKeyConverted);
 
             // wrap in predicate info object
             WherePredicateMetadata groupPredicateInfo = WherePredicateMetadata
                     .builder()
                     .predicate(groupPredicate)
                     .isGroupPredicate(true)
-                    .groupKey(synchronizedValueType.getSynchronizedValue())
+                    .groupKey(groupKeyConverted)
                     .groupCol(groupCol)
                     .build();
             wherePredicates.add(groupPredicateInfo);
@@ -1373,11 +1369,9 @@ public class QueryBuilder<E, E_ID, D> {
                             .map(col -> {
                                 ColDef<E, ?> colDef = this.colDefs.get(col.getField());
                                 Path<?> expandedParentGroupPath = colDef.getField().getPath(expandedParentRoot);
+                                Object groupKeyConverted = colDef.getGroupKeyToType().apply(key);
 
-                                // try to synchronize col and key to same data type to prevent errors
-                                // for example, group key is date as string, but field is date, need to parse to date and then compare
-                                TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(expandedParentGroupPath, key);
-                                return cb.equal(synchronizedValueType.getSynchronizedPath(), synchronizedValueType.getSynchronizedValue());
+                                return cb.equal(expandedParentGroupPath, groupKeyConverted);
                             })
                             .limit(i + 1L)
                             .collect(Collectors.toList())
