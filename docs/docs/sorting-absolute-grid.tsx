@@ -43,7 +43,7 @@ const SortingAbsoluteGrid = () => {
         },
         {
             headerName: 'Profit and Loss 1',
-            field: 'pl1',
+            field: 'statistics.pl1',
             sort: {
                 type: 'absolute',
                 direction: 'asc',
@@ -52,7 +52,7 @@ const SortingAbsoluteGrid = () => {
         },
         {
             headerName: 'Profit and Loss 2',
-            field: 'pl2',
+            field: 'statistics.pl2',
             sort: {
                 type: 'absolute',
                 direction: 'desc',
