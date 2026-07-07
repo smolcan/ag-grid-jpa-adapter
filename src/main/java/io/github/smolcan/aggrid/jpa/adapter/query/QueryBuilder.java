@@ -445,6 +445,16 @@ public class QueryBuilder<E, D> {
         
         return this.entityManager.createQuery(query).getResultList();
     }
+    
+    @NonNull
+    @SuppressWarnings("unchecked")
+    public List<Object> supplySetFilterValues(@NonNull String fieldName) {
+        ColDef<E, ?> colDef = this.colDefs.get(fieldName);
+        if (colDef == null) {
+            throw new IllegalArgumentException(String.format("Column definition for field '%s' not found.", fieldName));
+        }
+        return (List<Object>) supplySetFilterValues(colDef.getField());
+    }
 
     /**
      * Determines and sets the fields to be selected in the query.
