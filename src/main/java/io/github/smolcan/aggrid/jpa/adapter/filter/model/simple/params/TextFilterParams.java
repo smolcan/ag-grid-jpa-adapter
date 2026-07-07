@@ -15,16 +15,30 @@ import java.util.function.BiFunction;
 @Getter
 @Builder(builderClassName = "Builder")
 public class TextFilterParams implements ISimpleFilterParams {
-    // Used to override how to filter based on the user input. Returns true if the value passes the filter, otherwise false.
+    /**
+     * @param textMatcher overrides how filtering is done for the user input, returning the predicate directly.
+     * @return the custom text matcher.
+     */
     private final BiFunction<CriteriaBuilder, TextMatcherParams, Predicate> textMatcher;
-    // By default, text filtering is case-insensitive. Set this to true to make text filtering case-sensitive.
+    /**
+     * @param caseSensitive set {@code true} to make text filtering case-sensitive (default is case-insensitive).
+     * @return whether text filtering is case-sensitive.
+     */
     private final boolean caseSensitive;
-    // Formats the text before applying the filter compare logic. 
-    // Useful if you want to substitute accented characters, for example.
+    /**
+     * @param textFormatter formats the text before comparing (e.g. to substitute accented characters).
+     * @return the text formatter.
+     */
     private final BiFunction<CriteriaBuilder, Expression<String>, Expression<String>> textFormatter;
-    // If true, the input that the user enters will be trimmed when the filter is applied, so any leading or trailing whitespace will be removed. 
-    // If only whitespace is entered, it will be left as-is. 
+    /**
+     * @param trimInput set {@code true} to trim leading/trailing whitespace from the input before filtering.
+     * @return whether the input is trimmed.
+     */
     private final boolean trimInput;
+    /**
+     * @param filterOptions the filter options allowed on this column.
+     * @return the allowed filter options.
+     */
     @NonNull
     private final Set<SimpleFilterModelType> filterOptions;
 

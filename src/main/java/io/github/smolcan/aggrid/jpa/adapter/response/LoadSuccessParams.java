@@ -11,14 +11,29 @@ import java.util.Map;
 @AllArgsConstructor
 @Builder
 public class LoadSuccessParams {
-    // Data retrieved from the server as requested by the grid.
+    /**
+     * @param rowData the row data returned to the grid.
+     * @return the row data returned to the grid.
+     */
     private List<Map<String, Object>> rowData;
-    // The last row, if known, to help Infinite Scroll.
+    /**
+     * @param rowCount the last row index, if known (helps infinite scroll).
+     * @return the last row index, if known.
+     */
     private Long rowCount;
-    // Any extra information for the grid to associate with this load.
+    /**
+     * @param groupLevelInfo any extra information for the grid to associate with this load.
+     * @return the extra group-level information.
+     */
     private Map<String, Object> groupLevelInfo;
-    // The pivot fields in the response - if provided the grid will attempt to generate secondary columns.
+    /**
+     * @param pivotResultFields the pivot result fields; if provided, the grid generates secondary columns.
+     * @return the pivot result fields.
+     */
     private List<String> pivotResultFields;
-    // Data for the grand total row
+    /**
+     * @param grandTotalData the data for the grand total row.
+     * @return the data for the grand total row.
+     */
     private Map<String, Object> grandTotalData;
 }

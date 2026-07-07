@@ -20,14 +20,42 @@ import lombok.NonNull;
 @Builder
 public class SelectionMetadata {
     
+    /**
+     * @param alias the selection alias (output field name).
+     * @return the selection alias.
+     */
     @NonNull
     private final String alias;
+    /**
+     * @param expression the selected JPA expression.
+     * @return the selected expression.
+     */
     @NonNull
     private final Expression<?> expression;
+    /**
+     * @param isGroupingSelection whether this selection is a grouping column.
+     * @return whether this selection is a grouping column.
+     */
     private final boolean isGroupingSelection;
+    /**
+     * @param isPivotingSelection whether this selection is a pivot column.
+     * @return whether this selection is a pivot column.
+     */
     private final boolean isPivotingSelection;
+    /**
+     * @param isAggregationSelection whether this selection is an aggregation.
+     * @return whether this selection is an aggregation.
+     */
     private final boolean isAggregationSelection;
+    /**
+     * @param isServerSideGroupSelection whether this selection is the tree-data "is group" flag.
+     * @return whether this selection is the tree-data "is group" flag.
+     */
     private final boolean isServerSideGroupSelection;
+    /**
+     * @param isChildCountSelection whether this selection is a child-count value.
+     * @return whether this selection is a child-count value.
+     */
     private final boolean isChildCountSelection;
 
 }

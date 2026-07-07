@@ -15,15 +15,25 @@ public class DateFilterParams extends ScalarFilterParams {
 
     @NonNull
     private final Set<SimpleFilterModelType> filterOptions;
-    // The maximum valid date that can be entered in the filter.
-    // If set, this will override `maxValidYear` - the maximum valid year setting.
+    /**
+     * @param maxValidDate the maximum valid date accepted by the filter (overrides {@code maxValidYear} if set).
+     * @return the maximum valid date.
+     */
     private final LocalDate maxValidDate;
-    // This is the maximum year that may be entered in a date field for the value to be considered valid.
+    /**
+     * @param maxValidYear the maximum valid year accepted by the filter.
+     * @return the maximum valid year.
+     */
     private final Integer maxValidYear;
-    // The minimum valid date that can be entered in the filter.
-    // If set, this will override `minValidYear` - the minimum valid year setting.
+    /**
+     * @param minValidDate the minimum valid date accepted by the filter (overrides {@code minValidYear} if set).
+     * @return the minimum valid date.
+     */
     private final LocalDate minValidDate;
-    // This is the minimum year that may be entered in a date field for the value to be considered valid.
+    /**
+     * @param minValidYear the minimum valid year accepted by the filter.
+     * @return the minimum valid year.
+     */
     private final Integer minValidYear;
 
     public void validateDate(LocalDateTime dateTime) {

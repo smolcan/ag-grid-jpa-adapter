@@ -12,8 +12,16 @@ import lombok.NonNull;
 @Builder
 public class HavingMetadata {
     
+    /**
+     * @param predicate the {@code HAVING} predicate.
+     * @return the {@code HAVING} predicate.
+     */
     @NonNull
     private final Predicate predicate;
+    /**
+     * @param isPivoting whether this predicate belongs to a pivoting query.
+     * @return whether this predicate belongs to a pivoting query.
+     */
     private final boolean isPivoting;
 
 }

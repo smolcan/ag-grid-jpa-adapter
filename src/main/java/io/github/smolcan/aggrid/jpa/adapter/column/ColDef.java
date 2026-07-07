@@ -24,15 +24,37 @@ public class ColDef<P, T> {
     
     @NonNull
     private final FieldPath<P, T> field;
-    // Set false to disable sorting which is enabled by default.
+    /**
+     * @param sortable set {@code false} to disable sorting (enabled by default).
+     * @return whether sorting is enabled.
+     */
     private final boolean sortable;
     // Set to `true` if you want to be able to row group by this column
     private final boolean enableRowGroup;
+    /**
+     * @param groupKeyToType converts the string group key back to the column type {@code T} (used for row grouping).
+     * @return the group-key-to-type converter.
+     */
     private final Function<@NonNull String, @NonNull T> groupKeyToType;
-    // Set to `true` if you want to be able to aggregate by this column
+    /**
+     * @param enableValue set {@code true} to allow aggregating by this column.
+     * @return whether aggregation is enabled.
+     */
     private final boolean enableValue;
+    /**
+     * @param enablePivot set {@code true} to allow pivoting by this column.
+     * @return whether pivoting is enabled.
+     */
     private final boolean enablePivot;
+    /**
+     * @param allowedAggFuncs the aggregation functions allowed on this column.
+     * @return the allowed aggregation functions.
+     */
     private final Set<String> allowedAggFuncs;
+    /**
+     * @param filter the filter for this column ({@code null} for no filter).
+     * @return the column filter.
+     */
     private final IFilter<T, ?, ?> filter;
     
     @NonNull

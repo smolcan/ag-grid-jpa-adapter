@@ -13,34 +13,70 @@ import java.util.Map;
 @AllArgsConstructor
 @Builder
 public class ServerSideGetRowsRequest {
-    // First row requested or undefined for all rows. 
+    /**
+     * @param startRow the first row requested (inclusive).
+     * @return the first row requested.
+     */
     private int startRow;
-    // Index after the last row required row or undefined for all rows.
+    /**
+     * @param endRow the index after the last row requested (exclusive).
+     * @return the index after the last row requested.
+     */
     private int endRow;
-    // Columns that are currently row grouped.
+    /**
+     * @param rowGroupCols the columns that are currently row grouped.
+     * @return the row-grouped columns.
+     */
     @NonNull
     private List<ColumnVO> rowGroupCols;
-    // Columns that have aggregations on them.
+    /**
+     * @param valueCols the columns that have aggregations on them.
+     * @return the aggregated columns.
+     */
     @NonNull
     private List<ColumnVO> valueCols;
-    // Columns that have pivot on them.
+    /**
+     * @param pivotCols the columns that are pivoted.
+     * @return the pivoted columns.
+     */
     @NonNull
     private List<ColumnVO> pivotCols;
-    // Defines if pivot mode is on or off.
+    /**
+     * @param pivotMode whether pivot mode is on.
+     * @return whether pivot mode is on.
+     */
     private boolean pivotMode;
-    // What groups the user is viewing.
+    /**
+     * @param groupKeys the group keys of the groups the user is viewing.
+     * @return the group keys the user is viewing.
+     */
     @NonNull
     private List<String> groupKeys;
-    // if filtering, what the filter model is
+    /**
+     * @param filterModel the filter model (if filtering).
+     * @return the filter model.
+     */
     private Map<String, Object> filterModel;
-    // if sorting, what the sort model is
+    /**
+     * @param sortModel the sort model (if sorting).
+     * @return the sort model.
+     */
     @NonNull
     private List<SortModelItem> sortModel;
-    // external filter value
+    /**
+     * @param externalFilter the external filter value.
+     * @return the external filter value.
+     */
     private Object externalFilter;
-    // quick filter value
+    /**
+     * @param quickFilter the quick filter value.
+     * @return the quick filter value.
+     */
     private String quickFilter;
-    
+    /**
+     * @param needsGrandTotal whether the grand total row should be computed for this request.
+     * @return whether the grand total row is needed.
+     */
     private boolean needsGrandTotal;
 
 }

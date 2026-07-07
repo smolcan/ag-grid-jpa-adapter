@@ -423,6 +423,7 @@ public class QueryBuilder<E, E_ID, D> {
      * Supplies a list of unique values for an AG Grid Set Filter for the specified field.
      * Fetches distinct values from the database and returns them sorted in ascending order.
      *
+     * @param <T> the value type of the column.
      * @param field the column field path to retrieve unique values for.
      * @return a sorted list of distinct values present in the database.
      */
@@ -2787,6 +2788,8 @@ public class QueryBuilder<E, E_ID, D> {
      * combines them into a single product expression.
      * </p>
      *
+     * @param cb the criteria builder.
+     * @param request the server-side request describing the pivot columns.
      * @return The product of distinct counts for all pivot columns.
      *         Returns 0 if pivot mode is disabled or no pivot columns are defined in the request.
      */

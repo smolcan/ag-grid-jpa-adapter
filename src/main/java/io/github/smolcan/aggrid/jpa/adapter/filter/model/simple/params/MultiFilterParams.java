@@ -16,6 +16,10 @@ import java.util.List;
 @Builder(builderClassName = "Builder")
 public class MultiFilterParams<T> implements IFilterParams {
     
+    /**
+     * @param filters the filters combined by this multi filter (all typed to the column type {@code T}).
+     * @return the filters combined by this multi filter.
+     */
     @NonNull
     private List<IFilter<T, ?, ?>> filters;
 

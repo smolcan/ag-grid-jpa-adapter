@@ -6,16 +6,34 @@ import lombok.experimental.SuperBuilder;
 @Getter
 @SuperBuilder
 public class ScalarFilterParams implements ISimpleFilterParams {
-    // If true, the 'inRange' filter option will include values equal to the start and end of the range.
+    /**
+     * @param inRangeInclusive if {@code true}, the {@code 'inRange'} option includes the range endpoints.
+     * @return whether the {@code 'inRange'} option is inclusive.
+     */
     private final boolean inRangeInclusive;
-    // If true, blank (null or undefined) values will pass the 'equals' filter option.
+    /**
+     * @param includeBlanksInEquals if {@code true}, blank (null) values pass the {@code 'equals'} option.
+     * @return whether blanks pass {@code 'equals'}.
+     */
     private final boolean includeBlanksInEquals;
-    // If true, blank (null or undefined) values will pass the 'notEqual' filter option.
+    /**
+     * @param includeBlanksInNotEqual if {@code true}, blank (null) values pass the {@code 'notEqual'} option.
+     * @return whether blanks pass {@code 'notEqual'}.
+     */
     private final boolean includeBlanksInNotEqual;
-    // If `true`, blank (`null` or `undefined`) values will pass the `'lessThan'` and `'lessThanOrEqual'` filter options.
+    /**
+     * @param includeBlanksInLessThan if {@code true}, blank (null) values pass {@code 'lessThan'}/{@code 'lessThanOrEqual'}.
+     * @return whether blanks pass {@code 'lessThan'}.
+     */
     private final boolean includeBlanksInLessThan;
-    // If `true`, blank (`null` or `undefined`) values will pass the `'greaterThan'` and `'greaterThanOrEqual'` filter options.
+    /**
+     * @param includeBlanksInGreaterThan if {@code true}, blank (null) values pass {@code 'greaterThan'}/{@code 'greaterThanOrEqual'}.
+     * @return whether blanks pass {@code 'greaterThan'}.
+     */
     private final boolean includeBlanksInGreaterThan;
-    // If `true`, blank (`null` or `undefined`) values will pass the `'inRange'` filter option.
+    /**
+     * @param includeBlanksInRange if {@code true}, blank (null) values pass the {@code 'inRange'} option.
+     * @return whether blanks pass {@code 'inRange'}.
+     */
     private final boolean includeBlanksInRange;
 }

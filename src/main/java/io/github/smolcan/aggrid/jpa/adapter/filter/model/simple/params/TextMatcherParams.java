@@ -12,6 +12,9 @@ public class TextMatcherParams {
 
     /**
      * The applicable filter option being tested.
+     *
+     * @param filterOption the applicable filter option being tested.
+     * @return the applicable filter option being tested.
      */
     @NonNull
     private final SimpleFilterModelType filterOption;
@@ -21,6 +24,9 @@ public class TextMatcherParams {
      * If a `textFormatter` is provided, this value will have been formatted.
      * If no `textFormatter` is provided and `caseSensitive` is not provided or is `false`,
      * the value will have been converted to lower case.
+     *
+     * @param value the column expression about to be filtered.
+     * @return the column expression about to be filtered.
      */
     @NonNull
     private final Expression<String> value;
@@ -30,6 +36,9 @@ public class TextMatcherParams {
      * If a `textFormatter` is provided, this value will have been formatted.
      * If no `textFormatter` is provided and `caseSensitive` is not provided or is `false`,
      * the value will have been converted to lower case.
+     *
+     * @param filterText the text to filter by.
+     * @return the text to filter by.
      */
     @NonNull
     private final Expression<String> filterText;

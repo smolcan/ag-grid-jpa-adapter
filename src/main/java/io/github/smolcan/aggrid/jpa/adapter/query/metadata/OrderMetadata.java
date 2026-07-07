@@ -11,8 +11,16 @@ import lombok.NonNull;
 @Getter
 @Builder
 public class OrderMetadata {
+    /**
+     * @param order the JPA order (column + sort direction) to apply.
+     * @return the JPA order to apply.
+     */
     @NonNull
     private final Order order;
+    /**
+     * @param colId the ID of the ordered column.
+     * @return the ID of the ordered column.
+     */
     @NonNull
     private final String colId;
 }
