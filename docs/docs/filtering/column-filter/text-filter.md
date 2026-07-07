@@ -8,10 +8,9 @@ Text Filters allow you to filter string data.
 ## Using Text Filter
 Text filter is represented by class [AgTextColumnFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/provided/simple/AgTextColumnFilter.java).
 
-Text Filter is the default filter used in `ColDef`, but it can also be explicitly configured as shown below.
+Set the text filter on a column's `ColDef`:
 ```java
-ColDef colDef = ColDef.builder()
-    .field("portfolio")
+var colDef = ColDef.builder(Trade_.portfolio)
     .filter(new AgTextColumnFilter())
     .build()
 ```
@@ -29,8 +28,7 @@ Text Filters are configured though the filter params ([TextFilterParams](https:/
 
 Example of using filter parameters.
 ```java
-ColDef colDef = ColDef.builder()
-    .field("portfolio")
+var colDef = ColDef.builder(Trade_.portfolio)
     .filter(new AgTextColumnFilter()
         .filterParams(
             TextFilterParams.builder()
@@ -54,12 +52,11 @@ In this case, you can provide your own `textFormatter`, which formats the text b
 in the filter compare logic.
 
 ```java
-ColDef colDef = ColDef.builder()
-    .field("portfolio")
+var colDef = ColDef.builder(Trade_.portfolio)
     .filter(new AgTextColumnFilter()
         .filterParams(
             TextFilterParams.builder()
-                .textFormatter((cb, expr) => {
+                .textFormatter((cb, expr) -> {
                     Expression<String> newExpression = expr;
                     // lower input
                     newExpression = cb.lower(newExpression);
@@ -88,12 +85,11 @@ For more advanced use cases, you can provide your own `textMatcher` to decide wh
 which is a boolean expression that determines if matches.
 
 ```java
-ColDef colDef = ColDef.builder()
-    .field("portfolio")
+var colDef = ColDef.builder(Trade_.portfolio)
     .filter(new AgTextColumnFilter()
         .filterParams(
             TextFilterParams.builder()
-                .textMatcher((cb, params) => {
+                .textMatcher((cb, params) -> {
                     // ...your own matching logic
                     return predicate;
                 })
