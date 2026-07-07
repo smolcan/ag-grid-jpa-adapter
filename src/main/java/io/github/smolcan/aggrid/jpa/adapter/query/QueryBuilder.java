@@ -18,7 +18,6 @@ import io.github.smolcan.aggrid.jpa.adapter.response.LoadSuccessParams;
 import io.github.smolcan.aggrid.jpa.adapter.query.metadata.PivotingContext;
 import io.github.smolcan.aggrid.jpa.adapter.utils.Pair;
 import io.github.smolcan.aggrid.jpa.adapter.utils.TriFunction;
-import io.github.smolcan.aggrid.jpa.adapter.utils.TypeValueSynchronizer;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Tuple;
 import jakarta.persistence.TupleElement;
@@ -100,6 +99,7 @@ public class QueryBuilder<E, E_ID, D> {
     protected final String isServerSideGroupFieldName;
     protected final SingularAttribute<E, E> treeDataParentReferenceField;
     protected final SingularAttribute<E, E_ID> treeDataParentIdField;
+    protected final Function<String, E_ID> treeDataStringToParentIdTypeConverter;
     protected final PluralAttribute<E, ? extends Collection<E>, E> treeDataChildrenField;
     protected final SingularAttribute<E, String> treeDataDataPathFieldName;
     protected final String treeDataDataPathSeparator;
@@ -151,6 +151,7 @@ public class QueryBuilder<E, E_ID, D> {
         this.isServerSideGroupFieldName = builder.isServerSideGroupFieldName;
         this.treeDataParentReferenceField = builder.treeDataParentReferenceField;
         this.treeDataParentIdField = builder.treeDataParentIdField;
+        this.treeDataStringToParentIdTypeConverter = builder.treeDataStringToParentIdTypeConverter;
         this.treeDataChildrenField = builder.treeDataChildrenField;
         this.treeDataDataPathFieldName = builder.treeDataDataPathFieldName;
         this.treeDataDataPathSeparator = builder.treeDataDataPathSeparator;
@@ -1077,21 +1078,15 @@ public class QueryBuilder<E, E_ID, D> {
         } else {
             // filter by parent record
             String parentKey = request.getGroupKeys().get(request.getGroupKeys().size() - 1);
-
-            Predicate treeParentPredicate;
+            
+            E_ID parentKeyConverted = this.treeDataStringToParentIdTypeConverter.apply(parentKey);
+            Path<E_ID> parentIdPath;
             if (this.treeDataParentReferenceField != null) {
-                Path<E_ID> parentIdPath = root.get(this.treeDataParentReferenceField).get(this.primaryField);
-                // try to synchronize col and key to same data type to prevent errors
-                // for example, group key is date as string, but field is date, need to parse to date and then compare
-                TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(parentIdPath, parentKey);
-                treeParentPredicate = cb.equal(synchronizedValueType.getSynchronizedPath(), synchronizedValueType.getSynchronizedValue());
+                parentIdPath = root.get(this.treeDataParentReferenceField).get(this.primaryField);
             } else {
-                // try to synchronize col and key to same data type to prevent errors
-                // for example, group key is date as string, but field is date, need to parse to date and then compare
-                TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(root.get(this.treeDataParentIdField), parentKey);
-                treeParentPredicate =  cb.equal(synchronizedValueType.getSynchronizedPath(), synchronizedValueType.getSynchronizedValue());
+                parentIdPath = root.get(this.treeDataParentIdField);
             }
-            treePredicate = treeParentPredicate;
+            treePredicate = cb.equal(parentIdPath, parentKeyConverted);
         }
         wherePredicateMetadata.add(
                 WherePredicateMetadata
@@ -1803,8 +1798,9 @@ public class QueryBuilder<E, E_ID, D> {
         Predicate parentPrimaryKeyPredicate = cb.or(
                 request.getGroupKeys().stream()
                         .map(k -> {
-                            TypeValueSynchronizer.Result<?> synchronizedValueType = TypeValueSynchronizer.synchronizeTypes(parentRoot.get(this.primaryField), k);
-                            return cb.equal(synchronizedValueType.getSynchronizedPath(), synchronizedValueType.getSynchronizedValue());
+                            Path<E_ID> parentPath = parentRoot.get(this.primaryField);
+                            E_ID key = this.treeDataStringToParentIdTypeConverter.apply(k);
+                            return cb.equal(parentPath, key);
                         })
                         .toArray(Predicate[]::new)
         );
@@ -2901,6 +2897,7 @@ public class QueryBuilder<E, E_ID, D> {
         private String isServerSideGroupFieldName;
         private SingularAttribute<E, E> treeDataParentReferenceField;
         private SingularAttribute<E, E_ID> treeDataParentIdField;
+        private Function<String, E_ID> treeDataStringToParentIdTypeConverter;
         private PluralAttribute<E, ? extends Collection<E>, E> treeDataChildrenField;
         private SingularAttribute<E, String> treeDataDataPathFieldName;
         private String treeDataDataPathSeparator;
@@ -3097,6 +3094,11 @@ public class QueryBuilder<E, E_ID, D> {
             this.treeDataParentIdField = treeDataParentIdField;
             return this;
         }
+        
+        public Builder<E, E_ID, D> treeDataStringToParentIdTypeConverter(@NonNull Function<String, E_ID> treeDataStringToParentIdTypeConverter) {
+            this.treeDataStringToParentIdTypeConverter = treeDataStringToParentIdTypeConverter;
+            return this;
+        }
 
         @NonNull
         public Builder<E, E_ID, D> treeDataChildrenField(@NonNull PluralAttribute<E, ? extends Collection<E>, E> treeDataChildrenField) {
@@ -3255,6 +3257,9 @@ public class QueryBuilder<E, E_ID, D> {
 
             if (this.treeDataParentReferenceField == null && this.treeDataParentIdField == null) {
                 treeDataErrorMessages.add("When treeData is set to true, either treeDataParentReferenceField or treeDataParentIdField must be provided");
+            }
+            if (this.treeDataStringToParentIdTypeConverter == null) {
+                treeDataErrorMessages.add("When treeData is set to true, treeDataStringToParentIdTypeConverter must be provided");
             }
             
             if ((this.treeDataDataPathFieldName == null) != (this.treeDataDataPathSeparator == null)) {
