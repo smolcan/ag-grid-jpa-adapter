@@ -63,6 +63,7 @@ import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.cartesianProduct;
  *
  *
  * @param <E> the type of the root JPA entity being queried
+ * @param <E_ID> the type of the root JPA entity ID being queried
  * @param <D> the type of the detail entity for master-detail (use {@code Void} when not used)
  * @author Samuel Molčan
  */
