@@ -48,7 +48,8 @@ public class FieldPath<E, T> {
     
     @SuppressWarnings("unchecked")
     public Class<T> getJavaType() {
-        return (Class<T>) hops.get(hops.size() - 1).getJavaType();
+        Attribute<?, T> lastHop = (Attribute<?, T>) hops.get(hops.size() - 1);
+        return lastHop.getJavaType();
     }
     
     @NonNull
