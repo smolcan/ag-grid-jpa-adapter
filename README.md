@@ -43,11 +43,11 @@ Example usage in a Spring service:
 @Service
 public class MyEntityService {
 
-    private final QueryBuilder<MyEntity> queryBuilder;
+    private final QueryBuilder<MyEntity, MyEntityId, Void> queryBuilder;
 
     @Autowired
     public MyEntityService(EntityManager entityManager) {
-        this.queryBuilder = QueryBuilder.builder(MyEntity.class, entityManager)
+        this.queryBuilder = QueryBuilder.builder(MyEntity.class, MyEntity_.id, entityManager)
                 .colDefs(/* Define your column definitions here */)
                 .build();
     }
