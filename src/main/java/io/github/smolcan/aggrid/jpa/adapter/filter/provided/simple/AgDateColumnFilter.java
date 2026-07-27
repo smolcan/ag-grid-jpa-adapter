@@ -8,13 +8,9 @@ import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 import lombok.NonNull;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
+import java.sql.Timestamp;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.Temporal;
 import java.time.temporal.WeekFields;
 import java.util.Locale;
 import java.util.Map;
@@ -22,7 +18,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 @SuppressWarnings("java:S119")
-public abstract class AgDateColumnFilter<DT extends Temporal & Comparable<? super DT>> extends SimpleFilter<DT, DateFilterModel, DateFilterParams> {
+public abstract class AgDateColumnFilter<DT extends Comparable<? super DT>> extends SimpleFilter<DT, DateFilterModel, DateFilterParams> {
 
     @NonNull
     public static AgLocalDateColumnFilter forLocalDate() {
@@ -37,6 +33,31 @@ public abstract class AgDateColumnFilter<DT extends Temporal & Comparable<? supe
     @NonNull
     public static AgInstantColumnFilter forInstant(@NonNull ZoneId zone) {
         return new AgInstantColumnFilter(zone);
+    }
+    
+    @NonNull
+    public static AgOffsetDateTimeColumnFilter forOffsetDateTime(@NonNull ZoneId zone) {
+        return new AgOffsetDateTimeColumnFilter(zone);
+    }
+
+    @NonNull
+    public static AgZonedDateTimeColumnFilter forZonedDateTime(@NonNull ZoneId zone) {
+        return new AgZonedDateTimeColumnFilter(zone);
+    }
+
+    @NonNull
+    public static AgUtilDateColumnFilter forUtilDate(@NonNull ZoneId zone) {
+        return new AgUtilDateColumnFilter(zone);
+    }
+
+    @NonNull
+    public static AgTimestampColumnFilter forTimestamp(@NonNull ZoneId zone) {
+        return new AgTimestampColumnFilter(zone);
+    }
+
+    @NonNull
+    public static AgSqlDateColumnFilter forSqlDate() {
+        return new AgSqlDateColumnFilter();
     }
 
     @Override
@@ -344,6 +365,78 @@ public abstract class AgDateColumnFilter<DT extends Temporal & Comparable<? supe
         @NonNull
         protected Instant convertFromLocalDateTime(@NonNull LocalDateTime dateTime) {
             return dateTime.atZone(this.zone).toInstant();
+        }
+    }
+    
+    public static class AgOffsetDateTimeColumnFilter extends AgDateColumnFilter<OffsetDateTime> {
+
+        @NonNull
+        private final ZoneId zone;
+
+        public AgOffsetDateTimeColumnFilter(@NonNull ZoneId zone) {
+            this.zone = zone;
+        }
+
+        @Override
+        protected @NonNull OffsetDateTime convertFromLocalDateTime(@NonNull LocalDateTime dateTime) {
+            return dateTime.atZone(this.zone).toOffsetDateTime();
+        }
+    }
+    
+    public static class AgZonedDateTimeColumnFilter extends AgDateColumnFilter<ZonedDateTime> {
+
+        @NonNull
+        private final ZoneId zone;
+
+        public AgZonedDateTimeColumnFilter(@NonNull ZoneId zone) {
+            this.zone = zone;
+        }
+
+        @Override
+        @NonNull
+        protected ZonedDateTime convertFromLocalDateTime(@NonNull LocalDateTime dateTime) {
+            return dateTime.atZone(this.zone);
+        }
+    }
+    
+    public static class AgUtilDateColumnFilter extends AgDateColumnFilter<java.util.Date> {
+
+        @NonNull
+        private final ZoneId zone;
+
+        public AgUtilDateColumnFilter(@NonNull ZoneId zone) {
+            this.zone = zone;
+        }
+
+        @Override
+        @NonNull
+        protected java.util.Date convertFromLocalDateTime(@NonNull LocalDateTime dateTime) {
+            return java.util.Date.from(dateTime.atZone(this.zone).toInstant());
+        }
+    }
+    
+    public static class AgTimestampColumnFilter extends AgDateColumnFilter<Timestamp> {
+
+        @NonNull
+        private final ZoneId zone;
+
+        public AgTimestampColumnFilter(@NonNull ZoneId zone) {
+            this.zone = zone;
+        }
+
+        @Override
+        @NonNull
+        protected Timestamp convertFromLocalDateTime(@NonNull LocalDateTime dateTime) {
+            return Timestamp.from(dateTime.atZone(this.zone).toInstant());
+        }
+    }
+    
+    public static class AgSqlDateColumnFilter extends AgDateColumnFilter<java.sql.Date> {
+
+        @Override
+        @NonNull
+        protected java.sql.Date convertFromLocalDateTime(@NonNull LocalDateTime dateTime) {
+            return java.sql.Date.valueOf(dateTime.toLocalDate());
         }
     }
 }

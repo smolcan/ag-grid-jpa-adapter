@@ -6,13 +6,26 @@ sidebar_position: 3
 Date Filters allow you to filter date data.
 
 ## Using Date Filter
-Date filter is represented by the abstract class [AgDateColumnFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/provided/simple/AgDateColumnFilter.java). Create it with the factory method that matches your column's temporal type — `AgDateColumnFilter.forLocalDate()`, `AgDateColumnFilter.forLocalDateTime()` or `AgDateColumnFilter.forInstant(zoneId)`.
+Date filter is represented by the abstract class [AgDateColumnFilter](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/provided/simple/AgDateColumnFilter.java). Create it with the factory method that matches your column's date type.
 
 ```java
 var colDef = ColDef.builder(Trade_.birthDate)
     .filter(AgDateColumnFilter.forLocalDate())
     .build()
 ```
+
+### Supported Column Types
+
+| Column Type | Factory Method |
+| :--- | :--- |
+| `java.time.LocalDate` | `AgDateColumnFilter.forLocalDate()` |
+| `java.time.LocalDateTime` | `AgDateColumnFilter.forLocalDateTime()` |
+| `java.time.Instant` | `AgDateColumnFilter.forInstant(zoneId)` |
+| `java.time.OffsetDateTime` | `AgDateColumnFilter.forOffsetDateTime(zoneId)` |
+| `java.time.ZonedDateTime` | `AgDateColumnFilter.forZonedDateTime(zoneId)` |
+| `java.util.Date` | `AgDateColumnFilter.forUtilDate(zoneId)` |
+| `java.sql.Timestamp` | `AgDateColumnFilter.forTimestamp(zoneId)` |
+| `java.sql.Date` | `AgDateColumnFilter.forSqlDate()` |
 
 
 ## Date Filter Parameters
