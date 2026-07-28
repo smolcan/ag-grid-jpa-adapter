@@ -140,6 +140,36 @@ class MasterDetailTest extends ScenarioTestBase {
         assertThat(detailTradeIds(details)).containsExactlyInAnyOrder(4L, 7L, 11L);
     }
 
+    /** The batched IN-query joins through the master reference field by default; here it uses the raw FK column instead. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void eagerModeLinksByRawForeignKey() {
+        QueryBuilder<Product, Long, Trade> queryBuilder = QueryBuilder.builder(Product.class, Product_.productId, Trade.class, entityManager)
+                .colDefs(
+                        ColDef.builder(Product_.productId).build(),
+                        ColDef.builder(Product_.name).build()
+                )
+                .masterDetailParams(MasterDetailParams.<Product, Long, Trade>builder()
+                        .detailClass(Trade.class)
+                        .detailColDefs(ColDef.builder(Trade_.tradeId).build())
+                        .detailMasterIdField(Trade_.productId)
+                        .build())
+                .masterDetailLazy(false)
+                .masterDetailRowDataFieldName("detailRows")
+                .build();
+
+        List<Map<String, Object>> masters = queryBuilder.getRows(masterRequest()).getRowData();
+
+        List<Map<String, Object>> gold = (List<Map<String, Object>>) masters.get(0).get("detailRows");
+        assertThat(detailTradeIds(gold)).containsExactlyInAnyOrder(1L, 3L, 6L, 9L);
+        assertThat(detailTradeIds((List<Map<String, Object>>) masters.get(1).get("detailRows")))
+                .containsExactlyInAnyOrder(2L, 5L, 8L, 12L);
+        assertThat(detailTradeIds((List<Map<String, Object>>) masters.get(2).get("detailRows")))
+                .containsExactlyInAnyOrder(4L, 7L, 11L);
+        // the helper column used to group details by master is stripped again
+        assertThat(gold.get(0)).containsOnlyKeys("tradeId");
+    }
+
     @Test
     void dynamicMasterDetailParamsVaryColumnsPerMasterRow() {
         QueryBuilder<Product, Long, Trade> queryBuilder = QueryBuilder.builder(Product.class, Product_.productId, Trade.class, entityManager)
