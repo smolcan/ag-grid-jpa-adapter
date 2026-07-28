@@ -196,6 +196,17 @@ class GroupingTest extends ScenarioTestBase {
     }
 
     @Test
+    void countRowsAppliesFilterToCountedGroups() {
+        ServerSideGetRowsRequest request = groupedByPortfolioRequest();
+        request.getValueCols().add(valueCol("currentValue", "sum"));
+        request.setFilterModel(Map.of("currentValue", filter("greaterThan", 0)));
+
+        // the filter runs inside the counting subquery: "alpha" keeps no leaf above 0 and drops out,
+        // leaving the same 7 groups as filterAppliesToLeavesBeforeAggregation
+        assertThat(groupingQueryBuilder().countRows(request)).isEqualTo(7);
+    }
+
+    @Test
     void avgAggregationPerGroup() {
         ServerSideGetRowsRequest request = groupedByPortfolioRequest();
         request.getValueCols().add(valueCol("currentValue", "avg"));
@@ -342,6 +353,28 @@ class GroupingTest extends ScenarioTestBase {
         assertThat(queryBuilder.countRows(groupedByPortfolioRequest())).isEqualTo(8);
         // group expanded: counts the rows inside it
         assertThat(queryBuilder.countRows(groupedByPortfolioRequest("Beta"))).isEqualTo(2);
+    }
+
+    @Test
+    void paginateChildRowsCountsChildGroupsOfExpandedGroup() {
+        QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
+                .colDefs(
+                        ColDef.builder(Trade_.tradeId).build(),
+                        ColDef.builder(Trade_.portfolio).enableRowGroup(true, key -> key).build(),
+                        ColDef.builder(FieldPath.of(Trade_.product).to(Product_.name)).enableRowGroup(true, key -> key).build()
+                )
+                .paginateChildRows(true)
+                .build();
+
+        ServerSideGetRowsRequest request = emptyRequest(0, 100);
+        request.setFilterModel(new HashMap<>());
+        request.getRowGroupCols().add(groupCol("portfolio"));
+        request.getRowGroupCols().add(groupCol("product.name"));
+        request.getGroupKeys().add("Alpha");
+
+        // a level is still collapsed, so groups are counted rather than rows, and the expanded
+        // group key narrows the count to Alpha's child groups (Gold, Silver)
+        assertThat(queryBuilder.countRows(request)).isEqualTo(2);
     }
 
     @Test
