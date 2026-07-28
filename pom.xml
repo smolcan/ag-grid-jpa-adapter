@@ -40,8 +40,12 @@
 
   <properties>
     <lombok.version>1.18.46</lombok.version>
+    <!-- Hibernate 6.6.x is the last line implementing Jakarta Persistence 3.1 (Hibernate 7 targets 3.2) -->
+    <hibernate.version>6.6.13.Final</hibernate.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <!-- overwritten by jacoco prepare-agent; empty default keeps surefire's @{argLine} resolvable when jacoco is skipped -->
+    <argLine></argLine>
   </properties>
 
   <dependencies>
@@ -56,6 +60,31 @@
       <artifactId>lombok</artifactId>
       <version>${lombok.version}</version>
       <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>5.11.4</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>3.27.3</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.hibernate.orm</groupId>
+      <artifactId>hibernate-core</artifactId>
+      <version>${hibernate.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <version>2.3.232</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
@@ -85,8 +114,45 @@
               <artifactId>lombok</artifactId>
               <version>${lombok.version}</version>
             </path>
+            <!-- generates the static metamodel (Trade_, ...) for test entities; no-op for main sources -->
+            <path>
+              <groupId>org.hibernate.orm</groupId>
+              <artifactId>hibernate-jpamodelgen</artifactId>
+              <version>${hibernate.version}</version>
+            </path>
           </annotationProcessorPaths>
         </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.5.2</version>
+        <configuration>
+          <!-- byte-buddy experimental flag lets Hibernate run on JDKs newer than it knows -->
+          <argLine>@{argLine} -Dnet.bytebuddy.experimental=true</argLine>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>0.8.13</version>
+        <executions>
+          <execution>
+            <id>prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report</id>
+            <phase>test</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
 
       <plugin>

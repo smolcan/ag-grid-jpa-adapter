@@ -1400,75 +1400,6 @@ public class QueryBuilder<E, E_ID, D> {
         return this.entityManager.createQuery(mainQuery).getSingleResult();
     }
 
-
-    /**
-     * Creates a predicate to identify if the current group's parents meet the 
-     * aggregation filter criteria within the main query.
-     *
-     * @param queryContext the current query state container
-     * @param request the server-side request parameters from the grid
-     * @return a predicate representing the expanded parent group filter match
-     */
-    @NonNull
-    protected Predicate groupAggFilteringCreateExpandedParentsPredicate(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
-        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
-        AbstractQuery<?> query = queryContext.getQuery();
-        Root<E> root = queryContext.getRoot();
-        
-        if (request.getGroupKeys().isEmpty()) {
-            return cb.disjunction();
-        }
-        
-        List<Predicate> expandedParentGroupsPredicates = new ArrayList<>(request.getGroupKeys().size());
-        for (int i = 0; i < request.getGroupKeys().size(); i++) {
-            
-            Subquery<Integer> expandedParentSubquery = query.subquery(Integer.class);
-            Root<E> expandedParentRoot = expandedParentSubquery.from(this.entityClass);
-            expandedParentSubquery.select(cb.literal(1));
-
-            expandedParentSubquery.groupBy(
-                    request.getRowGroupCols().stream()
-                            .map(col -> this.colDefs.get(col.getField()))
-                            .map(colDef -> colDef.getField().getPath(expandedParentRoot))
-                            .limit(i + 1L)
-                            .collect(Collectors.toList())
-            );
-
-            expandedParentSubquery.where(
-                    request.getRowGroupCols().stream()
-                            .map(col -> {
-                                ColDef<E, ?> colDef = this.colDefs.get(col.getField());
-                                Path<?> subqueryGroupColumnPath = colDef.getField().getPath(expandedParentRoot);
-                                Path<?> parentQueryGroupColumnPath = colDef.getField().getPath(root);
-                                return cb.equal(subqueryGroupColumnPath, parentQueryGroupColumnPath);
-                            })
-                            .limit(i + 1L)
-                            .collect(Collectors.toList())
-                            .toArray(Predicate[]::new)
-            );
-
-            expandedParentSubquery.having(
-                    request.getValueCols().stream()
-                            .filter(vc -> request.getFilterModel().containsKey(vc.getField()))
-                            .map(vc -> {
-                                ColDef<E, ?> colDef = this.colDefs.get(vc.getField());
-                                // create aggregation expression
-                                Expression<?> aggExpr = this.aggFuncs.get(vc.getAggFunc()).apply(cb, colDef.getField().getPath(expandedParentRoot));
-        
-                                // having predicate
-                                IFilter<?, ?, ?> filter = colDef.getFilter();
-                                return filter.toPredicate(cb, (Expression) aggExpr, (Map<String, Object>) request.getFilterModel().get(vc.getField()));
-                            })
-                            .toArray(Predicate[]::new)
-            );
-
-            expandedParentGroupsPredicates.add(cb.exists(expandedParentSubquery));
-        }
-        
-        return cb.or(expandedParentGroupsPredicates.toArray(new Predicate[0]));
-    }
-
-
     /**
      * Creates a predicate to check if any unexpanded child groups (nested groups 
      * deeper than the current level) satisfy the aggregation filters.
@@ -1507,8 +1438,7 @@ public class QueryBuilder<E, E_ID, D> {
                                 Path<?> parentQueryGroupColumnPath = colDef.getField().getPath(root);
                                 return cb.equal(subqueryGroupColumnPath, parentQueryGroupColumnPath);
                             })
-                            .skip(request.getGroupKeys().size())
-                            .limit(i - request.getGroupKeys().size() + 1L)
+                            .limit(i + 1L)
                             .collect(Collectors.toList())
                             .toArray(Predicate[]::new)
             );
@@ -1683,10 +1613,11 @@ public class QueryBuilder<E, E_ID, D> {
         if (this.treeDataChildrenField != null) {
             isServerSideGroupSelection = cb.isNotEmpty(root.get(this.treeDataChildrenField));
         } else {
-            // Subquery: Select count from Entity where parent = root
-            Subquery<Long> subquery = cb.createTupleQuery().subquery(Long.class);
+            // Subquery: Select 1 from Entity where parent = root
+            // (must not select count(*) here: a count subquery always returns a row, making EXISTS always true)
+            Subquery<Integer> subquery = queryContext.getQuery().subquery(Integer.class);
             Root<E> subRoot = subquery.from(this.entityClass);
-            subquery.select(cb.count(subRoot));
+            subquery.select(cb.literal(1));
             if (this.treeDataParentReferenceField != null) {
                 // compare parent reference directly with root
                 subquery.where(cb.equal(subRoot.get(this.treeDataParentReferenceField), root));
@@ -2405,7 +2336,7 @@ public class QueryBuilder<E, E_ID, D> {
                     textAdvancedFilterModel.setType(TextAdvancedFilterModelType.valueOf(filter.get("type").toString()));
                     textAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).orElse(null));
                     if (textColumnFilter.getFilterParams() != null) {
-                        textAdvancedFilterModel.setFilterParams(textAdvancedFilterModel.getFilterParams());
+                        textAdvancedFilterModel.setFilterParams(textColumnFilter.getFilterParams());
                     }
                     
                     return textAdvancedFilterModel;
