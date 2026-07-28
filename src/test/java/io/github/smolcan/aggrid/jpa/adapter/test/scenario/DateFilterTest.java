@@ -136,6 +136,49 @@ class DateFilterTest extends ScenarioTestBase {
     }
 
     @Test
+    void includeBlanksInNotEqualParamAddsNullDates() {
+        List<Long> ids = tradeDateRows(
+                DateFilterParams.builder().includeBlanksInNotEqual(true).build(),
+                dateFilter("notEqual", "2024-01-10 00:00:00"));
+        // SQL "date <> ..." is unknown for the null date (8), so only the param brings it back
+        assertThat(ids).containsExactly(2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L, 12L);
+    }
+
+    @Test
+    void includeBlanksInLessThanParamAlsoCoversLessThanOrEqual() {
+        List<Long> ids = tradeDateRows(
+                DateFilterParams.builder().includeBlanksInLessThan(true).build(),
+                dateFilter("lessThanOrEqual", "2024-04-01 00:00:00"));
+        // same param as lessThan, and Apr 1 (4) is now included
+        assertThat(ids).containsExactly(1L, 2L, 3L, 4L, 8L);
+    }
+
+    @Test
+    void includeBlanksInGreaterThanParamAddsNullDates() {
+        List<Long> ids = tradeDateRows(
+                DateFilterParams.builder().includeBlanksInGreaterThan(true).build(),
+                dateFilter("greaterThan", "2025-01-01 00:00:00"));
+        // strictly after Jan 1 2025, so the Jan 1 trade (9) stays out while the null date (8) comes in
+        assertThat(ids).containsExactly(8L, 10L, 11L, 12L);
+    }
+
+    @Test
+    void includeBlanksInGreaterThanParamAlsoCoversGreaterThanOrEqual() {
+        List<Long> ids = tradeDateRows(
+                DateFilterParams.builder().includeBlanksInGreaterThan(true).build(),
+                dateFilter("greaterThanOrEqual", "2025-01-01 00:00:00"));
+        assertThat(ids).containsExactly(8L, 9L, 10L, 11L, 12L);
+    }
+
+    @Test
+    void textFilterTypeOnDateColumnIsRejected() {
+        // "contains" parses as a filter model type but has no meaning for dates
+        assertThatThrownBy(() -> rows(Map.of("tradeDate", filter("contains"))))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("contains");
+    }
+
+    @Test
     void maxValidYearRejectsLaterDates() {
         assertThatThrownBy(() -> tradeDateRows(
                 DateFilterParams.builder().maxValidYear(2024).build(),

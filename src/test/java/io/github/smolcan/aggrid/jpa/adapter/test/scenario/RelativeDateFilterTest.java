@@ -21,10 +21,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The relative date options resolve against LocalDateTime.now() inside the adapter,
- * so this class seeds extra trades at offsets relative to today. Week/month/quarter
- * options are boundary- and locale-dependent and are left untested; the day-based
- * options below are deterministic for any run date. The standard dataset (2024/2025
- * dates) stays outside every tested window.
+ * so this class seeds extra trades at offsets relative to today. The day-based options
+ * below are deterministic for any run date, and the standard dataset (2024/2025 dates)
+ * stays outside every tested window. Week/month/quarter/year options need anchors tied
+ * to calendar boundaries and live in {@link CalendarRelativeDateFilterTest}.
  */
 class RelativeDateFilterTest extends ScenarioTestBase {
 
