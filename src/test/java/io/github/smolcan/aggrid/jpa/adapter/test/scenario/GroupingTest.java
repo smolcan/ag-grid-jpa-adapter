@@ -7,6 +7,7 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple.AgTextColumnF
 import io.github.smolcan.aggrid.jpa.adapter.query.QueryBuilder;
 import io.github.smolcan.aggrid.jpa.adapter.request.ServerSideGetRowsRequest;
 import io.github.smolcan.aggrid.jpa.adapter.request.SortDirection;
+import io.github.smolcan.aggrid.jpa.adapter.request.SortModelItem;
 import io.github.smolcan.aggrid.jpa.adapter.response.LoadSuccessParams;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Product_;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade;
@@ -178,6 +179,38 @@ class GroupingTest extends ScenarioTestBase {
         LoadSuccessParams result = groupingQueryBuilder().getRows(request);
         assertThat(columnValues(result, "portfolio"))
                 .containsExactly("Delta", "Beta", "Alpha", "BETA", "delta", "Epsilon", "Gamma", "alpha");
+    }
+
+    @Test
+    void absoluteSortOnGroupColumnOrdersGroupsByMagnitude() {
+        ServerSideGetRowsRequest request = emptyRequest(0, 100);
+        // -75.25 would tie with 75.25 in absolute value, so keep it out of the comparison
+        request.setFilterModel(Map.of("currentValue", filter("greaterThan", -50)));
+        request.getRowGroupCols().add(groupCol("currentValue"));
+        SortModelItem absoluteSort = sortItem("currentValue", SortDirection.asc);
+        absoluteSort.setType("absolute");
+        request.getSortModel().add(absoluteSort);
+
+        LoadSuccessParams result = groupingQueryBuilder().getRows(request);
+        // the -10.00 group sorts between 0.00 and 42.42 by magnitude
+        assertThat(doubleValues(result, "currentValue"))
+                .containsExactly(0.00, -10.00, 42.42, 75.25, 100.00, 150.00, 250.50, 320.10, 500.00, 999.99);
+    }
+
+    @Test
+    void absoluteSortOnAggregatedColumnOrdersGroupsByMagnitude() {
+        ServerSideGetRowsRequest request = emptyRequest(0, 100);
+        request.setFilterModel(new HashMap<>());
+        request.getRowGroupCols().add(groupCol("portfolio"));
+        request.getValueCols().add(valueCol("currentValue", "sum"));
+        SortModelItem absoluteSort = sortItem("currentValue", SortDirection.asc);
+        absoluteSort.setType("absolute");
+        request.getSortModel().add(absoluteSort);
+
+        LoadSuccessParams result = groupingQueryBuilder().getRows(request);
+        // "alpha" sums to -75.25, so magnitude puts it second instead of first (compare sortingByAggregatedColumn)
+        assertThat(columnValues(result, "portfolio"))
+                .containsExactly("Gamma", "alpha", "Epsilon", "delta", "BETA", "Alpha", "Beta", "Delta");
     }
 
     @Test

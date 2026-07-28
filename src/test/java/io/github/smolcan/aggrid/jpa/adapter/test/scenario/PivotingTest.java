@@ -6,12 +6,14 @@ import io.github.smolcan.aggrid.jpa.adapter.exceptions.OnPivotMaxColumnsExceeded
 import io.github.smolcan.aggrid.jpa.adapter.query.QueryBuilder;
 import io.github.smolcan.aggrid.jpa.adapter.request.ServerSideGetRowsRequest;
 import io.github.smolcan.aggrid.jpa.adapter.request.SortDirection;
+import io.github.smolcan.aggrid.jpa.adapter.request.SortModelItem;
 import io.github.smolcan.aggrid.jpa.adapter.response.LoadSuccessParams;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Product_;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade_;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -119,6 +121,49 @@ class PivotingTest extends ScenarioTestBase {
         // groups with Gold values sorted descending; groups without Gold trades (null) sort last on H2
         assertThat(columnValues(result, "portfolio").subList(0, 4))
                 .containsExactly("BETA", "delta", "Alpha", "alpha");
+    }
+
+    @Test
+    void absoluteSortOnPivotResultColumnOrdersByMagnitude() {
+        ServerSideGetRowsRequest request = pivotRequest();
+        request.getSortModel().clear();
+        SortModelItem absoluteSort = sortItem("Platinum_currentValue", SortDirection.desc);
+        absoluteSort.setType("absolute");
+        request.getSortModel().add(absoluteSort);
+
+        LoadSuccessParams result = pivotingQueryBuilder(null).getRows(request);
+        // Platinum sums are Epsilon 100.00, Gamma -10.00, Beta 0.00 (groups without Platinum trades sort last);
+        // without the absolute type Beta (0.00) would outrank Gamma (-10.00)
+        assertThat(columnValues(result, "portfolio").subList(0, 3))
+                .containsExactly("Epsilon", "Gamma", "Beta");
+    }
+
+    @Test
+    void absoluteSortOnPivotGroupColumnOrdersGroupsByMagnitude() {
+        QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
+                .colDefs(
+                        ColDef.builder(Trade_.currentValue).enableRowGroup(true, BigDecimal::new).build(),
+                        ColDef.builder(Trade_.previousValue).enableValue(true).build(),
+                        ColDef.builder(FieldPath.of(Trade_.product).to(Product_.name)).enablePivot(true).build()
+                )
+                .build();
+
+        ServerSideGetRowsRequest request = emptyRequest(0, 100);
+        request.setPivotMode(true);
+        request.getRowGroupCols().add(groupCol("currentValue"));
+        request.getPivotCols().add(groupCol("product.name"));
+        request.getValueCols().add(valueCol("previousValue", "max"));
+        SortModelItem absoluteSort = sortItem("currentValue", SortDirection.asc);
+        absoluteSort.setType("absolute");
+        request.getSortModel().add(absoluteSort);
+
+        LoadSuccessParams result = queryBuilder.getRows(request);
+        // magnitude order; signed ascending would instead start with -75.25, -10.00, 0.00.
+        // -75.25 and 75.25 tie in the middle, so the assertion brackets them.
+        assertThat(doubleValues(result, "currentValue"))
+                .hasSize(11)
+                .startsWith(0.00, -10.00, 42.42)
+                .endsWith(250.50, 320.10, 500.00, 999.99);
     }
 
     @Test

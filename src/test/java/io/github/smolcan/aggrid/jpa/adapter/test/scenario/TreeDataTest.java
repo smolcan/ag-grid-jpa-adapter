@@ -1,6 +1,7 @@
 package io.github.smolcan.aggrid.jpa.adapter.test.scenario;
 
 import io.github.smolcan.aggrid.jpa.adapter.column.ColDef;
+import io.github.smolcan.aggrid.jpa.adapter.column.FieldPath;
 import io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple.AgNumberColumnFilter;
 import io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple.AgTextColumnFilter;
 import io.github.smolcan.aggrid.jpa.adapter.query.QueryBuilder;
@@ -11,6 +12,7 @@ import io.github.smolcan.aggrid.jpa.adapter.test.entity.Employee;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Employee_;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +24,11 @@ class TreeDataTest extends ScenarioTestBase {
     private enum ParentMode { REFERENCE_FIELD, ID_FIELD, CHILDREN_FIELD }
 
     private QueryBuilder<Employee, Long, Void> treeQueryBuilder(ParentMode mode, boolean withChildCount) {
+        return treeQueryBuilderConfig(mode, withChildCount).build();
+    }
+
+    /** Unbuilt tree config, so tests can layer extra filtering options on top. */
+    private QueryBuilder.Builder<Employee, Long, Void> treeQueryBuilderConfig(ParentMode mode, boolean withChildCount) {
         QueryBuilder.Builder<Employee, Long, Void> builder = QueryBuilder.builder(Employee.class, Employee_.employeeId, entityManager)
                 .colDefs(
                         ColDef.builder(Employee_.employeeId).build(),
@@ -45,7 +52,7 @@ class TreeDataTest extends ScenarioTestBase {
         if (withChildCount) {
             builder.getChildCount(true).getChildCountFieldName("childCount");
         }
-        return builder.build();
+        return builder;
     }
 
     private ServerSideGetRowsRequest treeRequest(String... groupKeys) {
@@ -160,6 +167,53 @@ class TreeDataTest extends ScenarioTestBase {
     }
 
     @Test
+    void childCountRespectsExternalFilter() {
+        QueryBuilder<Employee, Long, Void> queryBuilder = treeQueryBuilderConfig(ParentMode.REFERENCE_FIELD, true)
+                .isExternalFilterPresent(true)
+                .doesExternalFilterPass((cb, root, externalFilterValue) ->
+                        cb.gt(root.get(Employee_.salary), new BigDecimal(externalFilterValue.toString())))
+                .build();
+
+        ServerSideGetRowsRequest request = treeRequest();
+        request.setExternalFilter("100");
+
+        LoadSuccessParams result = queryBuilder.getRows(request);
+        assertThat(employeeIds(result)).containsExactly(1L, 8L, 10L);
+        // the external filter reaches the child-count subquery, same descendants as childCountRespectsFilters
+        assertThat(doubleValues(result, "childCount")).containsExactly(4.0, 1.0, 0.0);
+    }
+
+    @Test
+    void childCountRespectsQuickFilter() {
+        QueryBuilder<Employee, Long, Void> queryBuilder = treeQueryBuilderConfig(ParentMode.REFERENCE_FIELD, true)
+                .isQuickFilterPresent(true)
+                .quickFilterSearchInFields(FieldPath.of(Employee_.name))
+                .build();
+
+        ServerSideGetRowsRequest request = treeRequest();
+        request.setQuickFilter("o");
+
+        LoadSuccessParams result = queryBuilder.getRows(request);
+        // only Bob and Carol contain "o"; Alice stays as their ancestor and counts exactly those two
+        assertThat(employeeIds(result)).containsExactly(1L);
+        assertThat(doubleValues(result, "childCount")).containsExactly(2.0);
+    }
+
+    @Test
+    void childCountRespectsAdvancedFilter() {
+        QueryBuilder<Employee, Long, Void> queryBuilder = treeQueryBuilderConfig(ParentMode.REFERENCE_FIELD, true)
+                .enableAdvancedFilter(true)
+                .build();
+
+        ServerSideGetRowsRequest request = treeRequest();
+        request.setFilterModel(Map.of("filterType", "number", "colId", "salary", "type", "greaterThan", "filter", 100));
+
+        LoadSuccessParams result = queryBuilder.getRows(request);
+        assertThat(employeeIds(result)).containsExactly(1L, 8L, 10L);
+        assertThat(doubleValues(result, "childCount")).containsExactly(4.0, 1.0, 0.0);
+    }
+
+    @Test
     void aggregationRespectsFilters() {
         ServerSideGetRowsRequest request = treeRequest();
         request.setFilterModel(Map.of("salary", filter("greaterThan", 100)));
@@ -169,6 +223,60 @@ class TreeDataTest extends ScenarioTestBase {
         assertThat(employeeIds(result)).containsExactly(1L, 8L, 10L);
         // Alice: 300+250+120+200 (Dave and Frank filtered out); Heidi: Ivan; Judy: own value
         assertThat(doubleValues(result, "salary")).containsExactly(870.00, 150.00, 130.00);
+    }
+
+    /**
+     * Drill-down where only the expanded parent matches: her children are returned solely through the
+     * parent-match subquery, and their aggregates cover only matching descendants (here: none).
+     * The three tests below run that same scenario through each filtering mechanism.
+     */
+    @Test
+    void externalFilterAppliesToParentMatchAndAggregation() {
+        QueryBuilder<Employee, Long, Void> queryBuilder = treeQueryBuilderConfig(ParentMode.REFERENCE_FIELD, false)
+                .isExternalFilterPresent(true)
+                .doesExternalFilterPass((cb, root, externalFilterValue) ->
+                        cb.gt(root.get(Employee_.salary), new BigDecimal(externalFilterValue.toString())))
+                .build();
+
+        ServerSideGetRowsRequest request = treeRequest("1");
+        request.setExternalFilter("450");
+        request.getValueCols().add(valueCol("salary", "sum"));
+
+        LoadSuccessParams result = queryBuilder.getRows(request);
+        assertThat(employeeIds(result)).containsExactly(2L, 3L, 7L);
+        // Bob and Carol aggregate nothing (no descendant above 450), Grace is a leaf and keeps her own value
+        assertThat(doubleValues(result, "salary")).containsExactly(null, null, 200.00);
+    }
+
+    @Test
+    void quickFilterAppliesToParentMatchAndAggregation() {
+        QueryBuilder<Employee, Long, Void> queryBuilder = treeQueryBuilderConfig(ParentMode.REFERENCE_FIELD, false)
+                .isQuickFilterPresent(true)
+                .quickFilterSearchInFields(FieldPath.of(Employee_.name))
+                .build();
+
+        ServerSideGetRowsRequest request = treeRequest("1");
+        request.setQuickFilter("ali");
+        request.getValueCols().add(valueCol("salary", "sum"));
+
+        LoadSuccessParams result = queryBuilder.getRows(request);
+        assertThat(employeeIds(result)).containsExactly(2L, 3L, 7L);
+        assertThat(doubleValues(result, "salary")).containsExactly(null, null, 200.00);
+    }
+
+    @Test
+    void advancedFilterAppliesToParentMatchAndAggregation() {
+        QueryBuilder<Employee, Long, Void> queryBuilder = treeQueryBuilderConfig(ParentMode.REFERENCE_FIELD, false)
+                .enableAdvancedFilter(true)
+                .build();
+
+        ServerSideGetRowsRequest request = treeRequest("1");
+        request.setFilterModel(Map.of("filterType", "number", "colId", "salary", "type", "greaterThan", "filter", 450));
+        request.getValueCols().add(valueCol("salary", "sum"));
+
+        LoadSuccessParams result = queryBuilder.getRows(request);
+        assertThat(employeeIds(result)).containsExactly(2L, 3L, 7L);
+        assertThat(doubleValues(result, "salary")).containsExactly(null, null, 200.00);
     }
 
     @Test

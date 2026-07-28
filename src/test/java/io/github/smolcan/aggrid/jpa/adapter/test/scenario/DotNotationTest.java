@@ -34,6 +34,23 @@ class DotNotationTest extends ScenarioTestBase {
     }
 
     @Test
+    void multipleNestedColumnsShareOneNestedMap() {
+        QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
+                .colDefs(
+                        ColDef.builder(Trade_.tradeId).build(),
+                        ColDef.builder(FieldPath.of(Trade_.product).to(Product_.name)).build(),
+                        ColDef.builder(FieldPath.of(Trade_.product).to(Product_.productId)).build()
+                )
+                .build();
+
+        Map<String, Object> row = queryBuilder.getRows(sortedByIdRequest(0, 1)).getRowData().get(0);
+        // whichever nested column is written second reuses the "product" map created by the first
+        assertThat(row).hasSize(2);
+        assertThat(nestedValue(row, "product.name")).isEqualTo("Gold");
+        assertThat(((Number) nestedValue(row, "product.productId")).longValue()).isEqualTo(1L);
+    }
+
+    @Test
     void suppressFieldDotNotationReturnsFlatKeys() {
         LoadSuccessParams result = dotNotationQueryBuilder(true).getRows(sortedByIdRequest(0, 1));
         Map<String, Object> row = result.getRowData().get(0);
