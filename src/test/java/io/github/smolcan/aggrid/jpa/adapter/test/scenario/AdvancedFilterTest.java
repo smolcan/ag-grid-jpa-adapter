@@ -2,6 +2,10 @@ package io.github.smolcan.aggrid.jpa.adapter.test.scenario;
 
 import io.github.smolcan.aggrid.jpa.adapter.column.ColDef;
 import io.github.smolcan.aggrid.jpa.adapter.column.FieldPath;
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.SimpleFilterModelType;
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.DateFilterParams;
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.NumberFilterParams;
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextFilterParams;
 import io.github.smolcan.aggrid.jpa.adapter.filter.provided.AgSetColumnFilter;
 import io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple.AgDateColumnFilter;
 import io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple.AgNumberColumnFilter;
@@ -183,6 +187,119 @@ class AdvancedFilterTest extends ScenarioTestBase {
                 .containsExactly(8L, 12L);
         assertThat(tradeIds(rows(column("boolean", "sold", "notBlank", null))))
                 .containsExactly(1L, 2L, 3L, 4L, 5L, 6L, 7L, 9L, 10L, 11L);
+    }
+
+    /** Advanced filter over a single extra column whose column filter carries custom params. */
+    private List<Long> rowsWithColumn(ColDef<Trade, ?> colDef, Map<String, Object> filterModel) {
+        QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
+                .colDefs(ColDef.builder(Trade_.tradeId).build(), colDef)
+                .enableAdvancedFilter(true)
+                .build();
+
+        ServerSideGetRowsRequest request = sortedByIdRequest(0, 100);
+        request.setFilterModel(filterModel);
+        return tradeIds(queryBuilder.getRows(request));
+    }
+
+    private static ColDef<Trade, ?> previousValueColumn(NumberFilterParams params) {
+        return ColDef.builder(Trade_.previousValue).filter(new AgNumberColumnFilter<Double>().filterParams(params)).build();
+    }
+
+    private static ColDef<Trade, ?> tradeDateColumn(DateFilterParams params) {
+        return ColDef.builder(Trade_.tradeDate).filter(AgDateColumnFilter.forLocalDate().filterParams(params)).build();
+    }
+
+    @Test
+    void dateOperatorsLessThanOrEqualAndGreaterThan() {
+        assertThat(tradeIds(rows(column("date", "tradeDate", "lessThanOrEqual", "2024-04-01"))))
+                .containsExactly(1L, 2L, 3L, 4L);
+        // strictly after Jan 1 2025, so that day's trade (9) stays out
+        assertThat(tradeIds(rows(column("date", "tradeDate", "greaterThan", "2025-01-01"))))
+                .containsExactly(10L, 11L, 12L);
+    }
+
+    @Test
+    void numberIncludeBlanksParamsOnEqualityOperators() {
+        // previousValue is null on 2, 6 and 12
+        assertThat(rowsWithColumn(
+                previousValueColumn(NumberFilterParams.builder().includeBlanksInEquals(true).build()),
+                column("number", "previousValue", "equals", 90)))
+                .containsExactly(1L, 2L, 6L, 12L);
+        assertThat(rowsWithColumn(
+                previousValueColumn(NumberFilterParams.builder().includeBlanksInNotEqual(true).build()),
+                column("number", "previousValue", "notEqual", 90)))
+                .containsExactly(2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L, 12L);
+    }
+
+    @Test
+    void numberIncludeBlanksParamsOnComparisonOperators() {
+        NumberFilterParams lessThanBlanks = NumberFilterParams.builder().includeBlanksInLessThan(true).build();
+        assertThat(rowsWithColumn(previousValueColumn(lessThanBlanks), column("number", "previousValue", "lessThan", 60)))
+                .containsExactly(2L, 4L, 6L, 7L, 12L);
+        assertThat(rowsWithColumn(previousValueColumn(lessThanBlanks), column("number", "previousValue", "lessThanOrEqual", 60)))
+                .containsExactly(2L, 3L, 4L, 6L, 7L, 12L);
+
+        NumberFilterParams greaterThanBlanks = NumberFilterParams.builder().includeBlanksInGreaterThan(true).build();
+        // nothing is above 1000, so only the blanks come back
+        assertThat(rowsWithColumn(previousValueColumn(greaterThanBlanks), column("number", "previousValue", "greaterThan", 1000)))
+                .containsExactly(2L, 6L, 12L);
+        assertThat(rowsWithColumn(previousValueColumn(greaterThanBlanks), column("number", "previousValue", "greaterThanOrEqual", 1000)))
+                .containsExactly(2L, 6L, 10L, 12L);
+    }
+
+    @Test
+    void dateIncludeBlanksParamsOnEqualityOperators() {
+        // tradeDate is null on 8
+        assertThat(rowsWithColumn(
+                tradeDateColumn(DateFilterParams.builder().includeBlanksInEquals(true).build()),
+                column("date", "tradeDate", "equals", "2024-05-05")))
+                .containsExactly(5L, 8L);
+        assertThat(rowsWithColumn(
+                tradeDateColumn(DateFilterParams.builder().includeBlanksInNotEqual(true).build()),
+                column("date", "tradeDate", "notEqual", "2024-05-05")))
+                .containsExactly(1L, 2L, 3L, 4L, 6L, 7L, 8L, 9L, 10L, 11L, 12L);
+    }
+
+    @Test
+    void dateIncludeBlanksParamsOnComparisonOperators() {
+        DateFilterParams lessThanBlanks = DateFilterParams.builder().includeBlanksInLessThan(true).build();
+        assertThat(rowsWithColumn(tradeDateColumn(lessThanBlanks), column("date", "tradeDate", "lessThan", "2024-04-01")))
+                .containsExactly(1L, 2L, 3L, 8L);
+        assertThat(rowsWithColumn(tradeDateColumn(lessThanBlanks), column("date", "tradeDate", "lessThanOrEqual", "2024-04-01")))
+                .containsExactly(1L, 2L, 3L, 4L, 8L);
+
+        DateFilterParams greaterThanBlanks = DateFilterParams.builder().includeBlanksInGreaterThan(true).build();
+        assertThat(rowsWithColumn(tradeDateColumn(greaterThanBlanks), column("date", "tradeDate", "greaterThan", "2025-01-01")))
+                .containsExactly(8L, 10L, 11L, 12L);
+        assertThat(rowsWithColumn(tradeDateColumn(greaterThanBlanks), column("date", "tradeDate", "greaterThanOrEqual", "2025-01-01")))
+                .containsExactly(8L, 9L, 10L, 11L, 12L);
+    }
+
+    @Test
+    void textMatcherOverridesAdvancedTextMatching() {
+        QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
+                .colDefs(
+                        ColDef.builder(Trade_.tradeId).build(),
+                        ColDef.builder(Trade_.portfolio)
+                                .filter(new AgTextColumnFilter().filterParams(TextFilterParams.builder()
+                                        // inverting only "contains" proves the requested option reaches the matcher
+                                        .textMatcher((cb, params) -> params.getFilterOption() == SimpleFilterModelType.contains
+                                                ? cb.notLike(params.getValue(), cb.concat(cb.concat("%", params.getFilterText()), "%"))
+                                                : cb.like(params.getValue(), cb.concat(params.getFilterText(), "%")))
+                                        .build()))
+                                .build()
+                )
+                .enableAdvancedFilter(true)
+                .build();
+
+        ServerSideGetRowsRequest request = sortedByIdRequest(0, 100);
+        request.setFilterModel(column("text", "portfolio", "contains", "alpha"));
+        // the matcher inverts it, so the alpha trades (1, 2, 3) are exactly the ones dropped
+        assertThat(tradeIds(queryBuilder.getRows(request)))
+                .containsExactly(4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L, 12L);
+
+        request.setFilterModel(column("text", "portfolio", "startsWith", "del"));
+        assertThat(tradeIds(queryBuilder.getRows(request))).containsExactly(9L, 10L);
     }
 
     @Test
