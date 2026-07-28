@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence xmlns="https://jakarta.ee/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd"
+             version="3.0">
+
+  <!-- provider and connection properties are supplied by TestPersistence at runtime -->
+  <persistence-unit name="aggrid-adapter-test" transaction-type="RESOURCE_LOCAL">
+    <class>io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade</class>
+    <class>io.github.smolcan.aggrid.jpa.adapter.test.entity.Product</class>
+    <class>io.github.smolcan.aggrid.jpa.adapter.test.entity.Employee</class>
+    <class>io.github.smolcan.aggrid.jpa.adapter.test.entity.DateSample</class>
+    <exclude-unlisted-classes>true</exclude-unlisted-classes>
+  </persistence-unit>
+
+</persistence>
