@@ -2771,12 +2771,16 @@ public class QueryBuilder<E, E_ID, D> {
                         CriteriaBuilder.Case<?> caseExpression = null;
                         for (Pair<String, Object> pair : pairs) {
                             ColDef<E, ?> pairKeyColDef = this.colDefs.get(pair.getKey());
+                            
+                            Path<?> pivotValuePath = pairKeyColDef.getField().getPath(root);
+                            Predicate pivotValueMatches = pair.getValue() == null
+                                    ? cb.isNull(pivotValuePath)
+                                    : cb.equal(pivotValuePath, pair.getValue());
+
                             if (caseExpression == null) {
-                                caseExpression = cb.selectCase()
-                                        .when(cb.equal(pairKeyColDef.getField().getPath(root), pair.getValue()), field);
+                                caseExpression = cb.selectCase().when(pivotValueMatches, field);
                             } else {
-                                caseExpression = cb.selectCase()
-                                        .when(cb.equal(pairKeyColDef.getField().getPath(root), pair.getValue()), caseExpression);
+                                caseExpression = cb.selectCase().when(pivotValueMatches, caseExpression);
                             }
                         }
                         Objects.requireNonNull(caseExpression);
