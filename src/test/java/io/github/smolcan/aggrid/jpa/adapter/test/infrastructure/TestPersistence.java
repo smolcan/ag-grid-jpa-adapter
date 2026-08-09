@@ -2,6 +2,7 @@ package io.github.smolcan.aggrid.jpa.adapter.test.infrastructure;
 
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
+import org.testcontainers.containers.MariaDBContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import java.sql.Connection;
@@ -40,11 +41,12 @@ public final class TestPersistence {
 
     public enum TestDatabase {
         H2,
-        POSTGRES
-        // MYSQL via Testcontainers planned (compatibility matrix phase)
+        POSTGRES,
+        MARIADB
     }
 
     private static PostgreSQLContainer<?> postgres;
+    private static MariaDBContainer<?> mariadb;
 
     private TestPersistence() {
     }
@@ -64,7 +66,7 @@ public final class TestPersistence {
      * have to expect whichever the database does.
      */
     public static boolean nullsSortLow() {
-        return activeDatabase() == TestDatabase.H2;
+        return activeDatabase() == TestDatabase.H2 || activeDatabase() == TestDatabase.MARIADB;
     }
 
     public static EntityManagerFactory createEntityManagerFactory() {
@@ -86,7 +88,7 @@ public final class TestPersistence {
             PostgreSQLContainer<?> container = startPostgres();
             // one schema per factory plays the role the unique in-memory database plays for H2
             String schema = "aggrid_test_" + DB_SEQUENCE.incrementAndGet();
-            createSchema(container, schema);
+            createSchema(container.getJdbcUrl(), container.getUsername(), container.getPassword(), schema);
             // EclipseLink declares UUID columns as native uuid but binds their values as varchar.
             // H2 coerces between the two, Postgres rejects it, so the server is asked to infer
             // parameter types instead. Only that provider needs it, so the others stay strict.
@@ -96,6 +98,18 @@ public final class TestPersistence {
                     + container.getHost() + ":" + container.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT)
                     + "/" + container.getDatabaseName() + "?currentSchema=" + schema + parameterTyping);
             properties.put("jakarta.persistence.jdbc.user", container.getUsername());
+            properties.put("jakarta.persistence.jdbc.password", container.getPassword());
+        } else if (database == TestDatabase.MARIADB) {
+            MariaDBContainer<?> container = startMariadb();
+            // MariaDB has no schemas below the database, so isolation is a database per factory;
+            // creating one needs root, which is also then the simplest account to connect as
+            String schema = "aggrid_test_" + DB_SEQUENCE.incrementAndGet();
+            createSchema(container.getJdbcUrl(), "root", container.getPassword(), schema);
+            properties.put("jakarta.persistence.jdbc.driver", CountingDriver.class.getName());
+            properties.put("jakarta.persistence.jdbc.url", CountingDriver.URL_PREFIX + "mariadb://"
+                    + container.getHost() + ":" + container.getFirstMappedPort()
+                    + "/" + schema);
+            properties.put("jakarta.persistence.jdbc.user", "root");
             properties.put("jakarta.persistence.jdbc.password", container.getPassword());
         }
 
@@ -116,6 +130,8 @@ public final class TestPersistence {
                 properties.put("eclipselink.target-database", "org.eclipse.persistence.platform.database.H2Platform");
             } else if (database == TestDatabase.POSTGRES) {
                 properties.put("eclipselink.target-database", "org.eclipse.persistence.platform.database.PostgreSQLPlatform");
+            } else if (database == TestDatabase.MARIADB) {
+                properties.put("eclipselink.target-database", "org.eclipse.persistence.platform.database.MariaDBPlatform");
             }
         }
 
@@ -134,8 +150,20 @@ public final class TestPersistence {
         return postgres;
     }
 
-    private static void createSchema(PostgreSQLContainer<?> container, String schema) {
-        try (Connection connection = DriverManager.getConnection(container.getJdbcUrl(), container.getUsername(), container.getPassword());
+    /** One server per JVM, shut down by the Testcontainers reaper when the JVM exits. */
+    private static synchronized MariaDBContainer<?> startMariadb() {
+        if (mariadb == null) {
+            // a binary collation keeps comparisons and ORDER BY case-sensitive, matching H2 and the
+            // C-locale Postgres above; the image defaults to a case-insensitive one
+            mariadb = new MariaDBContainer<>("mariadb:11.4")
+                    .withCommand("--character-set-server=utf8mb4", "--collation-server=utf8mb4_bin");
+            mariadb.start();
+        }
+        return mariadb;
+    }
+
+    private static void createSchema(String jdbcUrl, String user, String password, String schema) {
+        try (Connection connection = DriverManager.getConnection(jdbcUrl, user, password);
              Statement statement = connection.createStatement()) {
             statement.execute("create schema " + schema);
         } catch (SQLException e) {
