@@ -3,6 +3,7 @@ package io.github.smolcan.aggrid.jpa.adapter.test.infrastructure;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
 import org.testcontainers.containers.MariaDBContainer;
+import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.oracle.OracleContainer;
 
@@ -44,11 +45,13 @@ public final class TestPersistence {
         H2,
         POSTGRES,
         MARIADB,
+        MYSQL,
         ORACLE
     }
 
     private static PostgreSQLContainer<?> postgres;
     private static MariaDBContainer<?> mariadb;
+    private static MySQLContainer<?> mysql;
     private static OracleContainer oracle;
 
     private TestPersistence() {
@@ -69,7 +72,9 @@ public final class TestPersistence {
      * have to expect whichever the database does.
      */
     public static boolean nullsSortLow() {
-        return activeDatabase() == TestDatabase.H2 || activeDatabase() == TestDatabase.MARIADB;
+        return activeDatabase() == TestDatabase.H2
+                || activeDatabase() == TestDatabase.MARIADB
+                || activeDatabase() == TestDatabase.MYSQL;
     }
 
     /**
@@ -123,6 +128,17 @@ public final class TestPersistence {
                     + "/" + schema);
             properties.put("jakarta.persistence.jdbc.user", "root");
             properties.put("jakarta.persistence.jdbc.password", container.getPassword());
+        } else if (database == TestDatabase.MYSQL) {
+            MySQLContainer<?> container = startMysql();
+            // same story as MariaDB: no schemas below the database, and creating one needs root
+            String schema = "aggrid_test_" + DB_SEQUENCE.incrementAndGet();
+            createSchema(container.getJdbcUrl(), "root", container.getPassword(), schema);
+            properties.put("jakarta.persistence.jdbc.driver", CountingDriver.class.getName());
+            properties.put("jakarta.persistence.jdbc.url", CountingDriver.URL_PREFIX + "mysql://"
+                    + container.getHost() + ":" + container.getFirstMappedPort()
+                    + "/" + schema);
+            properties.put("jakarta.persistence.jdbc.user", "root");
+            properties.put("jakarta.persistence.jdbc.password", container.getPassword());
         } else if (database == TestDatabase.ORACLE) {
             OracleContainer container = startOracle();
             // an Oracle schema is a user, so isolation means a user per factory
@@ -153,6 +169,8 @@ public final class TestPersistence {
                 properties.put("eclipselink.target-database", "org.eclipse.persistence.platform.database.PostgreSQLPlatform");
             } else if (database == TestDatabase.MARIADB) {
                 properties.put("eclipselink.target-database", "org.eclipse.persistence.platform.database.MariaDBPlatform");
+            } else if (database == TestDatabase.MYSQL) {
+                properties.put("eclipselink.target-database", "org.eclipse.persistence.platform.database.MySQLPlatform");
             } else if (database == TestDatabase.ORACLE) {
                 properties.put("eclipselink.target-database", "org.eclipse.persistence.platform.database.Oracle23Platform");
             }
@@ -203,6 +221,17 @@ public final class TestPersistence {
         } catch (SQLException e) {
             throw new IllegalStateException("could not create user " + user, e);
         }
+    }
+
+    /** One server per JVM, shut down by the Testcontainers reaper when the JVM exits. */
+    private static synchronized MySQLContainer<?> startMysql() {
+        if (mysql == null) {
+            // binary collation for the same reason as MariaDB: the image default is case-insensitive
+            mysql = new MySQLContainer<>("mysql:8.4")
+                    .withCommand("--character-set-server=utf8mb4", "--collation-server=utf8mb4_bin");
+            mysql.start();
+        }
+        return mysql;
     }
 
     private static void createSchema(String jdbcUrl, String user, String password, String schema) {
