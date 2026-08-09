@@ -70,12 +70,11 @@ class PivotingTest extends ScenarioTestBase {
     }
 
     @Test
-    void nullPivotValueColumnNeverMatches() {
+    void nullPivotValueAggregatesIntoItsOwnColumn() {
         LoadSuccessParams result = pivotingQueryBuilder(null).getRows(pivotRequest());
-        // trade 10 (Delta) has a null product, but SQL "= NULL" never matches,
-        // so even the generated "null_..." column stays empty
+        // trade 10 (Delta) has a null product, so it lands in the generated "null_..." column
         Map<String, Object> delta = result.getRowData().get(3);
-        assertThat(delta.get("null_currentValue")).isNull();
+        assertThat(((Number) delta.get("null_currentValue")).doubleValue()).isEqualTo(999.99);
         assertThat(delta.get("Gold_currentValue")).isNull();
     }
 

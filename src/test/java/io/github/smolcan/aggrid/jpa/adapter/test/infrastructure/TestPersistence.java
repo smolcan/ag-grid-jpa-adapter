@@ -15,7 +15,11 @@ import java.util.concurrent.atomic.AtomicLong;
  * in-memory H2 for fast local runs:
  * <pre>
  *   ./mvnw test -Dtest.jpa.provider=HIBERNATE -Dtest.database=H2
+ *   ./mvnw test -Dtest.jpa.provider=ECLIPSELINK -Dtest.database=H2
  * </pre>
+ * Both providers are on the test classpath at the same time; the one to boot is selected
+ * explicitly through {@code jakarta.persistence.provider}, since {@code persistence.xml}
+ * deliberately names none.
  */
 public final class TestPersistence {
 
@@ -23,8 +27,8 @@ public final class TestPersistence {
     private static final AtomicLong DB_SEQUENCE = new AtomicLong();
 
     public enum JpaProvider {
-        HIBERNATE
-        // ECLIPSELINK planned (compatibility matrix phase)
+        HIBERNATE,
+        ECLIPSELINK
     }
 
     public enum TestDatabase {
@@ -35,9 +39,17 @@ public final class TestPersistence {
     private TestPersistence() {
     }
 
+    private static JpaProvider activeProvider() {
+        return JpaProvider.valueOf(System.getProperty("test.jpa.provider", JpaProvider.HIBERNATE.name()).toUpperCase());
+    }
+
+    private static TestDatabase activeDatabase() {
+        return TestDatabase.valueOf(System.getProperty("test.database", TestDatabase.H2.name()).toUpperCase());
+    }
+
     public static EntityManagerFactory createEntityManagerFactory() {
-        JpaProvider provider = JpaProvider.valueOf(System.getProperty("test.jpa.provider", JpaProvider.HIBERNATE.name()).toUpperCase());
-        TestDatabase database = TestDatabase.valueOf(System.getProperty("test.database", TestDatabase.H2.name()).toUpperCase());
+        JpaProvider provider = activeProvider();
+        TestDatabase database = activeDatabase();
 
         Map<String, Object> properties = new HashMap<>();
         properties.put("jakarta.persistence.schema-generation.database.action", "drop-and-create");
@@ -45,8 +57,9 @@ public final class TestPersistence {
         if (database == TestDatabase.H2) {
             // unique database name per factory so test classes never share state
             String dbName = "aggrid_test_" + DB_SEQUENCE.incrementAndGet();
-            properties.put("jakarta.persistence.jdbc.driver", "org.h2.Driver");
-            properties.put("jakarta.persistence.jdbc.url", "jdbc:h2:mem:" + dbName + ";DB_CLOSE_DELAY=-1");
+            // routed through CountingDriver so QueryCountTest can count statements on any provider
+            properties.put("jakarta.persistence.jdbc.driver", CountingDriver.class.getName());
+            properties.put("jakarta.persistence.jdbc.url", CountingDriver.URL_PREFIX + "h2:mem:" + dbName + ";DB_CLOSE_DELAY=-1");
             properties.put("jakarta.persistence.jdbc.user", "sa");
             properties.put("jakarta.persistence.jdbc.password", "");
         }
@@ -55,6 +68,18 @@ public final class TestPersistence {
             properties.put("jakarta.persistence.provider", "org.hibernate.jpa.HibernatePersistenceProvider");
             // statistics power the query-count regression tests
             properties.put("hibernate.generate_statistics", "true");
+        } else if (provider == JpaProvider.ECLIPSELINK) {
+            properties.put("jakarta.persistence.provider", "org.eclipse.persistence.jpa.PersistenceProvider");
+            // surefire runs without a -javaagent, so dynamic weaving is unavailable anyway
+            properties.put("eclipselink.weaving", "false");
+            // no second-level cache: every scenario must be answered from the database,
+            // the way it is under Hibernate's default configuration
+            properties.put("eclipselink.cache.shared.default", "false");
+            // drop-and-create logs a failing DROP per table against a fresh in-memory database
+            properties.put("eclipselink.logging.level", "SEVERE");
+            if (database == TestDatabase.H2) {
+                properties.put("eclipselink.target-database", "org.eclipse.persistence.platform.database.H2Platform");
+            }
         }
 
         return Persistence.createEntityManagerFactory(PERSISTENCE_UNIT, properties);

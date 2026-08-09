@@ -9,8 +9,7 @@ import io.github.smolcan.aggrid.jpa.adapter.test.entity.Product;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Product_;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade_;
-import org.hibernate.SessionFactory;
-import org.hibernate.stat.Statistics;
+import io.github.smolcan.aggrid.jpa.adapter.test.infrastructure.CountingDriver;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
@@ -19,16 +18,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Regression pins on how many SQL statements one adapter call issues,
- * so refactors cannot silently introduce N+1 behaviour. Hibernate-specific
- * (relies on {@code hibernate.generate_statistics}).
+ * so refactors cannot silently introduce N+1 behaviour. Counting happens in the
+ * JDBC driver, so the pins hold for every provider in the matrix.
  */
 class QueryCountTest extends ScenarioTestBase {
 
     private long statementsIssuedBy(Runnable action) {
-        Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
-        long before = statistics.getPrepareStatementCount();
-        action.run();
-        return statistics.getPrepareStatementCount() - before;
+        return CountingDriver.countStatements(action);
     }
 
     @Test
