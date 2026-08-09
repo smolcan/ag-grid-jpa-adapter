@@ -10,9 +10,11 @@ import io.github.smolcan.aggrid.jpa.adapter.response.LoadSuccessParams;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.DealType;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade_;
+import io.github.smolcan.aggrid.jpa.adapter.test.infrastructure.TestPersistence;
 import io.github.smolcan.aggrid.jpa.adapter.test.infrastructure.TradeTestData;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -59,15 +61,21 @@ class SetFilterTest extends ScenarioTestBase {
     @Test
     void nullOnlySelectionMatchesNullValues() {
         LoadSuccessParams result = rows(Map.of("book", setFilter((String) null)));
-        // matches null books (3, 8); the empty-string book (4) is not null
-        assertThat(tradeIds(result)).containsExactly(3L, 8L);
+        // matches null books (3, 8); the empty-string book (4) counts as null only where the
+        // database cannot hold an empty string apart from one
+        assertThat(tradeIds(result)).containsExactlyElementsOf(
+                TestPersistence.treatsEmptyStringAsNull() ? List.of(3L, 4L, 8L) : List.of(3L, 8L));
     }
 
     @Test
     void selectionWithValuesAndNull() {
         LoadSuccessParams result = rows(Map.of("book", setFilter("b-1", null)));
-        // B-1 (1, 6), b-1 (12) case-insensitively, plus null books (3, 8)
-        assertThat(tradeIds(result)).containsExactly(1L, 3L, 6L, 8L, 12L);
+        // B-1 (1, 6), b-1 (12) case-insensitively, plus null books (3, 8) and the empty-string
+        // book (4) where the database stores that as null
+        assertThat(tradeIds(result)).containsExactlyElementsOf(
+                TestPersistence.treatsEmptyStringAsNull()
+                        ? List.of(1L, 3L, 4L, 6L, 8L, 12L)
+                        : List.of(1L, 3L, 6L, 8L, 12L));
     }
 
     @Test
@@ -163,8 +171,12 @@ class SetFilterTest extends ScenarioTestBase {
     @Test
     void supplySetFilterValuesIncludesNulls() {
         List<Object> values = setFilterQueryBuilder().supplySetFilterValues("book");
-        // H2 sorts null first ascending
-        assertThat(values).containsExactlyInAnyOrder(null, "", "B-1", "B-2", "B-3", "B-4", "B-5", "B-6", "b-1");
+        // the empty book is a distinct value of its own only where the database keeps it apart from null
+        List<Object> expected = new ArrayList<>(Arrays.asList(null, "B-1", "B-2", "B-3", "B-4", "B-5", "B-6", "b-1"));
+        if (!TestPersistence.treatsEmptyStringAsNull()) {
+            expected.add("");
+        }
+        assertThat(values).containsExactlyInAnyOrderElementsOf(expected);
     }
 
     @Test

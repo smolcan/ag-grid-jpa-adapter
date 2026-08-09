@@ -4,6 +4,7 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
 import org.testcontainers.containers.MariaDBContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.oracle.OracleContainer;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -42,11 +43,13 @@ public final class TestPersistence {
     public enum TestDatabase {
         H2,
         POSTGRES,
-        MARIADB
+        MARIADB,
+        ORACLE
     }
 
     private static PostgreSQLContainer<?> postgres;
     private static MariaDBContainer<?> mariadb;
+    private static OracleContainer oracle;
 
     private TestPersistence() {
     }
@@ -67,6 +70,15 @@ public final class TestPersistence {
      */
     public static boolean nullsSortLow() {
         return activeDatabase() == TestDatabase.H2 || activeDatabase() == TestDatabase.MARIADB;
+    }
+
+    /**
+     * Whether the database stores the empty string as NULL. Oracle does and has no way to hold the
+     * two apart, so trade 4's empty book reads back as null there and joins the null set instead of
+     * being a value of its own.
+     */
+    public static boolean treatsEmptyStringAsNull() {
+        return activeDatabase() == TestDatabase.ORACLE;
     }
 
     public static EntityManagerFactory createEntityManagerFactory() {
@@ -111,6 +123,15 @@ public final class TestPersistence {
                     + "/" + schema);
             properties.put("jakarta.persistence.jdbc.user", "root");
             properties.put("jakarta.persistence.jdbc.password", container.getPassword());
+        } else if (database == TestDatabase.ORACLE) {
+            OracleContainer container = startOracle();
+            // an Oracle schema is a user, so isolation means a user per factory
+            String schema = "aggrid_test_" + DB_SEQUENCE.incrementAndGet();
+            createOracleUser(container, schema);
+            properties.put("jakarta.persistence.jdbc.driver", CountingDriver.class.getName());
+            properties.put("jakarta.persistence.jdbc.url", CountingDriver.URL_PREFIX + container.getJdbcUrl().substring("jdbc:".length()));
+            properties.put("jakarta.persistence.jdbc.user", schema);
+            properties.put("jakarta.persistence.jdbc.password", schema);
         }
 
         if (provider == JpaProvider.HIBERNATE) {
@@ -132,6 +153,8 @@ public final class TestPersistence {
                 properties.put("eclipselink.target-database", "org.eclipse.persistence.platform.database.PostgreSQLPlatform");
             } else if (database == TestDatabase.MARIADB) {
                 properties.put("eclipselink.target-database", "org.eclipse.persistence.platform.database.MariaDBPlatform");
+            } else if (database == TestDatabase.ORACLE) {
+                properties.put("eclipselink.target-database", "org.eclipse.persistence.platform.database.Oracle23Platform");
             }
         }
 
@@ -160,6 +183,26 @@ public final class TestPersistence {
             mariadb.start();
         }
         return mariadb;
+    }
+
+    /** One server per JVM, shut down by the Testcontainers reaper when the JVM exits. */
+    private static synchronized OracleContainer startOracle() {
+        if (oracle == null) {
+            oracle = new OracleContainer("gvenzl/oracle-free:latest-faststart");
+            oracle.start();
+        }
+        return oracle;
+    }
+
+    private static void createOracleUser(OracleContainer container, String user) {
+        try (Connection connection = DriverManager.getConnection(container.getJdbcUrl(), "system", container.getPassword());
+             Statement statement = connection.createStatement()) {
+            statement.execute("create user " + user + " identified by " + user);
+            statement.execute("grant create session, create table, create sequence to " + user);
+            statement.execute("grant unlimited tablespace to " + user);
+        } catch (SQLException e) {
+            throw new IllegalStateException("could not create user " + user, e);
+        }
     }
 
     private static void createSchema(String jdbcUrl, String user, String password, String schema) {
