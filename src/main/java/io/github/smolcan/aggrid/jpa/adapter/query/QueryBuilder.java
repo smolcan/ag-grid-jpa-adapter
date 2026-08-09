@@ -853,7 +853,9 @@ public class QueryBuilder<E, E_ID, D> {
                 SelectionMetadata
                         .builder()
                         .alias(this.isServerSideGroupFieldName)
-                        .expression(isServerSideGroupSelection)
+                        .expression(queryContext.getCriteriaBuilder().<Boolean>selectCase()
+                                .when(isServerSideGroupSelection, true)
+                                .otherwise(false))
                         .isServerSideGroupSelection(true)
                         .build()
         );
