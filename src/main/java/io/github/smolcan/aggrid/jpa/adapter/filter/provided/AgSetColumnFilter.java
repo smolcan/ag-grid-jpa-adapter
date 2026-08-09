@@ -76,14 +76,16 @@ public abstract class AgSetColumnFilter<T> extends IProvidedFilter<T, SetFilterM
             return cb.isNull(expression);
         }
 
-        // IN predicate over the non-null selected values
         Expression<T> columnExpression = this.modifyColumnExpression(cb, expression);
-        List<Expression<T>> valueExpressions = filterModel.getValues()
-                .stream()
+        List<Expression<T>> valueExpressions = filterModel.getValues().stream()
                 .filter(Objects::nonNull)
                 .map(value -> this.parseValueToExpression(cb, value))
                 .collect(Collectors.toList());
-        Predicate predicate = columnExpression.in(valueExpressions);
+        // OR predicate
+        Predicate predicate = valueExpressions.stream()
+                .map(valueExpression -> cb.equal(columnExpression, valueExpression))
+                .reduce(cb::or)
+                .orElseGet(cb::disjunction);
         
         if (hasNullInValues) {
             predicate = cb.or(predicate, cb.isNull(expression));
