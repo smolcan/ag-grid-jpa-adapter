@@ -418,22 +418,23 @@ class GroupingTest extends ScenarioTestBase {
                         ColDef.builder(Trade_.portfolio).enableRowGroup(true, key -> key).build(),
                         ColDef.builder(Trade_.currentValue).enableValue(true).build()
                 )
-                // STDDEV_POP is spelled the same in H2, Postgres and MariaDB, so the registered
-                // function reaches the database unchanged whatever the provider and dialect
-                .registerCustomAggFunction("stdDev", (cb, expr) -> cb.function("STDDEV_POP", Double.class, expr))
+                // MIN and MAX are spelled the same in every database of the matrix, unlike the
+                // statistical aggregates: SQL Server has STDEVP where the others have STDDEV_POP
+                .registerCustomAggFunction("spread", (cb, expr) -> cb.diff(
+                        cb.function("MAX", BigDecimal.class, expr),
+                        cb.function("MIN", BigDecimal.class, expr)))
                 .build();
 
         ServerSideGetRowsRequest request = groupedByPortfolioRequest();
-        request.getValueCols().add(valueCol("currentValue", "stdDev"));
+        request.getValueCols().add(valueCol("currentValue", "spread"));
 
         LoadSuccessParams result = queryBuilder.getRows(request);
-        // half the spread for the two-trade groups (Alpha: (250.50 - 100.00) / 2), zero for the
-        // single-trade ones; population deviation rather than sample so those stay 0 instead of null
-        List<Double> deviations = doubleValues(result, "currentValue");
-        List<Double> expected = List.of(75.25, 0.0, 250.00, 0.0, 28.79, 42.625, 0.0, 0.0);
-        assertThat(deviations).hasSize(8);
+        // highest minus lowest per group (Alpha: 250.50 - 100.00), zero for the single-trade groups
+        List<Double> spreads = doubleValues(result, "currentValue");
+        List<Double> expected = List.of(150.50, 0.0, 500.00, 0.0, 57.58, 85.25, 0.0, 0.0);
+        assertThat(spreads).hasSize(8);
         for (int i = 0; i < expected.size(); i++) {
-            assertThat(deviations.get(i)).isCloseTo(expected.get(i), within(0.0001));
+            assertThat(spreads.get(i)).isCloseTo(expected.get(i), within(0.0001));
         }
     }
 }

@@ -3,6 +3,7 @@ package io.github.smolcan.aggrid.jpa.adapter.test.infrastructure;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
 import org.testcontainers.containers.MariaDBContainer;
+import org.testcontainers.containers.MSSQLServerContainer;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.oracle.OracleContainer;
@@ -46,12 +47,14 @@ public final class TestPersistence {
         POSTGRES,
         MARIADB,
         MYSQL,
+        MSSQL,
         ORACLE
     }
 
     private static PostgreSQLContainer<?> postgres;
     private static MariaDBContainer<?> mariadb;
     private static MySQLContainer<?> mysql;
+    private static MSSQLServerContainer<?> mssql;
     private static OracleContainer oracle;
 
     private TestPersistence() {
@@ -74,7 +77,8 @@ public final class TestPersistence {
     public static boolean nullsSortLow() {
         return activeDatabase() == TestDatabase.H2
                 || activeDatabase() == TestDatabase.MARIADB
-                || activeDatabase() == TestDatabase.MYSQL;
+                || activeDatabase() == TestDatabase.MYSQL
+                || activeDatabase() == TestDatabase.MSSQL;
     }
 
     /**
@@ -139,6 +143,18 @@ public final class TestPersistence {
                     + "/" + schema);
             properties.put("jakarta.persistence.jdbc.user", "root");
             properties.put("jakarta.persistence.jdbc.password", container.getPassword());
+        } else if (database == TestDatabase.MSSQL) {
+            MSSQLServerContainer<?> container = startMssql();
+            // a binary collation per database is the SQL Server equivalent of the C locale used for
+            // Postgres: the server default is case-insensitive
+            String schema = "aggrid_test_" + DB_SEQUENCE.incrementAndGet();
+            createMssqlDatabase(container, schema);
+            properties.put("jakarta.persistence.jdbc.driver", CountingDriver.class.getName());
+            properties.put("jakarta.persistence.jdbc.url", CountingDriver.URL_PREFIX + "sqlserver://"
+                    + container.getHost() + ":" + container.getFirstMappedPort()
+                    + ";databaseName=" + schema + ";encrypt=false");
+            properties.put("jakarta.persistence.jdbc.user", container.getUsername());
+            properties.put("jakarta.persistence.jdbc.password", container.getPassword());
         } else if (database == TestDatabase.ORACLE) {
             OracleContainer container = startOracle();
             // an Oracle schema is a user, so isolation means a user per factory
@@ -171,6 +187,8 @@ public final class TestPersistence {
                 properties.put("eclipselink.target-database", "org.eclipse.persistence.platform.database.MariaDBPlatform");
             } else if (database == TestDatabase.MYSQL) {
                 properties.put("eclipselink.target-database", "org.eclipse.persistence.platform.database.MySQLPlatform");
+            } else if (database == TestDatabase.MSSQL) {
+                properties.put("eclipselink.target-database", "org.eclipse.persistence.platform.database.SQLServerPlatform");
             } else if (database == TestDatabase.ORACLE) {
                 properties.put("eclipselink.target-database", "org.eclipse.persistence.platform.database.Oracle23Platform");
             }
@@ -232,6 +250,24 @@ public final class TestPersistence {
             mysql.start();
         }
         return mysql;
+    }
+
+    /** One server per JVM, shut down by the Testcontainers reaper when the JVM exits. */
+    private static synchronized MSSQLServerContainer<?> startMssql() {
+        if (mssql == null) {
+            mssql = new MSSQLServerContainer<>("mcr.microsoft.com/mssql/server:2022-latest").acceptLicense();
+            mssql.start();
+        }
+        return mssql;
+    }
+
+    private static void createMssqlDatabase(MSSQLServerContainer<?> container, String schema) {
+        try (Connection connection = DriverManager.getConnection(container.getJdbcUrl() + ";encrypt=false", container.getUsername(), container.getPassword());
+             Statement statement = connection.createStatement()) {
+            statement.execute("create database " + schema + " collate Latin1_General_BIN2");
+        } catch (SQLException e) {
+            throw new IllegalStateException("could not create database " + schema, e);
+        }
     }
 
     private static void createSchema(String jdbcUrl, String user, String password, String schema) {
