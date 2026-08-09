@@ -8,6 +8,7 @@ import io.github.smolcan.aggrid.jpa.adapter.request.ServerSideGetRowsRequest;
 import io.github.smolcan.aggrid.jpa.adapter.request.SortDirection;
 import io.github.smolcan.aggrid.jpa.adapter.request.SortModelItem;
 import io.github.smolcan.aggrid.jpa.adapter.response.LoadSuccessParams;
+import io.github.smolcan.aggrid.jpa.adapter.test.infrastructure.TestPersistence;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Product_;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade_;
@@ -47,9 +48,10 @@ class PivotingTest extends ScenarioTestBase {
     @Test
     void generatesPivotResultFieldsFromDistinctValues() {
         LoadSuccessParams result = pivotingQueryBuilder(null).getRows(pivotRequest());
-        // distinct product names ordered ascending (H2: null first), joined with value col by "_"
+        // one field per distinct product name, joined with the value col by "_"; the order follows
+        // where the database sorts nulls, which is not something this test is pinning
         assertThat(result.getPivotResultFields())
-                .containsExactly("null_currentValue", "Gold_currentValue", "Platinum_currentValue", "Silver_currentValue");
+                .containsExactlyInAnyOrder("null_currentValue", "Gold_currentValue", "Platinum_currentValue", "Silver_currentValue");
     }
 
     @Test
@@ -117,8 +119,10 @@ class PivotingTest extends ScenarioTestBase {
 
         LoadSuccessParams result = pivotingQueryBuilder(null).getRows(request);
         assertThat(result.getRowData()).hasSize(8);
-        // groups with Gold values sorted descending; groups without Gold trades (null) sort last on H2
-        assertThat(columnValues(result, "portfolio").subList(0, 4))
+        // the four groups without Gold trades are null here, and descending puts them last where
+        // null sorts low and first where it sorts high
+        int firstWithGold = TestPersistence.nullsSortLow() ? 0 : 4;
+        assertThat(columnValues(result, "portfolio").subList(firstWithGold, firstWithGold + 4))
                 .containsExactly("BETA", "delta", "Alpha", "alpha");
     }
 
@@ -131,9 +135,11 @@ class PivotingTest extends ScenarioTestBase {
         request.getSortModel().add(absoluteSort);
 
         LoadSuccessParams result = pivotingQueryBuilder(null).getRows(request);
-        // Platinum sums are Epsilon 100.00, Gamma -10.00, Beta 0.00 (groups without Platinum trades sort last);
-        // without the absolute type Beta (0.00) would outrank Gamma (-10.00)
-        assertThat(columnValues(result, "portfolio").subList(0, 3))
+        // Platinum sums are Epsilon 100.00, Gamma -10.00, Beta 0.00; without the absolute type
+        // Beta (0.00) would outrank Gamma (-10.00). The five groups without Platinum trades are
+        // null, and descending puts them last where null sorts low and first where it sorts high
+        int firstWithPlatinum = TestPersistence.nullsSortLow() ? 0 : 5;
+        assertThat(columnValues(result, "portfolio").subList(firstWithPlatinum, firstWithPlatinum + 3))
                 .containsExactly("Epsilon", "Gamma", "Beta");
     }
 

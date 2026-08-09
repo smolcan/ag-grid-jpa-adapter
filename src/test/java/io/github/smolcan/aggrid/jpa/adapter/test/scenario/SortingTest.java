@@ -7,11 +7,13 @@ import io.github.smolcan.aggrid.jpa.adapter.request.ServerSideGetRowsRequest;
 import io.github.smolcan.aggrid.jpa.adapter.request.SortDirection;
 import io.github.smolcan.aggrid.jpa.adapter.request.SortModelItem;
 import io.github.smolcan.aggrid.jpa.adapter.response.LoadSuccessParams;
+import io.github.smolcan.aggrid.jpa.adapter.test.infrastructure.TestPersistence;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade_;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -66,8 +68,11 @@ class SortingTest extends ScenarioTestBase {
         request.getSortModel().add(sortItem("tradeId", SortDirection.asc));
 
         LoadSuccessParams result = defaultQueryBuilder().getRows(request);
-        // H2 sorts nulls first ascending: null product (10), then Gold, Platinum, Silver
-        assertThat(tradeIds(result)).containsExactly(10L, 1L, 3L, 6L, 9L, 4L, 7L, 11L, 2L, 5L, 8L, 12L);
+        // Gold, then Platinum, then Silver, each tie-broken by tradeId
+        List<Long> expected = new ArrayList<>(List.of(1L, 3L, 6L, 9L, 4L, 7L, 11L, 2L, 5L, 8L, 12L));
+        // trade 10 has no product, so ascending leads with it where null sorts low and trails with it otherwise
+        expected.add(TestPersistence.nullsSortLow() ? 0 : expected.size(), 10L);
+        assertThat(tradeIds(result)).containsExactlyElementsOf(expected);
     }
 
     @Test

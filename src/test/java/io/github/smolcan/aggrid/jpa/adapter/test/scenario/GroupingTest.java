@@ -418,15 +418,22 @@ class GroupingTest extends ScenarioTestBase {
                         ColDef.builder(Trade_.portfolio).enableRowGroup(true, key -> key).build(),
                         ColDef.builder(Trade_.currentValue).enableValue(true).build()
                 )
-                .registerCustomAggFunction("median", (cb, expr) -> cb.function("MEDIAN", BigDecimal.class, expr))
+                // STDDEV_POP is spelled the same in H2, Postgres and MariaDB, so the registered
+                // function reaches the database unchanged whatever the provider and dialect
+                .registerCustomAggFunction("stdDev", (cb, expr) -> cb.function("STDDEV_POP", Double.class, expr))
                 .build();
 
         ServerSideGetRowsRequest request = groupedByPortfolioRequest();
-        request.getValueCols().add(valueCol("currentValue", "median"));
+        request.getValueCols().add(valueCol("currentValue", "stdDev"));
 
         LoadSuccessParams result = queryBuilder.getRows(request);
-        // H2 MEDIAN; two-element groups interpolate (e.g. Alpha: (100.00 + 250.50) / 2)
-        assertThat(doubleValues(result, "currentValue"))
-                .containsExactly(175.25, 320.10, 250.00, 999.99, 71.21, 32.625, -75.25, 150.00);
+        // half the spread for the two-trade groups (Alpha: (250.50 - 100.00) / 2), zero for the
+        // single-trade ones; population deviation rather than sample so those stay 0 instead of null
+        List<Double> deviations = doubleValues(result, "currentValue");
+        List<Double> expected = List.of(75.25, 0.0, 250.00, 0.0, 28.79, 42.625, 0.0, 0.0);
+        assertThat(deviations).hasSize(8);
+        for (int i = 0; i < expected.size(); i++) {
+            assertThat(deviations.get(i)).isCloseTo(expected.get(i), within(0.0001));
+        }
     }
 }

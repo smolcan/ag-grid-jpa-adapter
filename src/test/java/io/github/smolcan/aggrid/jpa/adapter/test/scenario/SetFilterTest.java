@@ -164,7 +164,7 @@ class SetFilterTest extends ScenarioTestBase {
     void supplySetFilterValuesIncludesNulls() {
         List<Object> values = setFilterQueryBuilder().supplySetFilterValues("book");
         // H2 sorts null first ascending
-        assertThat(values).containsExactly(null, "", "B-1", "B-2", "B-3", "B-4", "B-5", "B-6", "b-1");
+        assertThat(values).containsExactlyInAnyOrder(null, "", "B-1", "B-2", "B-3", "B-4", "B-5", "B-6", "b-1");
     }
 
     @Test

@@ -2,7 +2,12 @@ package io.github.smolcan.aggrid.jpa.adapter.test.infrastructure;
 
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
+import org.testcontainers.containers.PostgreSQLContainer;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -16,10 +21,12 @@ import java.util.concurrent.atomic.AtomicLong;
  * <pre>
  *   ./mvnw test -Dtest.jpa.provider=HIBERNATE -Dtest.database=H2
  *   ./mvnw test -Dtest.jpa.provider=ECLIPSELINK -Dtest.database=H2
+ *   ./mvnw test -Dtest.jpa.provider=HIBERNATE -Dtest.database=POSTGRES
  * </pre>
  * Both providers are on the test classpath at the same time; the one to boot is selected
  * explicitly through {@code jakarta.persistence.provider}, since {@code persistence.xml}
- * deliberately names none.
+ * deliberately names none. {@code POSTGRES} starts one Testcontainers server for the JVM and
+ * therefore needs a running Docker daemon.
  */
 public final class TestPersistence {
 
@@ -32,9 +39,12 @@ public final class TestPersistence {
     }
 
     public enum TestDatabase {
-        H2
-        // POSTGRES, MYSQL via Testcontainers planned (compatibility matrix phase)
+        H2,
+        POSTGRES
+        // MYSQL via Testcontainers planned (compatibility matrix phase)
     }
+
+    private static PostgreSQLContainer<?> postgres;
 
     private TestPersistence() {
     }
@@ -44,7 +54,17 @@ public final class TestPersistence {
     }
 
     private static TestDatabase activeDatabase() {
-        return TestDatabase.valueOf(System.getProperty("test.database", TestDatabase.H2.name()).toUpperCase());
+        return TestDatabase.valueOf(System.getProperty("test.database", TestDatabase.POSTGRES.name()).toUpperCase());
+    }
+
+    /**
+     * Where NULL lands in an ORDER BY. H2 and MariaDB treat it as the smallest value, so it leads
+     * ascending and trails descending; Postgres and Oracle treat it as the largest and do the
+     * opposite. JPA 3.1 has no way to ask for one or the other, so sorting tests that involve nulls
+     * have to expect whichever the database does.
+     */
+    public static boolean nullsSortLow() {
+        return activeDatabase() == TestDatabase.H2;
     }
 
     public static EntityManagerFactory createEntityManagerFactory() {
@@ -62,6 +82,21 @@ public final class TestPersistence {
             properties.put("jakarta.persistence.jdbc.url", CountingDriver.URL_PREFIX + "h2:mem:" + dbName + ";DB_CLOSE_DELAY=-1");
             properties.put("jakarta.persistence.jdbc.user", "sa");
             properties.put("jakarta.persistence.jdbc.password", "");
+        } else if (database == TestDatabase.POSTGRES) {
+            PostgreSQLContainer<?> container = startPostgres();
+            // one schema per factory plays the role the unique in-memory database plays for H2
+            String schema = "aggrid_test_" + DB_SEQUENCE.incrementAndGet();
+            createSchema(container, schema);
+            // EclipseLink declares UUID columns as native uuid but binds their values as varchar.
+            // H2 coerces between the two, Postgres rejects it, so the server is asked to infer
+            // parameter types instead. Only that provider needs it, so the others stay strict.
+            String parameterTyping = provider == JpaProvider.ECLIPSELINK ? "&stringtype=unspecified" : "";
+            properties.put("jakarta.persistence.jdbc.driver", CountingDriver.class.getName());
+            properties.put("jakarta.persistence.jdbc.url", CountingDriver.URL_PREFIX + "postgresql://"
+                    + container.getHost() + ":" + container.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT)
+                    + "/" + container.getDatabaseName() + "?currentSchema=" + schema + parameterTyping);
+            properties.put("jakarta.persistence.jdbc.user", container.getUsername());
+            properties.put("jakarta.persistence.jdbc.password", container.getPassword());
         }
 
         if (provider == JpaProvider.HIBERNATE) {
@@ -79,9 +114,32 @@ public final class TestPersistence {
             properties.put("eclipselink.logging.level", "SEVERE");
             if (database == TestDatabase.H2) {
                 properties.put("eclipselink.target-database", "org.eclipse.persistence.platform.database.H2Platform");
+            } else if (database == TestDatabase.POSTGRES) {
+                properties.put("eclipselink.target-database", "org.eclipse.persistence.platform.database.PostgreSQLPlatform");
             }
         }
 
         return Persistence.createEntityManagerFactory(PERSISTENCE_UNIT, properties);
+    }
+
+    /** One server per JVM, shut down by the Testcontainers reaper when the JVM exits. */
+    private static synchronized PostgreSQLContainer<?> startPostgres() {
+        if (postgres == null) {
+            // the C locale sorts by byte value like H2 does; the images default to en_US, whose
+            // collation ignores case and would reorder the fixture rows behind the sorting tests
+            postgres = new PostgreSQLContainer<>("postgres:17-alpine")
+                    .withEnv("POSTGRES_INITDB_ARGS", "--locale=C");
+            postgres.start();
+        }
+        return postgres;
+    }
+
+    private static void createSchema(PostgreSQLContainer<?> container, String schema) {
+        try (Connection connection = DriverManager.getConnection(container.getJdbcUrl(), container.getUsername(), container.getPassword());
+             Statement statement = connection.createStatement()) {
+            statement.execute("create schema " + schema);
+        } catch (SQLException e) {
+            throw new IllegalStateException("could not create schema " + schema, e);
+        }
     }
 }
