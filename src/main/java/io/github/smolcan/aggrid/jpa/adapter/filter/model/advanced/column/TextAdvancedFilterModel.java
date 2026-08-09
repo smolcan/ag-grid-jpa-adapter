@@ -29,7 +29,7 @@ public class TextAdvancedFilterModel<E> extends ColumnAdvancedFilterModel<E, Str
     @NonNull
     public Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<E> root) {
 
-        Expression<String> filterExpression = this.filterParams.generateExpressionFromFilterParams(cb, cb.literal(this.filter));
+        Expression<String> filterExpression = this.filterParams.generateExpressionFromFilterParams(cb, this.filter != null ? cb.literal(this.filter) : cb.nullLiteral(String.class));
         Expression<String> valueExpression = this.filterParams.generateExpressionFromFilterParams(cb, this.getColumnField().getPath(root));
 
         // check if provided custom text matcher

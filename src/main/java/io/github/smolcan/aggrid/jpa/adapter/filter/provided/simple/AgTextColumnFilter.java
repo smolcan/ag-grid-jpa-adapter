@@ -37,7 +37,7 @@ public class AgTextColumnFilter extends SimpleFilter<String, TextFilterModel, Te
             throw new IllegalArgumentException("Filter type " + filterModel.getType() + " not allowed for this column");
         }
         
-        Expression<String> filterExpression = this.filterParams.generateExpressionFromFilterParams(cb, cb.literal(filterModel.getFilter()));
+        Expression<String> filterExpression = this.filterParams.generateExpressionFromFilterParams(cb, filterModel.getFilter() != null ? cb.literal(filterModel.getFilter()) : cb.nullLiteral(String.class));
         Expression<String> valueExpression = this.filterParams.generateExpressionFromFilterParams(cb, expression);
         
         // check if provided custom text matcher

@@ -1342,9 +1342,11 @@ public class QueryBuilder<E, E_ID, D> {
             return false;
         }
 
-        CriteriaQuery<Boolean> mainQuery = cb.createQuery(Boolean.class);
+        CriteriaQuery<E_ID> mainQuery = cb.createQuery(this.primaryField.getJavaType());
+        Root<E> mainRoot = mainQuery.from(this.entityClass);
+        mainQuery.select(mainRoot.get(this.primaryField));
 
-        Expression<Boolean> parentMatchExpression = cb.literal(false);
+        List<Predicate> parentMatchPredicates = new ArrayList<>(request.getGroupKeys().size());
         for (int i = 0; i < request.getGroupKeys().size(); i++) {
             String key = request.getGroupKeys().get(i);
 
@@ -1392,12 +1394,12 @@ public class QueryBuilder<E, E_ID, D> {
                             .toArray(Predicate[]::new)
             );
 
-            parentMatchExpression = cb.or(parentMatchExpression, cb.exists(expandedParentSubquery));
+            parentMatchPredicates.add(cb.exists(expandedParentSubquery));
         }
 
-        mainQuery.select(parentMatchExpression);
-
-        return this.entityManager.createQuery(mainQuery).getSingleResult();
+        mainQuery.where(cb.or(parentMatchPredicates.toArray(Predicate[]::new)));
+        
+        return !this.entityManager.createQuery(mainQuery).setMaxResults(1).getResultList().isEmpty();
     }
 
     /**
@@ -2729,22 +2731,17 @@ public class QueryBuilder<E, E_ID, D> {
             return 0;
         }
 
-        CriteriaQuery<Long> mainQuery = cb.createQuery(Long.class);
+        CriteriaQuery<Long> query = cb.createQuery(Long.class);
+        Root<E> root = query.from(this.entityClass);
 
         Expression<Long> productExpression = cb.literal((long) request.getValueCols().size());
         for (ColumnVO pivotCol : request.getPivotCols()) {
             ColDef<E, ?> colDef = this.colDefs.get(pivotCol.getField());
-            // Subquery for count(distinct <field>)
-            Subquery<Long> subquery = mainQuery.subquery(Long.class);
-            Root<E> subRoot = subquery.from(this.entityClass);
-            subquery.select(cb.countDistinct(colDef.getField().getPath(subRoot)));
-
-            productExpression = cb.prod(productExpression, subquery);
+            productExpression = cb.prod(productExpression, cb.countDistinct(colDef.getField().getPath(root)));
         }
 
-        mainQuery.select(productExpression);
-
-        return this.entityManager.createQuery(mainQuery).getSingleResult();
+        query.select(productExpression);
+        return this.entityManager.createQuery(query).getSingleResult();
     }
 
     @NonNull
