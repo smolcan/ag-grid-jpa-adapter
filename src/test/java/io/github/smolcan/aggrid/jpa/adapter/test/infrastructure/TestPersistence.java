@@ -19,18 +19,18 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * Creates the {@link EntityManagerFactory} for scenario tests.
  * <p>
- * The JPA provider and database are chosen via system properties so the same scenario
- * tests can run against different combinations (CI matrix), defaulting to Hibernate on
- * in-memory H2 for fast local runs:
+ * The JPA provider and database are chosen via system properties so the same scenario tests can
+ * run against every combination of {@link JpaProvider} and {@link TestDatabase} (CI matrix):
  * <pre>
- *   ./mvnw test -Dtest.jpa.provider=HIBERNATE -Dtest.database=H2
- *   ./mvnw test -Dtest.jpa.provider=ECLIPSELINK -Dtest.database=H2
- *   ./mvnw test -Dtest.jpa.provider=HIBERNATE -Dtest.database=POSTGRES
+ *   ./mvnw test -Dtest.jpa.provider=HIBERNATE   -Dtest.database=H2
+ *   ./mvnw test -Dtest.jpa.provider=ECLIPSELINK -Dtest.database=ORACLE
  * </pre>
+ * Left unset they default to {@code HIBERNATE} and {@code POSTGRES}.
+ * <p>
  * Both providers are on the test classpath at the same time; the one to boot is selected
  * explicitly through {@code jakarta.persistence.provider}, since {@code persistence.xml}
- * deliberately names none. {@code POSTGRES} starts one Testcontainers server for the JVM and
- * therefore needs a running Docker daemon.
+ * deliberately names none. Every database except {@code H2} starts one Testcontainers server for
+ * the JVM and therefore needs a running Docker daemon.
  */
 public final class TestPersistence {
 
@@ -69,10 +69,10 @@ public final class TestPersistence {
     }
 
     /**
-     * Where NULL lands in an ORDER BY. H2 and MariaDB treat it as the smallest value, so it leads
-     * ascending and trails descending; Postgres and Oracle treat it as the largest and do the
-     * opposite. JPA 3.1 has no way to ask for one or the other, so sorting tests that involve nulls
-     * have to expect whichever the database does.
+     * Where NULL lands in an ORDER BY. H2, MariaDB, MySQL and SQL Server treat it as the smallest
+     * value, so it leads ascending and trails descending; Postgres and Oracle treat it as the
+     * largest and do the opposite. JPA 3.1 has no way to ask for one or the other, so sorting tests
+     * that involve nulls have to expect whichever the database does.
      */
     public static boolean nullsSortLow() {
         return activeDatabase() == TestDatabase.H2

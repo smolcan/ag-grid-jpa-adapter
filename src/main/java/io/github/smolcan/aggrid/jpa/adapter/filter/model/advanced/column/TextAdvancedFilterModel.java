@@ -5,7 +5,6 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.ColumnAdvanced
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.SimpleFilterModelType;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextFilterParams;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextMatcherParams;
-import io.github.smolcan.aggrid.jpa.adapter.utils.Utils;
 import jakarta.persistence.criteria.*;
 import lombok.Getter;
 import lombok.NonNull;
