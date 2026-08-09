@@ -59,7 +59,7 @@ public class AgTextColumnFilter extends SimpleFilter<String, TextFilterModel, Te
                 break;
             }
             case notBlank: {
-                predicate = cb.and(cb.isNotNull(valueExpression), cb.notEqual(valueExpression, ""));
+                predicate = cb.and(cb.isNotNull(valueExpression), cb.greaterThan(cb.length(valueExpression), 0));
                 break;
             }
             case equals: {
