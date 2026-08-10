@@ -55,7 +55,7 @@ public class AgTextColumnFilter extends SimpleFilter<String, TextFilterModel, Te
         Predicate predicate;
         switch (filterModel.getType()) {
             case empty: case blank: {
-                predicate = cb.or(cb.isNull(valueExpression), cb.equal(valueExpression, ""));
+                predicate = cb.or(cb.isNull(valueExpression), cb.equal(cb.length(valueExpression), 0));
                 break;
             }
             case notBlank: {

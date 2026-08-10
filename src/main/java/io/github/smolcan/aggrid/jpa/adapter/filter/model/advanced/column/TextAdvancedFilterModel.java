@@ -45,7 +45,7 @@ public class TextAdvancedFilterModel<E> extends ColumnAdvancedFilterModel<E, Str
         Predicate predicate;
         switch (this.type) {
             case blank: {
-                predicate = cb.or(cb.isNull(valueExpression), cb.equal(valueExpression, ""));
+                predicate = cb.or(cb.isNull(valueExpression), cb.equal(cb.length(valueExpression), 0));
                 break;
             }
             case notBlank: {
