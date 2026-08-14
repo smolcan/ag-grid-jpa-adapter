@@ -368,7 +368,7 @@ public class QueryBuilder<E, E_ID, D> {
         
         
         // apply
-        query.multiselect(queryContext.getSelections().stream().map(s -> s.getExpression().alias(s.getAlias())).collect(Collectors.toList()));
+        query.select(cb.tuple(queryContext.getSelections().stream().map(s -> s.getExpression().alias(s.getAlias())).toArray(Selection<?>[]::new)));
         if (!queryContext.getWherePredicates().isEmpty()) {
             Predicate[] predicates = queryContext.getWherePredicates().stream().map(WherePredicateMetadata::getPredicate).toArray(Predicate[]::new);
             query.where(predicates);
@@ -403,11 +403,11 @@ public class QueryBuilder<E, E_ID, D> {
         Root<D> root = query.from(params.getDetailClass());
         
         // select
-        query.multiselect(
+        query.select(cb.tuple(
                 params.getDetailColDefs().values().stream()
                 .map(colDef -> params.getDetailColDefs().get(colDef.getFieldName()).getField().getPath(root).alias(colDef.getFieldName()))
-                .collect(Collectors.toList())
-        );
+                .toArray(Selection<?>[]::new)
+        ));
 
         // master predicate
         Predicate masterPredicate = this.createMasterRowPredicate(cb, root, masterRow, params);
@@ -657,7 +657,7 @@ public class QueryBuilder<E, E_ID, D> {
         }
         detailSelections.add(masterPrimaryFieldPath.alias(masterPrimaryFieldAlias));
         
-        query.multiselect(detailSelections);
+        query.select(cb.tuple(detailSelections.toArray(new Selection<?>[0])));
         query.where(masterPrimaryFieldPath.in(masterIds));
 
         List<Tuple> detailTuples = this.entityManager.createQuery(query).getResultList();
@@ -793,8 +793,9 @@ public class QueryBuilder<E, E_ID, D> {
      */
     @NonNull
     protected List<Tuple> apply(@NonNull CriteriaQuery<Tuple> query, @NonNull QueryContext<E> queryContext) {
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         // select
-        query.multiselect(queryContext.getSelections().stream().map(s -> s.getExpression().alias(s.getAlias())).collect(Collectors.toList()));
+        query.select(cb.tuple(queryContext.getSelections().stream().map(s -> s.getExpression().alias(s.getAlias())).toArray(Selection<?>[]::new)));
         // where
         if (!queryContext.getWherePredicates().isEmpty()) {
             Predicate[] predicates = queryContext.getWherePredicates().stream().map(WherePredicateMetadata::getPredicate).toArray(Predicate[]::new);
@@ -2653,7 +2654,7 @@ public class QueryBuilder<E, E_ID, D> {
 
             // select
             Path<?> path = colDef.getField().getPath(root);
-            query.multiselect(path).distinct(true);
+            query.select(path).distinct(true);
             query.orderBy(cb.asc(path));
 
             // result
