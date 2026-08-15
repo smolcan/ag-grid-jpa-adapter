@@ -4,7 +4,7 @@ import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 
 @Getter
-@SuperBuilder
+@SuperBuilder(toBuilder = true)
 public class ScalarFilterParams implements ISimpleFilterParams {
     /**
      * @param inRangeInclusive if {@code true}, the {@code 'inRange'} option includes the range endpoints.

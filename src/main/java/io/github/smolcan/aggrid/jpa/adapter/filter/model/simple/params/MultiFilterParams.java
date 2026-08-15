@@ -13,7 +13,7 @@ import java.util.List;
 
 @Setter
 @Getter
-@Builder(builderClassName = "Builder")
+@Builder(builderClassName = "Builder", toBuilder = true)
 public class MultiFilterParams<T> implements IFilterParams {
     
     /**

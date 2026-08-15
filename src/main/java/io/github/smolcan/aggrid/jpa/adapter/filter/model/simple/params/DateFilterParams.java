@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 @Getter
-@SuperBuilder
+@SuperBuilder(toBuilder = true)
 public class DateFilterParams extends ScalarFilterParams {
 
     @NonNull

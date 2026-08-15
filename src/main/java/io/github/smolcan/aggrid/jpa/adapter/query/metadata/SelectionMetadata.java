@@ -17,7 +17,7 @@ import lombok.NonNull;
  * </p>
  */
 @Getter
-@Builder
+@Builder(toBuilder = true)
 public class SelectionMetadata {
     
     /**

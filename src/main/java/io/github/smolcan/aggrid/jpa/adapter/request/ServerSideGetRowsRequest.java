@@ -11,7 +11,7 @@ import java.util.Map;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Builder(toBuilder = true)
 public class ServerSideGetRowsRequest {
     /**
      * @param startRow the first row requested (inclusive).

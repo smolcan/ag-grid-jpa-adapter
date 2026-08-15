@@ -8,7 +8,7 @@ import lombok.Getter;
 import java.util.function.BiFunction;
 
 @Getter
-@Builder
+@Builder(toBuilder = true)
 public class SetFilterParams implements IFilterParams {
     
     /**

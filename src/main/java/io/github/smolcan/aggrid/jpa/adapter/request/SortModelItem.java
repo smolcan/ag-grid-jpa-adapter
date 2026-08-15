@@ -6,7 +6,7 @@ import lombok.*;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Builder(toBuilder = true)
 public class SortModelItem {
     /**
      * @param colId the ID of the column being sorted.

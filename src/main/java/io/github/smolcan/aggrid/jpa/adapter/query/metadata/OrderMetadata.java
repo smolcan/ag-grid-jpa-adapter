@@ -9,7 +9,7 @@ import lombok.NonNull;
  * Metadata for a query {@link Order}, including the associated column ID.
  */
 @Getter
-@Builder
+@Builder(toBuilder = true)
 public class OrderMetadata {
     /**
      * @param order the JPA order (column + sort direction) to apply.

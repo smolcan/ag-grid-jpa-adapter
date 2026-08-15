@@ -4,9 +4,7 @@ package io.github.smolcan.aggrid.jpa.adapter.query.metadata;
 import jakarta.persistence.criteria.AbstractQuery;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Root;
-import lombok.Getter;
-import lombok.NonNull;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.*;
 
@@ -21,19 +19,30 @@ import java.util.*;
  */
 @Getter
 @Setter
+@Builder(toBuilder = true)
+@AllArgsConstructor
 public class QueryContext<E> {
     
+    @NonNull
     private final CriteriaBuilder criteriaBuilder;
+    @NonNull
     private final AbstractQuery<?> query;
+    @NonNull
     private final Root<E> root;
     
+    @NonNull
     private List<SelectionMetadata> selections = new ArrayList<>();
+    @NonNull
     private List<WherePredicateMetadata> wherePredicates = new ArrayList<>();
+    @NonNull
     private List<GroupingMetadata> grouping = new ArrayList<>();
+    @NonNull
     private List<HavingMetadata> having = new ArrayList<>();
+    @NonNull
     private List<OrderMetadata> orders = new ArrayList<>();
     private int firstResult;
     private int maxResults;
+    @NonNull
     private PivotingContext pivotingContext = new PivotingContext();
 
     public QueryContext(@NonNull CriteriaBuilder criteriaBuilder, @NonNull AbstractQuery<?> query, @NonNull Root<E> root) {

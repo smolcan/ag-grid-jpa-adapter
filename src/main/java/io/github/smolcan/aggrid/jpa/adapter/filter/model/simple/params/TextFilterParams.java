@@ -13,7 +13,7 @@ import java.util.Set;
 import java.util.function.BiFunction;
 
 @Getter
-@Builder(builderClassName = "Builder")
+@Builder(builderClassName = "Builder", toBuilder = true)
 public class TextFilterParams implements ISimpleFilterParams {
     /**
      * @param textMatcher overrides how filtering is done for the user input, returning the predicate directly.

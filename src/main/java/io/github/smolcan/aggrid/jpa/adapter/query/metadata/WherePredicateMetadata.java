@@ -12,7 +12,7 @@ import lombok.NonNull;
  * Metadata wrapper for a {@link Predicate} used in the {@code WHERE} clause of a dynamic JPA query.
  */
 @Getter
-@Builder
+@Builder(toBuilder = true)
 public class WherePredicateMetadata {
     
     /**

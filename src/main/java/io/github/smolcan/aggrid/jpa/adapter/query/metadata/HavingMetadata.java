@@ -9,7 +9,7 @@ import lombok.NonNull;
  * Metadata for a {@code HAVING} clause predicate, including pivoting context.
  */
 @Getter
-@Builder
+@Builder(toBuilder = true)
 public class HavingMetadata {
     
     /**

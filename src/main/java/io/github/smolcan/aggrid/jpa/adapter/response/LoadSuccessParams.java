@@ -9,7 +9,7 @@ import java.util.Map;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Builder(toBuilder = true)
 public class LoadSuccessParams {
     /**
      * @param rowData the row data returned to the grid.

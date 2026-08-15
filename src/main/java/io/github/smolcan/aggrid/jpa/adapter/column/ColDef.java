@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
  * Column definition, tries to be same as in frontend
  */
 @Getter
-@Builder(builderClassName = "Builder")
+@Builder(builderClassName = "Builder", toBuilder = true)
 public class ColDef<P, T> {
     
     @NonNull

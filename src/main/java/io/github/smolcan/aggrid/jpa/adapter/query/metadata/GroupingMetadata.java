@@ -10,7 +10,7 @@ import lombok.NonNull;
  * Metadata for a grouping expression, including the associated column name.
  */
 @Getter
-@Builder
+@Builder(toBuilder = true)
 public class GroupingMetadata {
     
     /**
