@@ -1582,6 +1582,9 @@ public class QueryBuilder<E, E_ID, D> {
                 cb.concat(root.get(this.treeDataDataPathFieldName), this.treeDataDataPathSeparator + "%")
         );
         predicates.add(childrenPathPredicate);
+        if (this.alwaysAppliedPredicate != null) {
+            predicates.add(this.alwaysAppliedPredicate.apply(cb, countChildrenRoot));
+        }
 
         if (!this.suppressAggFilteredOnly) {
             // external filter

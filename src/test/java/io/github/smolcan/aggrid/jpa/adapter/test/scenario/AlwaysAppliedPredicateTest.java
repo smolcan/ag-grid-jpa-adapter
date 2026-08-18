@@ -252,9 +252,6 @@ class AlwaysAppliedPredicateTest extends ScenarioTestBase {
     }
 
     @Test
-    @Disabled("alwaysAppliedPredicate is applied in where() only, so the correlated child-count "
-            + "subquery in createTreeDataGetChildCountExpression still counts hidden descendants. "
-            + "Currently returns 6 and 1.")
     void treeChildCountIgnoresRestrictedChildren() {
         LoadSuccessParams result = restrictedTree().getRows(treeRequest());
 
