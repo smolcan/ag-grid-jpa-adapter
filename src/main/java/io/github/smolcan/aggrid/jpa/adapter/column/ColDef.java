@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 public class ColDef<P, T> {
     
     @NonNull
-    private final FieldPath<P, T> field;
+    private final ColumnSource<P, T> field;
     /**
      * @param sortable set {@code false} to disable sorting (enabled by default).
      * @return whether sorting is enabled.
@@ -63,7 +63,7 @@ public class ColDef<P, T> {
     }
 
     @NonNull
-    public static <P, T> Builder<P, T> builder(@NonNull FieldPath<P, T> field) {
+    public static <P, T> Builder<P, T> builder(@NonNull ColumnSource<P, T> field) {
         return new Builder<P, T>().field(field);
     }
 
@@ -74,13 +74,13 @@ public class ColDef<P, T> {
     public static class Builder<P, T> {
         
         // default builder values
-        private FieldPath<P, T> field;
+        private ColumnSource<P, T> field;
         private boolean sortable = true;
         private Set<String> allowedAggFuncs;
         private boolean enableRowGroup;
         private Function<@NonNull String, @NonNull T> groupKeyToType;
         
-        private Builder<P, T> field(@NonNull FieldPath<P, T> field) {
+        private Builder<P, T> field(@NonNull ColumnSource<P, T> field) {
             this.field = field;
             return this;
         }

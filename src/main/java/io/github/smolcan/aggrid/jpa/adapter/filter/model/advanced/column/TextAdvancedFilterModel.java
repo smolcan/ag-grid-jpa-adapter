@@ -1,6 +1,6 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.column;
 
-import io.github.smolcan.aggrid.jpa.adapter.column.FieldPath;
+import io.github.smolcan.aggrid.jpa.adapter.column.ColumnSource;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.ColumnAdvancedFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.SimpleFilterModelType;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextFilterParams;
@@ -20,7 +20,7 @@ public class TextAdvancedFilterModel<E> extends ColumnAdvancedFilterModel<E, Str
     @NonNull
     private TextFilterParams filterParams = TextFilterParams.builder().build();
     
-    public TextAdvancedFilterModel(@NonNull FieldPath<E, String> columnField) {
+    public TextAdvancedFilterModel(@NonNull ColumnSource<E, String> columnField) {
         super("text", columnField);
     }
     
@@ -29,7 +29,7 @@ public class TextAdvancedFilterModel<E> extends ColumnAdvancedFilterModel<E, Str
     public Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<E> root) {
 
         Expression<String> filterExpression = this.filterParams.generateExpressionFromFilterParams(cb, this.filter != null ? cb.literal(this.filter) : cb.nullLiteral(String.class));
-        Expression<String> valueExpression = this.filterParams.generateExpressionFromFilterParams(cb, this.getColumnField().getPath(root));
+        Expression<String> valueExpression = this.filterParams.generateExpressionFromFilterParams(cb, this.getColumnField().getExpression(cb, root));
 
         // check if provided custom text matcher
         if (this.filterParams.getTextMatcher() != null) {

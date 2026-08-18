@@ -1,6 +1,6 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.column;
 
-import io.github.smolcan.aggrid.jpa.adapter.column.FieldPath;
+import io.github.smolcan.aggrid.jpa.adapter.column.ColumnSource;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.ColumnAdvancedFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.NumberFilterParams;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -24,7 +24,7 @@ public class NumberAdvancedFilterModel<E, T extends Number> extends ColumnAdvanc
     @NonNull
     private NumberFilterParams filterParams = NumberFilterParams.builder().build();
     
-    public NumberAdvancedFilterModel(@NonNull FieldPath<E, T> columnField) {
+    public NumberAdvancedFilterModel(@NonNull ColumnSource<E, T> columnField) {
         super("number", columnField);
     }
     
@@ -35,7 +35,7 @@ public class NumberAdvancedFilterModel<E, T extends Number> extends ColumnAdvanc
 
         // ensuring number compatibility
         // comparing any number types without problem, cast both to big decimal
-        Expression<? extends Number> path = this.getColumnField().getPath(root);
+        Expression<? extends Number> path = this.getColumnField().getExpression(cb, root);
         switch (this.type) {
             case blank: {
                 predicate = cb.isNull(path);

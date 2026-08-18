@@ -1,6 +1,6 @@
 package io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.column;
 
-import io.github.smolcan.aggrid.jpa.adapter.column.FieldPath;
+import io.github.smolcan.aggrid.jpa.adapter.column.ColumnSource;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.ColumnAdvancedFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.DateFilterParams;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -24,7 +24,7 @@ public class DateAdvancedFilterModel<E, T> extends ColumnAdvancedFilterModel<E, 
     @NonNull
     private DateFilterParams filterParams = DateFilterParams.builder().build();
     
-    public DateAdvancedFilterModel(@NonNull FieldPath<E, T> columnField) {
+    public DateAdvancedFilterModel(@NonNull ColumnSource<E, T> columnField) {
         super("date", columnField);
     }
     
@@ -34,7 +34,7 @@ public class DateAdvancedFilterModel<E, T> extends ColumnAdvancedFilterModel<E, 
         this.filterParams.validateDate(this.filter);
         Predicate predicate;
         
-        Expression<LocalDate> path = this.getColumnField().getPath(root).as(LocalDate.class);
+        Expression<LocalDate> path = this.getColumnField().getExpression(cb, root).as(LocalDate.class);
         switch (this.type) {
             case blank: {
                 predicate = cb.isNull(path);

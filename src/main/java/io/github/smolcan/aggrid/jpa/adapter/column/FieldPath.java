@@ -5,6 +5,8 @@ import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.metamodel.Attribute;
 import jakarta.persistence.metamodel.SingularAttribute;
 import lombok.Getter;
@@ -16,7 +18,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @SuppressWarnings("java:S119")
-public class FieldPath<E, T> {
+public class FieldPath<E, T> implements ColumnSource<E, T> {
 
     @Getter
     @NonNull
@@ -41,17 +43,26 @@ public class FieldPath<E, T> {
         return new FieldPath<>(extended);
     }
 
+    @Override
     @NonNull
     public String getName() {
         return this.hops.stream().map(Attribute::getName).collect(Collectors.joining("."));
     }
-    
+
+    @Override
+    @NonNull
     @SuppressWarnings("unchecked")
     public Class<T> getJavaType() {
         Attribute<?, T> lastHop = (Attribute<?, T>) hops.get(hops.size() - 1);
         return lastHop.getJavaType();
     }
-    
+
+    @Override
+    @NonNull
+    public Expression<T> getExpression(@NonNull CriteriaBuilder cb, @NonNull Root<E> root) {
+        return this.getPath(root);
+    }
+
     @NonNull
     public Path<T> getPath(@NonNull Root<E> root) {
         From<?, ?> currentFrom = root;
