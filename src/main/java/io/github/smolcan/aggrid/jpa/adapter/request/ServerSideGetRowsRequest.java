@@ -3,6 +3,7 @@ package io.github.smolcan.aggrid.jpa.adapter.request;
 
 import lombok.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -28,19 +29,22 @@ public class ServerSideGetRowsRequest {
      * @return the row-grouped columns.
      */
     @NonNull
-    private List<ColumnVO> rowGroupCols;
+    @Builder.Default
+    private List<ColumnVO> rowGroupCols = new ArrayList<>();
     /**
      * @param valueCols the columns that have aggregations on them.
      * @return the aggregated columns.
      */
     @NonNull
-    private List<ColumnVO> valueCols;
+    @Builder.Default
+    private List<ColumnVO> valueCols = new ArrayList<>();
     /**
      * @param pivotCols the columns that are pivoted.
      * @return the pivoted columns.
      */
     @NonNull
-    private List<ColumnVO> pivotCols;
+    @Builder.Default
+    private List<ColumnVO> pivotCols = new ArrayList<>();
     /**
      * @param pivotMode whether pivot mode is on.
      * @return whether pivot mode is on.
@@ -51,7 +55,8 @@ public class ServerSideGetRowsRequest {
      * @return the group keys the user is viewing.
      */
     @NonNull
-    private List<String> groupKeys;
+    @Builder.Default
+    private List<String> groupKeys = new ArrayList<>();
     /**
      * @param filterModel the filter model (if filtering).
      * @return the filter model.
@@ -62,7 +67,8 @@ public class ServerSideGetRowsRequest {
      * @return the sort model.
      */
     @NonNull
-    private List<SortModelItem> sortModel;
+    @Builder.Default
+    private List<SortModelItem> sortModel = new ArrayList<>();
     /**
      * @param externalFilter the external filter value.
      * @return the external filter value.
