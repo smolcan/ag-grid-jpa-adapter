@@ -86,6 +86,7 @@ public class QueryBuilder<E, E_ID, D> {
     protected final boolean suppressFieldDotNotation;
     protected final boolean getChildCount;
     protected final String getChildCountFieldName;
+    protected final boolean includeRowCountInLoadSuccessParams;
     
     protected final boolean isQuickFilterPresent;
     protected final Function<String, List<String>> quickFilterParser;
@@ -141,6 +142,7 @@ public class QueryBuilder<E, E_ID, D> {
         this.suppressFieldDotNotation = builder.suppressFieldDotNotation;
         this.getChildCount = builder.getChildCount;
         this.getChildCountFieldName = builder.getChildCountFieldName;
+        this.includeRowCountInLoadSuccessParams = builder.includeRowCountInLoadSuccessParams;
         this.isQuickFilterPresent = builder.isQuickFilterPresent;
         this.quickFilterParser = builder.quickFilterParser;
         this.quickFilterMatcher = builder.quickFilterMatcher;
@@ -214,6 +216,9 @@ public class QueryBuilder<E, E_ID, D> {
         if (this.grandTotalRow && request.isNeedsGrandTotal()) {
             Map<String, Object> grandTotalData = this.getGrandTotalData(request);
             loadSuccessParams.setGrandTotalData(grandTotalData);
+        }
+        if (this.includeRowCountInLoadSuccessParams) {
+            loadSuccessParams.setRowCount(this.countRows(request));
         }
         return loadSuccessParams;
     }
@@ -2850,6 +2855,7 @@ public class QueryBuilder<E, E_ID, D> {
         private boolean suppressFieldDotNotation;
         protected boolean getChildCount;
         protected String getChildCountFieldName;
+        protected boolean includeRowCountInLoadSuccessParams;
 
         protected boolean isQuickFilterPresent;
         protected Function<String, List<String>> quickFilterParser = DEFAULT_QUICK_FILTER_PARSER;
@@ -3022,6 +3028,12 @@ public class QueryBuilder<E, E_ID, D> {
         @NonNull
         public Builder<E, E_ID, D> getChildCountFieldName(@NonNull String getChildCountFieldName) {
             this.getChildCountFieldName = getChildCountFieldName;
+            return this;
+        }
+
+        @NonNull
+        public Builder<E, E_ID, D> includeRowCountInLoadSuccessParams(boolean includeRowCountInLoadSuccessParams) {
+            this.includeRowCountInLoadSuccessParams = includeRowCountInLoadSuccessParams;
             return this;
         }
         
