@@ -31,18 +31,24 @@ public class QueryContext<E> {
     private final Root<E> root;
     
     @NonNull
+    @Builder.Default
     private List<SelectionMetadata> selections = new ArrayList<>();
     @NonNull
+    @Builder.Default
     private List<WherePredicateMetadata> wherePredicates = new ArrayList<>();
     @NonNull
+    @Builder.Default
     private List<GroupingMetadata> grouping = new ArrayList<>();
     @NonNull
+    @Builder.Default
     private List<HavingMetadata> having = new ArrayList<>();
     @NonNull
+    @Builder.Default
     private List<OrderMetadata> orders = new ArrayList<>();
     private int firstResult;
     private int maxResults;
     @NonNull
+    @Builder.Default
     private PivotingContext pivotingContext = new PivotingContext();
 
     public QueryContext(@NonNull CriteriaBuilder criteriaBuilder, @NonNull AbstractQuery<?> query, @NonNull Root<E> root) {
