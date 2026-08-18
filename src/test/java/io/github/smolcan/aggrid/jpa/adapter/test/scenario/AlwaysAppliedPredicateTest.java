@@ -13,7 +13,6 @@ import io.github.smolcan.aggrid.jpa.adapter.test.entity.Employee_;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Product_;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade_;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -210,6 +209,10 @@ class AlwaysAppliedPredicateTest extends ScenarioTestBase {
      * too, so both the root level and the group flags change.
      */
     private QueryBuilder<Employee, Long, Void> restrictedTree() {
+        return restrictedTreeConfig().build();
+    }
+
+    private QueryBuilder.Builder<Employee, Long, Void> restrictedTreeConfig() {
         return QueryBuilder.builder(Employee.class, Employee_.employeeId, entityManager)
                 .colDefs(
                         ColDef.builder(Employee_.employeeId).build(),
@@ -224,8 +227,7 @@ class AlwaysAppliedPredicateTest extends ScenarioTestBase {
                 .treeDataDataPathSeparator("/")
                 .getChildCount(true)
                 .getChildCountFieldName("childCount")
-                .alwaysAppliedPredicate((cb, root) -> cb.ge(root.get(Employee_.salary), new BigDecimal("150.00")))
-                .build();
+                .alwaysAppliedPredicate((cb, root) -> cb.ge(root.get(Employee_.salary), new BigDecimal("150.00")));
     }
 
     private ServerSideGetRowsRequest treeRequest(String... groupKeys) {
@@ -235,6 +237,21 @@ class AlwaysAppliedPredicateTest extends ScenarioTestBase {
         }
         request.getSortModel().add(sortItem("employeeId", SortDirection.asc));
         return request;
+    }
+
+    @Test
+    void treeGroupFlagIsRestrictedInChildrenCollectionModeToo() {
+        QueryBuilder<Employee, Long, Void> queryBuilder = restrictedTreeConfig()
+                .treeDataChildrenField(Employee_.children)
+                .build();
+
+        LoadSuccessParams roots = queryBuilder.getRows(treeRequest());
+        assertThat(employeeIds(roots)).containsExactly(1L, 8L);
+        assertThat(columnValues(roots, "isGroup")).containsExactly(true, true);
+
+        // Bob and Carol keep children in the table, but none of them is visible
+        assertThat(columnValues(queryBuilder.getRows(treeRequest("1")), "isGroup"))
+                .containsExactly(false, false, false);
     }
 
     @Test
@@ -262,9 +279,6 @@ class AlwaysAppliedPredicateTest extends ScenarioTestBase {
     }
 
     @Test
-    @Disabled("alwaysAppliedPredicate is applied in where() only, so the correlated subquery in "
-            + "createTreeDataIsServerSideGroupExpression still sees hidden children and flags Bob "
-            + "and Carol as groups. Currently returns [true, true, false].")
     void treeGroupFlagIgnoresRestrictedChildren() {
         LoadSuccessParams result = restrictedTree().getRows(treeRequest("1"));
 
@@ -273,9 +287,6 @@ class AlwaysAppliedPredicateTest extends ScenarioTestBase {
     }
 
     @Test
-    @Disabled("alwaysAppliedPredicate is applied in where() only, so the correlated subquery in "
-            + "createTreeDataAggregationExpression still sums hidden descendants. "
-            + "Currently returns 1060.00 for Alice.")
     void treeAggregationIgnoresRestrictedDescendants() {
         ServerSideGetRowsRequest request = treeRequest();
         request.getValueCols().add(valueCol("salary", "sum"));

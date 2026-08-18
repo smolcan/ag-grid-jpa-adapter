@@ -1632,7 +1632,7 @@ public class QueryBuilder<E, E_ID, D> {
         
         // selection to find out whether it has any children
         Expression<Boolean> isServerSideGroupSelection;
-        if (this.treeDataChildrenField != null) {
+        if (this.treeDataChildrenField != null && this.alwaysAppliedPredicate == null) {
             isServerSideGroupSelection = cb.isNotEmpty(root.get(this.treeDataChildrenField));
         } else {
             // Subquery: Select 1 from Entity where parent = root
@@ -1640,17 +1640,25 @@ public class QueryBuilder<E, E_ID, D> {
             Subquery<Integer> subquery = queryContext.getQuery().subquery(Integer.class);
             Root<E> subRoot = subquery.from(this.entityClass);
             subquery.select(cb.literal(1));
+
+            List<Predicate> predicates = new ArrayList<>();
             if (this.treeDataParentReferenceField != null) {
                 // compare parent reference directly with root
-                subquery.where(cb.equal(subRoot.get(this.treeDataParentReferenceField), root));
+                predicates.add(cb.equal(subRoot.get(this.treeDataParentReferenceField), root));
             } else {
                 // no reference field, just parent id
-                subquery.where(
+                predicates.add(
                         cb.equal(
                                 subRoot.get(this.treeDataParentIdField),
                                 root.get(this.primaryField))
                 );
             }
+            
+            if (this.alwaysAppliedPredicate != null) {
+                predicates.add(this.alwaysAppliedPredicate.apply(cb, subRoot));
+            }
+            
+            subquery.where(cb.and(predicates.toArray(Predicate[]::new)));
 
             isServerSideGroupSelection = cb.exists(subquery);
         }
@@ -1694,6 +1702,9 @@ public class QueryBuilder<E, E_ID, D> {
                 cb.concat(root.get(this.treeDataDataPathFieldName), this.treeDataDataPathSeparator + "%")
         );
         predicates.add(childrenPathPredicate);
+        if (this.alwaysAppliedPredicate != null) {
+            predicates.add(this.alwaysAppliedPredicate.apply(cb, treeAggregationRoot));
+        }
 
         if (!this.suppressAggFilteredOnly) {
             // external filter
