@@ -24,6 +24,39 @@ import LazyGrid from './lazy-grid';
 </LazyGrid>
 </ShowSqlMonitor>
 
+## Row count in the response
+
+Instead of exposing a second endpoint for `countRows`, set `includeRowCountInLoadSuccessParams` and the
+count comes back in the same response, in `LoadSuccessParams.rowCount`.
+
+```java
+QueryBuilder<Entity, Long, Void> queryBuilder = QueryBuilder.builder(Entity.class, Entity_.id, entityManager)
+    .colDefs(...)
+    .includeRowCountInLoadSuccessParams(true)
+    .build();
+```
+
+The count follows the same rules as `countRows`: rows on a flat grid, root groups when grouping, and the
+rows inside the expanded group when `paginateChildRows` is on.
+
+:::info Cost
+Every `getRows` call then issues a second query for the count. If your grid only needs the count when the
+filter changes, a separate endpoint called on those changes stays cheaper.
+:::
+
+- the grid above calls two endpoints, this one calls only `getRows` — watch the SQL monitor
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/row-count-in-response-grid.tsx)
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/PaginationService.java)
+
+import RowCountInResponseGrid from './row-count-in-response-grid';
+
+<ShowSqlMonitor serviceUrls={['/docs/pagination/row-count-in-response/getRows']}>
+<LazyGrid>
+    <RowCountInResponseGrid></RowCountInResponseGrid>
+</LazyGrid>
+</ShowSqlMonitor>
+
+
 ## Paginate child rows
 Set `paginateChildRows=true` in `QueryBuilder` to maintain exact page size. This makes `queryBuilder.countRows(request)` 
 count rows within expanded groups rather than number of root groups.

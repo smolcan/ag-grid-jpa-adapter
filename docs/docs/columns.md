@@ -13,7 +13,7 @@ Each column is defined using a [`ColDef`](https://github.com/smolcan/ag-grid-jpa
 
 | Property                 | Type                                                                                                                                         | Default                                                                                                                                                                            | Description                                                                                                                                                                                                                                                                                                                                    |
 |--------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **`field`** *(required)* | `SingularAttribute` / `FieldPath`                                                                                                                                     | —                                                                                                                                                                                  | The entity field, passed to `ColDef.builder(...)` as a JPA metamodel attribute (e.g. `Trade_.price`) or a `FieldPath` for nested paths.                                                                                                                                                                                                                                                                                                                  |
+| **`field`** *(required)* | `SingularAttribute` / `FieldPath` / `ComputedField`                                                                                                                                     | —                                                                                                                                                                                  | Where the column reads its value, passed to `ColDef.builder(...)`: a JPA metamodel attribute (e.g. `Trade_.price`), a `FieldPath` for nested paths, or a `ComputedField` for a database expression.                                                                                                                                                                                                                                                                                                                  |
 | **`sortable`**           | `boolean`                                                                                                                                    | `true`                                                                                                                                                                             | Enables or disables sorting.                                                                                                                                                                                                                                                                                                                   |
 | **`filter`**             | [`IFilter`](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/IFilter.java) | — | Defines the filter type (no default — a column has no filter unless one is set). <br/> Supports: <br/> ✅ Custom `IFilter` implementations <br/> ✅ Built-in filters (e.g., [`AgNumberColumnFilter`](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/provided/simple/AgNumberColumnFilter.java)) <br/> ⚠️ Omit `.filter(...)` to leave the column without a filter |
 | **`enableValue`**        | `boolean`                                                                                                                                    | `false`                                                                                                                                                                            | Set to `true` if you want to be able to aggregate by this column.                                                                                                                                                                                                                                                                              |
@@ -40,6 +40,56 @@ QueryBuilder<Entity, Long, Void> queryBuilder = QueryBuilder.builder(Entity.clas
     .colDefs(priceColumn, nameColumn)
     .build();
 ```
+
+## Computed columns
+
+A column does not have to map to an entity attribute. [`ComputedField`](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/column/ComputedField.java) builds the column from a JPA `Expression`, so the value is produced by the database.
+
+| Property                            | Type                                            | Description                                                            |
+|-------------------------------------|-------------------------------------------------|------------------------------------------------------------------------|
+| **`name`**                          | `String`                                        | The column name AG Grid sends and the field name in the response.       |
+| **`javaType`**                      | `Class<T>`                                      | The type the expression evaluates to.                                   |
+| **`expressionFunction`**            | `BiFunction<CriteriaBuilder, Root<E>, Expression<T>>` | Builds the expression for a given query root.                     |
+
+The expression is resolved wherever the column is used, so a computed column behaves like a mapped one:
+selecting, filtering, sorting, row grouping, aggregation, pivoting, quick filter, advanced filter and
+`supplySetFilterValues` all work on it.
+
+```java
+ComputedField<Trade, String> valueBand = ComputedField.<Trade, String>builder()
+    .name("valueBand")
+    .javaType(String.class)
+    .expressionFunction((cb, root) -> cb.<String>selectCase()
+        .when(cb.greaterThan(root.get(Trade_.currentValue), BigDecimal.ZERO), "POSITIVE")
+        .otherwise("NON_POSITIVE"))
+    .build();
+
+QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
+    .colDefs(
+        ColDef.builder(Trade_.tradeId).build(),
+        ColDef.builder(valueBand)
+            .filter(AgSetColumnFilter.forString())
+            .enableRowGroup(true, key -> key)
+            .build()
+    )
+    .build();
+```
+
+`Value Change` is `currentValue - previousValue`, `Value Band` is a `CASE` over those same two columns and
+`Portfolio / Book` concatenates two text columns. None of the three exists on the entity.
+
+- try filtering or sorting on a computed column, or drag `Value Band` into the row group panel
+- the `Value Band` set filter values come from `supplySetFilterValues`, read straight from the expression
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/computed-columns-grid.tsx)
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/ComputedColumnsService.java)
+
+import ComputedColumnsGrid from './computed-columns-grid';
+
+<ShowSqlMonitor serviceUrls={['/docs/computed-columns/getRows', '/docs/computed-columns/supplySetFilterValues']}>
+<LazyGrid>
+<ComputedColumnsGrid></ComputedColumnsGrid>
+</LazyGrid>
+</ShowSqlMonitor>
 
 ## Dot notation
 

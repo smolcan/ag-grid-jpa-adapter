@@ -18,4 +18,8 @@ An application filter that is independent of any filtering done within the grid.
 ### [Quick Filter](./quick-filter.md)
 A text-based filter that filters rows across all columns and words in the text.
 
+---
 
+### [Always Applied Predicate](./always-applied-predicate.md)
+Not a filter the user controls, but a server-side predicate added to every query — for tenant isolation
+and similar row-level rules.
