@@ -447,6 +447,9 @@ public class QueryBuilder<E, E_ID, D> {
         
         // select
         query.select(path).distinct(true);
+        if (this.alwaysAppliedPredicate != null) {
+            query.where(this.alwaysAppliedPredicate.apply(cb, root));
+        }
         // order by asc
         query.orderBy(cb.asc(path));
         

@@ -294,9 +294,6 @@ class AlwaysAppliedPredicateTest extends ScenarioTestBase {
     // ---------------------------------------------------------------- set filter values
 
     @Test
-    @Disabled("supplySetFilterValues builds its own query and applies no predicate at all, so the "
-            + "dropdown offers values drawn from rows the user cannot see. Currently returns all 8 "
-            + "portfolios.")
     void setFilterValuesOfferOnlyVisibleValues() {
         // "Beta", "BETA", "Gamma" and "Epsilon" hold no sold trades, so they are not values a
         // restricted user should be offered in the set filter dropdown
