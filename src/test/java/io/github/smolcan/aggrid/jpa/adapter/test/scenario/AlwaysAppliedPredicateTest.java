@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class AlwaysAppliedPredicateTest extends ScenarioTestBase {
 
-    /** Trades left visible by {@code sold = true}. */
+    private static final List<Integer> VISIBLE_SUBMITTERS = List.of(101, 102, 103, 109, 110);
     private static final List<Long> VISIBLE_TRADES = List.of(1L, 2L, 3L, 9L, 10L);
 
     private QueryBuilder.Builder<Trade, Long, Void> tradeConfig() {
@@ -39,10 +39,14 @@ class AlwaysAppliedPredicateTest extends ScenarioTestBase {
                 );
     }
 
-    /** Query builder restricted to sold trades. */
+    /**
+     * Restricted to the submitters above, the way a row-level security rule would be. Any provider
+     * renders an integer {@code IN} list the same way, which a boolean comparison is not: EclipseLink
+     * inlines {@code true} as {@code 1} and H2 then refuses to compare it against a BOOLEAN column.
+     */
     private QueryBuilder<Trade, Long, Void> restricted() {
         return tradeConfig()
-                .alwaysAppliedPredicate((cb, root) -> cb.isTrue(root.get(Trade_.sold)))
+                .alwaysAppliedPredicate((cb, root) -> root.get(Trade_.submitterId).in(VISIBLE_SUBMITTERS))
                 .build();
     }
 
@@ -85,7 +89,8 @@ class AlwaysAppliedPredicateTest extends ScenarioTestBase {
 
     @Test
     void columnFilterCannotReachRowsThePredicateHides() {
-        // every "Beta" trade (4, 5, 6) is unsold, so the filter matches nothing that survives the predicate
+        // every "Beta" trade (4, 5, 6) belongs to another submitter, so the filter matches nothing
+        // that survives the predicate
         ServerSideGetRowsRequest request = sortedByIdRequest(0, 100);
         request.setFilterModel(Map.of("portfolio", filter("contains", "beta")));
 
@@ -104,7 +109,7 @@ class AlwaysAppliedPredicateTest extends ScenarioTestBase {
         ServerSideGetRowsRequest request = emptyRequest(0, 1);
         request.getSortModel().add(sortItem("currentValue", SortDirection.desc));
 
-        // 999.99 (trade 10) is the highest sold value; 500.00 (trade 5) is higher but unsold
+        // 999.99 (trade 10) is the highest visible value; 500.00 (trade 5) is higher but hidden
         assertThat(tradeIds(restricted().getRows(request))).containsExactly(10L);
     }
 
@@ -146,7 +151,7 @@ class AlwaysAppliedPredicateTest extends ScenarioTestBase {
     void aggregatesIgnoreRowsThePredicateHides() {
         LoadSuccessParams result = restricted().getRows(groupedByBookRequest());
 
-        // book B-1 holds trade 1 (100.00, sold) and trade 6 (320.10, unsold)
+        // book B-1 holds trade 1 (100.00, visible) and trade 6 (320.10, hidden)
         assertThat(sumForBook(result, "B-1")).isEqualTo(100.00);
         assertThat(sumForBook(unrestricted().getRows(groupedByBookRequest()), "B-1")).isEqualTo(420.10);
     }
@@ -158,7 +163,7 @@ class AlwaysAppliedPredicateTest extends ScenarioTestBase {
         request.getSortModel().clear();
         request.getSortModel().add(sortItem("tradeId", SortDirection.asc));
 
-        // trade 6 shares book B-1 but is unsold
+        // trade 6 shares book B-1 but belongs to another submitter
         assertThat(tradeIds(restricted().getRows(request))).containsExactly(1L);
     }
 
@@ -171,7 +176,7 @@ class AlwaysAppliedPredicateTest extends ScenarioTestBase {
         request.getValueCols().add(valueCol("currentValue", "sum"));
 
         QueryBuilder<Trade, Long, Void> queryBuilder = tradeConfig()
-                .alwaysAppliedPredicate((cb, root) -> cb.isTrue(root.get(Trade_.sold)))
+                .alwaysAppliedPredicate((cb, root) -> root.get(Trade_.submitterId).in(VISIBLE_SUBMITTERS))
                 .grandTotalRow(true)
                 .build();
 
@@ -193,7 +198,7 @@ class AlwaysAppliedPredicateTest extends ScenarioTestBase {
 
         LoadSuccessParams result = restricted().getRows(request);
 
-        // only Alpha, alpha, Delta and delta hold sold trades; Beta/BETA/Gamma/Epsilon disappear
+        // only Alpha, alpha, Delta and delta hold visible trades; Beta/BETA/Gamma/Epsilon disappear
         assertThat(columnValues(result, "portfolio")).containsExactlyInAnyOrder("Alpha", "alpha", "Delta", "delta");
 
         Map<String, Object> alpha = rowWhere(result, "portfolio", "Alpha");
@@ -303,7 +308,7 @@ class AlwaysAppliedPredicateTest extends ScenarioTestBase {
 
     @Test
     void setFilterValuesOfferOnlyVisibleValues() {
-        // "Beta", "BETA", "Gamma" and "Epsilon" hold no sold trades, so they are not values a
+        // "Beta", "BETA", "Gamma" and "Epsilon" hold no visible trades, so they are not values a
         // restricted user should be offered in the set filter dropdown
         assertThat(restricted().supplySetFilterValues(FieldPath.of(Trade_.portfolio)))
                 .containsExactlyInAnyOrder("Alpha", "alpha", "Delta", "delta");
