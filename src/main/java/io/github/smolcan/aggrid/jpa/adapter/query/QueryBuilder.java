@@ -94,6 +94,7 @@ public class QueryBuilder<E, E_ID, D> {
     protected final boolean quickFilterTrimInput;
     protected final boolean quickFilterCaseSensitive;
     protected final BiFunction<CriteriaBuilder, Expression<String>, Expression<String>> quickFilterTextFormatter;
+    protected final BiFunction<CriteriaBuilder, Root<E>, Predicate> alwaysAppliedPredicate;
 
     protected final boolean treeData;
     protected final String isServerSideGroupFieldName;
@@ -147,6 +148,7 @@ public class QueryBuilder<E, E_ID, D> {
         this.quickFilterTrimInput = builder.quickFilterTrimInput;
         this.quickFilterCaseSensitive = builder.quickFilterCaseSensitive;
         this.quickFilterTextFormatter = builder.quickFilterTextFormatter;
+        this.alwaysAppliedPredicate = builder.alwaysAppliedPredicate;
         this.treeData = builder.treeData;
         this.isServerSideGroupFieldName = builder.isServerSideGroupFieldName;
         this.treeDataParentReferenceField = builder.treeDataParentReferenceField;
@@ -501,22 +503,31 @@ public class QueryBuilder<E, E_ID, D> {
      * @param request       the server-side request parameters from the grid  
      */
     protected void where(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
-        List<WherePredicateMetadata> wherePredicates;
+        List<WherePredicateMetadata> wherePredicates = new ArrayList<>();
+        if (this.alwaysAppliedPredicate != null) {
+            wherePredicates.add(
+                    WherePredicateMetadata.builder()
+                            .isAlwaysAppliedPredicate(true)
+                            .predicate(this.alwaysAppliedPredicate.apply(queryContext.getCriteriaBuilder(), queryContext.getRoot()))
+                            .build()
+            );
+        }
+        
         if (this.treeData) {
             // tree data
-            wherePredicates = this.whereTreeData(queryContext, request);
+            wherePredicates.addAll(this.whereTreeData(queryContext, request));
         } else if (this.masterDetail) {
             // master detail
-            wherePredicates = this.whereMasterDetail(queryContext, request);
+            wherePredicates.addAll(this.whereMasterDetail(queryContext, request));
         } else if (request.isPivotMode() && !request.getPivotCols().isEmpty()) {
             // pivoting
-            wherePredicates = this.wherePivoting(queryContext, request);
+            wherePredicates.addAll(this.wherePivoting(queryContext, request));
         } else if (!request.getRowGroupCols().isEmpty()) {
             // grouping
-            wherePredicates = this.whereGrouping(queryContext, request);
+            wherePredicates.addAll(this.whereGrouping(queryContext, request));
         } else {
             // basic grid
-            wherePredicates = this.whereBasic(queryContext, request);
+            wherePredicates.addAll(this.whereBasic(queryContext, request));
         }
 
         queryContext.setWherePredicates(wherePredicates);
@@ -2830,6 +2841,7 @@ public class QueryBuilder<E, E_ID, D> {
         protected boolean quickFilterTrimInput;
         protected boolean quickFilterCaseSensitive;
         protected BiFunction<CriteriaBuilder, Expression<String>, Expression<String>> quickFilterTextFormatter;
+        protected BiFunction<CriteriaBuilder, Root<E>, Predicate> alwaysAppliedPredicate;
         
         private boolean treeData;
         private String isServerSideGroupFieldName;
@@ -2963,6 +2975,12 @@ public class QueryBuilder<E, E_ID, D> {
         @NonNull
         public Builder<E, E_ID, D> quickFilterCaseSensitive(boolean quickFilterCaseSensitive) {
             this.quickFilterCaseSensitive = quickFilterCaseSensitive;
+            return this;
+        }
+
+        @NonNull
+        public Builder<E, E_ID, D> alwaysAppliedPredicate(@NonNull BiFunction<CriteriaBuilder, Root<E>, Predicate> alwaysAppliedPredicate) {
+            this.alwaysAppliedPredicate = alwaysAppliedPredicate;
             return this;
         }
 

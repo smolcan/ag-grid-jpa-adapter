@@ -84,5 +84,10 @@ public class WherePredicateMetadata {
      * @return whether this predicate comes from the quick filter.
      */
     private final boolean isQuickFilterPredicate;
+    /**
+     * @param isAlwaysAppliedPredicate whether this predicate comes from always applied predicate.
+     * @return whether this predicate comes from the quick filter.
+     */
+    private final boolean isAlwaysAppliedPredicate;
     
 }
