@@ -1124,7 +1124,10 @@ public class QueryBuilder<E, E_ID, D> {
         
         
         // check if any filters are present
-        boolean areAnyFiltersPresent = (request.getFilterModel() != null && !request.getFilterModel().isEmpty()) || this.isExternalFilterPresent || this.isQuickFilterPresent;
+        boolean areAnyFiltersPresent = (request.getFilterModel() != null && !request.getFilterModel().isEmpty()) 
+                || this.isExternalFilterPresent 
+                || this.isQuickFilterPresent 
+                || this.alwaysAppliedPredicate != null;
         if (areAnyFiltersPresent) {
             // A group will be included if:
             // 1. it has a parent that passes the filter, or
@@ -1387,19 +1390,20 @@ public class QueryBuilder<E, E_ID, D> {
                             .collect(Collectors.toList())
             );
 
-            expandedParentSubquery.where(
-                    request.getRowGroupCols().stream()
-                            .map(col -> {
-                                ColDef<E, ?> colDef = this.colDefs.get(col.getField());
-                                Expression<?> expandedParentGroupPath = colDef.getField().getExpression(cb, expandedParentRoot);
-                                Object groupKeyConverted = colDef.getGroupKeyToType().apply(key);
+            List<Predicate> expandedParentPredicates = request.getRowGroupCols().stream()
+                    .map(col -> {
+                        ColDef<E, ?> colDef = this.colDefs.get(col.getField());
+                        Expression<?> expandedParentGroupPath = colDef.getField().getExpression(cb, expandedParentRoot);
+                        Object groupKeyConverted = colDef.getGroupKeyToType().apply(key);
 
-                                return cb.equal(expandedParentGroupPath, groupKeyConverted);
-                            })
-                            .limit(i + 1L)
-                            .collect(Collectors.toList())
-                            .toArray(Predicate[]::new)
-            );
+                        return cb.equal(expandedParentGroupPath, groupKeyConverted);
+                    })
+                    .limit(i + 1L)
+                    .collect(Collectors.toList());
+            if (this.alwaysAppliedPredicate != null) {
+                expandedParentPredicates.add(this.alwaysAppliedPredicate.apply(cb, expandedParentRoot));
+            }
+            expandedParentSubquery.where(expandedParentPredicates.toArray(Predicate[]::new));
 
             expandedParentSubquery.having(
                     request.getValueCols().stream()
@@ -1422,7 +1426,12 @@ public class QueryBuilder<E, E_ID, D> {
             parentMatchPredicates.add(cb.exists(expandedParentSubquery));
         }
 
-        mainQuery.where(cb.or(parentMatchPredicates.toArray(Predicate[]::new)));
+        List<Predicate> mainPredicates = new ArrayList<>(2);
+        mainPredicates.add(cb.or(parentMatchPredicates.toArray(Predicate[]::new)));
+        if (this.alwaysAppliedPredicate != null) {
+            mainPredicates.add(this.alwaysAppliedPredicate.apply(cb, mainRoot));
+        }
+        mainQuery.where(mainPredicates.toArray(Predicate[]::new));
         
         return !this.entityManager.createQuery(mainQuery).setMaxResults(1).getResultList().isEmpty();
     }
@@ -1457,18 +1466,19 @@ public class QueryBuilder<E, E_ID, D> {
                             .collect(Collectors.toList())
             );
 
-            unexpandedChildGroupSubquery.where(
-                    request.getRowGroupCols().stream()
-                            .map(col -> {
-                                ColDef<E, ?> colDef = this.colDefs.get(col.getField());
-                                Expression<?> subqueryGroupColumnPath = colDef.getField().getExpression(cb, unexpandedChildGroupRoot);
-                                Expression<?> parentQueryGroupColumnPath = colDef.getField().getExpression(cb, root);
-                                return cb.equal(subqueryGroupColumnPath, parentQueryGroupColumnPath);
-                            })
-                            .limit(i + 1L)
-                            .collect(Collectors.toList())
-                            .toArray(Predicate[]::new)
-            );
+            List<Predicate> unexpandedChildGroupPredicates = request.getRowGroupCols().stream()
+                    .map(col -> {
+                        ColDef<E, ?> colDef = this.colDefs.get(col.getField());
+                        Expression<?> subqueryGroupColumnPath = colDef.getField().getExpression(cb, unexpandedChildGroupRoot);
+                        Expression<?> parentQueryGroupColumnPath = colDef.getField().getExpression(cb, root);
+                        return cb.equal(subqueryGroupColumnPath, parentQueryGroupColumnPath);
+                    })
+                    .limit(i + 1L)
+                    .collect(Collectors.toList());
+            if (this.alwaysAppliedPredicate != null) {
+                unexpandedChildGroupPredicates.add(this.alwaysAppliedPredicate.apply(cb, unexpandedChildGroupRoot));
+            }
+            unexpandedChildGroupSubquery.where(unexpandedChildGroupPredicates.toArray(Predicate[]::new));
 
             unexpandedChildGroupSubquery.having(
                     request.getValueCols().stream()
@@ -1526,6 +1536,9 @@ public class QueryBuilder<E, E_ID, D> {
                     Predicate predicate = colDef.getFilter().toPredicate(cb, (Expression) colDef.getField().getExpression(cb, leafNodeRoot), (Map<String, Object>) request.getFilterModel().get(vc.getField()));
                     leafNodeExistsSubqueryPredicates.add(predicate);
                 });
+        if (this.alwaysAppliedPredicate != null) {
+            leafNodeExistsSubqueryPredicates.add(this.alwaysAppliedPredicate.apply(cb, leafNodeRoot));
+        }
         leafNodeExistsSubquery.where(leafNodeExistsSubqueryPredicates.toArray(Predicate[]::new));
         
         return cb.exists(leafNodeExistsSubquery);
@@ -1779,7 +1792,10 @@ public class QueryBuilder<E, E_ID, D> {
         );
         
         // generate filter predicates
-        List<Predicate> predicates = new ArrayList<>(3);
+        List<Predicate> predicates = new ArrayList<>();
+        if (this.alwaysAppliedPredicate != null) {
+            predicates.add(this.alwaysAppliedPredicate.apply(cb, parentRoot));
+        }
         // external filter
         if (this.isExternalFilterPresent) {
             Predicate externalFilterPredicate = this.doesExternalFilterPass.apply(cb, parentRoot, request.getExternalFilter());
@@ -1830,7 +1846,10 @@ public class QueryBuilder<E, E_ID, D> {
         Root<E> root = queryContext.getRoot();
         
         // generate filter predicates
-        List<Predicate> predicates = new ArrayList<>(3);
+        List<Predicate> predicates = new ArrayList<>();
+        if (this.alwaysAppliedPredicate != null) {
+            predicates.add(this.alwaysAppliedPredicate.apply(cb, root));
+        }
         // external filter
         if (this.isExternalFilterPresent) {
             Predicate externalFilterPredicate = this.doesExternalFilterPass.apply(cb, root, request.getExternalFilter());
@@ -1885,7 +1904,10 @@ public class QueryBuilder<E, E_ID, D> {
         );
         
         // generate filter predicates
-        List<Predicate> predicates = new ArrayList<>(3);
+        List<Predicate> predicates = new ArrayList<>();
+        if (this.alwaysAppliedPredicate != null) {
+            predicates.add(this.alwaysAppliedPredicate.apply(cb, childrenRoot));
+        }
         // external filter
         if (this.isExternalFilterPresent) {
             Predicate externalFilterPredicate = this.doesExternalFilterPass.apply(cb, childrenRoot, request.getExternalFilter());
@@ -2727,6 +2749,9 @@ public class QueryBuilder<E, E_ID, D> {
             // select
             Expression<?> path = colDef.getField().getExpression(cb, root);
             query.select(path).distinct(true);
+            if (this.alwaysAppliedPredicate != null) {
+                query.where(this.alwaysAppliedPredicate.apply(cb, root));
+            }
             query.orderBy(cb.asc(path));
 
             // result
@@ -2816,6 +2841,9 @@ public class QueryBuilder<E, E_ID, D> {
         }
 
         query.select(productExpression);
+        if (this.alwaysAppliedPredicate != null) {
+            query.where(this.alwaysAppliedPredicate.apply(cb, root));
+        }
         return this.entityManager.createQuery(query).getSingleResult();
     }
 

@@ -1,6 +1,7 @@
 package io.github.smolcan.aggrid.jpa.adapter.test.scenario;
 
 import io.github.smolcan.aggrid.jpa.adapter.column.ColDef;
+import io.github.smolcan.aggrid.jpa.adapter.exceptions.OnPivotMaxColumnsExceededException;
 import io.github.smolcan.aggrid.jpa.adapter.column.FieldPath;
 import io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple.AgNumberColumnFilter;
 import io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple.AgTextColumnFilter;
@@ -22,6 +23,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class AlwaysAppliedPredicateTest extends ScenarioTestBase {
 
@@ -45,9 +48,11 @@ class AlwaysAppliedPredicateTest extends ScenarioTestBase {
      * inlines {@code true} as {@code 1} and H2 then refuses to compare it against a BOOLEAN column.
      */
     private QueryBuilder<Trade, Long, Void> restricted() {
-        return tradeConfig()
-                .alwaysAppliedPredicate((cb, root) -> root.get(Trade_.submitterId).in(VISIBLE_SUBMITTERS))
-                .build();
+        return restrictedConfig().build();
+    }
+
+    private QueryBuilder.Builder<Trade, Long, Void> restrictedConfig() {
+        return tradeConfig().alwaysAppliedPredicate((cb, root) -> root.get(Trade_.submitterId).in(VISIBLE_SUBMITTERS));
     }
 
     /** Same columns, no predicate, so the tests can state what the restriction actually changed. */
@@ -167,6 +172,51 @@ class AlwaysAppliedPredicateTest extends ScenarioTestBase {
         assertThat(tradeIds(restricted().getRows(request))).containsExactly(1L);
     }
 
+    // ---------------------------------------------------------------- group aggregate filtering
+
+    private QueryBuilder<Trade, Long, Void> restrictedGroupAggFiltering() {
+        return restrictedConfig().groupAggFiltering(true).build();
+    }
+
+    private QueryBuilder<Trade, Long, Void> unrestrictedGroupAggFiltering() {
+        return tradeConfig().groupAggFiltering(true).build();
+    }
+
+    /** Grouped by book, keeping groups whose summed value clears 300 (or holding a leaf that does). */
+    private ServerSideGetRowsRequest groupAggFilteringRequest(String... groupKeys) {
+        ServerSideGetRowsRequest request = emptyRequest(0, 100);
+        request.getRowGroupCols().add(groupCol("book"));
+        request.getValueCols().add(valueCol("currentValue", "sum"));
+        request.setFilterModel(Map.of("currentValue", filter("greaterThan", 300)));
+        request.getSortModel().add(sortItem("book", SortDirection.asc));
+        request.getGroupKeys().addAll(List.of(groupKeys));
+        return request;
+    }
+
+    @Test
+    void groupAggFilteringMatchesAggregatesOfVisibleRowsOnly() {
+        // book B-1 holds trade 1 (100.00, visible) and trade 6 (320.10, hidden): for this user
+        // neither the group sum nor any leaf clears 300, so B-1 must not surface at all
+        assertThat(columnValues(restrictedGroupAggFiltering().getRows(groupAggFilteringRequest()), "book"))
+                .containsExactly("B-2");
+        assertThat(columnValues(unrestrictedGroupAggFiltering().getRows(groupAggFilteringRequest()), "book"))
+                .contains("B-1");
+    }
+
+    @Test
+    void groupAggFilteringExpandedParentMatchesOnVisibleRowsOnly() {
+        ServerSideGetRowsRequest request = groupAggFilteringRequest("B-1");
+        request.getRowGroupCols().add(groupCol("portfolio"));
+        request.getSortModel().clear();
+        request.getSortModel().add(sortItem("portfolio", SortDirection.asc));
+
+        // a matching expanded parent exposes all its child groups, so B-1 passing on hidden rows
+        // would hand this user the whole level; restricted, B-1 sums to 100.00 and nothing passes
+        assertThat(restrictedGroupAggFiltering().getRows(request).getRowData()).isEmpty();
+        assertThat(columnValues(unrestrictedGroupAggFiltering().getRows(request), "portfolio"))
+                .containsExactly("Alpha", "BETA");
+    }
+
     // ---------------------------------------------------------------- grand total
 
     @Test
@@ -175,10 +225,7 @@ class AlwaysAppliedPredicateTest extends ScenarioTestBase {
         request.setNeedsGrandTotal(true);
         request.getValueCols().add(valueCol("currentValue", "sum"));
 
-        QueryBuilder<Trade, Long, Void> queryBuilder = tradeConfig()
-                .alwaysAppliedPredicate((cb, root) -> root.get(Trade_.submitterId).in(VISIBLE_SUBMITTERS))
-                .grandTotalRow(true)
-                .build();
+        QueryBuilder<Trade, Long, Void> queryBuilder = restrictedConfig().grandTotalRow(true).build();
 
         // 100.00 + 250.50 - 75.25 + 150.00 + 999.99; the unrestricted total is 2453.01
         assertThat(((Number) queryBuilder.getRows(request).getGrandTotalData().get("currentValue")).doubleValue())
@@ -187,16 +234,19 @@ class AlwaysAppliedPredicateTest extends ScenarioTestBase {
 
     // ---------------------------------------------------------------- pivoting
 
-    @Test
-    void pivotedAggregatesCoverOnlyVisibleRows() {
+    private ServerSideGetRowsRequest pivotRequest() {
         ServerSideGetRowsRequest request = emptyRequest(0, 100);
         request.setPivotMode(true);
         request.getRowGroupCols().add(groupCol("portfolio"));
         request.getPivotCols().add(groupCol("product.name"));
         request.getValueCols().add(valueCol("currentValue", "sum"));
         request.getSortModel().add(sortItem("portfolio", SortDirection.asc));
+        return request;
+    }
 
-        LoadSuccessParams result = restricted().getRows(request);
+    @Test
+    void pivotedAggregatesCoverOnlyVisibleRows() {
+        LoadSuccessParams result = restricted().getRows(pivotRequest());
 
         // only Alpha, alpha, Delta and delta hold visible trades; Beta/BETA/Gamma/Epsilon disappear
         assertThat(columnValues(result, "portfolio")).containsExactlyInAnyOrder("Alpha", "alpha", "Delta", "delta");
@@ -204,6 +254,27 @@ class AlwaysAppliedPredicateTest extends ScenarioTestBase {
         Map<String, Object> alpha = rowWhere(result, "portfolio", "Alpha");
         assertThat(((Number) alpha.get("Gold_currentValue")).doubleValue()).isEqualTo(100.00);
         assertThat(((Number) alpha.get("Silver_currentValue")).doubleValue()).isEqualTo(250.50);
+    }
+
+    @Test
+    void pivotColumnsAreGeneratedOnlyFromVisibleValues() {
+        // pivot column headers are the values themselves: Platinum only ever appears in trades 4, 7
+        // and 11, all hidden, so generating a column for it would leak it. Trade 10 has no product,
+        // which is where the null column comes from.
+        assertThat(restricted().getRows(pivotRequest()).getPivotResultFields())
+                .containsExactlyInAnyOrder("null_currentValue", "Gold_currentValue", "Silver_currentValue");
+        assertThat(unrestricted().getRows(pivotRequest()).getPivotResultFields())
+                .contains("Platinum_currentValue");
+    }
+
+    @Test
+    void pivotMaxColumnsCountsOnlyVisibleValues() {
+        // 1 value col x (Gold, Silver) = 2 columns for this user, but 3 across the whole table,
+        // so an unrestricted count would refuse a request that is well inside the limit
+        assertThatCode(() -> restrictedConfig().pivotMaxGeneratedColumns(2).build().getRows(pivotRequest()))
+                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> tradeConfig().pivotMaxGeneratedColumns(2).build().getRows(pivotRequest()))
+                .isInstanceOf(OnPivotMaxColumnsExceededException.class);
     }
 
     // ---------------------------------------------------------------- tree data
