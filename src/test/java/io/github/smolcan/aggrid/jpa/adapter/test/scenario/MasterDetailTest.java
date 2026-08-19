@@ -22,24 +22,40 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class MasterDetailTest extends ScenarioTestBase {
 
+    private static final List<Integer> VISIBLE_SUBMITTERS = List.of(101, 102, 103, 109, 110);
+
     private QueryBuilder<Product, Long, Trade> masterDetailQueryBuilder(boolean lazy) {
+        return masterDetailQueryBuilder(lazy, MasterDetailParams.<Product, Long, Trade>builder()
+                .detailClass(Trade.class)
+                .detailColDefs(
+                        ColDef.builder(Trade_.tradeId).build(),
+                        ColDef.builder(Trade_.portfolio).build()
+                )
+                .detailMasterReferenceField(Trade_.product)
+                .build());
+    }
+
+    private QueryBuilder<Product, Long, Trade> masterDetailQueryBuilder(boolean lazy, MasterDetailParams<Product, Long, Trade> params) {
         QueryBuilder.Builder<Product, Long, Trade> builder = QueryBuilder.builder(Product.class, Product_.productId, Trade.class, entityManager)
                 .colDefs(
                         ColDef.builder(Product_.productId).build(),
                         ColDef.builder(Product_.name).build()
                 )
-                .masterDetailParams(MasterDetailParams.<Product, Long, Trade>builder()
-                        .detailClass(Trade.class)
-                        .detailColDefs(
-                                ColDef.builder(Trade_.tradeId).build(),
-                                ColDef.builder(Trade_.portfolio).build()
-                        )
-                        .detailMasterReferenceField(Trade_.product)
-                        .build());
+                .masterDetailParams(params);
         if (!lazy) {
             builder.masterDetailLazy(false).masterDetailRowDataFieldName("detailRows");
         }
         return builder.build();
+    }
+
+    /** Seeing a master row does not make every one of its detail rows the user's to see. */
+    private static MasterDetailParams<Product, Long, Trade> restrictedDetailParams() {
+        return MasterDetailParams.<Product, Long, Trade>builder()
+                .detailClass(Trade.class)
+                .detailColDefs(ColDef.builder(Trade_.tradeId).build())
+                .detailMasterReferenceField(Trade_.product)
+                .alwaysAppliedDetailPredicate((cb, root) -> root.get(Trade_.submitterId).in(VISIBLE_SUBMITTERS))
+                .build();
     }
 
     private ServerSideGetRowsRequest masterRequest() {
@@ -98,6 +114,28 @@ class MasterDetailTest extends ScenarioTestBase {
         assertThat(detailTradeIds(gold)).containsExactlyInAnyOrder(1L, 3L, 6L, 9L);
         assertThat(detailTradeIds(silver)).containsExactlyInAnyOrder(2L, 5L, 8L, 12L);
         assertThat(detailTradeIds(platinum)).containsExactlyInAnyOrder(4L, 7L, 11L);
+    }
+
+    @Test
+    void alwaysAppliedDetailPredicateRestrictsLazilyFetchedRows() {
+        QueryBuilder<Product, Long, Trade> queryBuilder = masterDetailQueryBuilder(true, restrictedDetailParams());
+        Map<String, Object> goldRow = queryBuilder.getRows(masterRequest()).getRowData().get(0);
+
+        // Gold holds trades 1, 3, 6 and 9, and trade 6 belongs to another submitter
+        assertThat(detailTradeIds(queryBuilder.getDetailRowData(goldRow))).containsExactlyInAnyOrder(1L, 3L, 9L);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void alwaysAppliedDetailPredicateRestrictsEagerlyAttachedRows() {
+        LoadSuccessParams result = masterDetailQueryBuilder(false, restrictedDetailParams()).getRows(masterRequest());
+
+        assertThat(detailTradeIds((List<Map<String, Object>>) result.getRowData().get(0).get("detailRows")))
+                .containsExactlyInAnyOrder(1L, 3L, 9L);
+        assertThat(detailTradeIds((List<Map<String, Object>>) result.getRowData().get(1).get("detailRows")))
+                .containsExactly(2L);
+        // Platinum's trades 4, 7 and 11 are all hidden, so the master keeps an empty detail list
+        assertThat((List<Map<String, Object>>) result.getRowData().get(2).get("detailRows")).isEmpty();
     }
 
     @Test

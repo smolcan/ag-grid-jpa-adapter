@@ -417,8 +417,12 @@ public class QueryBuilder<E, E_ID, D> {
         ));
 
         // master predicate
-        Predicate masterPredicate = this.createMasterRowPredicate(cb, root, masterRow, params);
-        query.where(masterPredicate);
+        List<Predicate> predicates = new ArrayList<>(2);
+        predicates.add(this.createMasterRowPredicate(cb, root, masterRow, params));
+        if (params.getAlwaysAppliedDetailPredicate() != null) {
+            predicates.add(params.getAlwaysAppliedDetailPredicate().apply(cb, root));
+        }
+        query.where(predicates.toArray(Predicate[]::new));
 
         // result
         TypedQuery<Tuple> typedQuery = this.entityManager.createQuery(query);
@@ -677,7 +681,12 @@ public class QueryBuilder<E, E_ID, D> {
         detailSelections.add(masterPrimaryFieldPath.alias(masterPrimaryFieldAlias));
         
         query.select(cb.tuple(detailSelections.toArray(new Selection<?>[0])));
-        query.where(masterPrimaryFieldPath.in(masterIds));
+        List<Predicate> predicates = new ArrayList<>(2);
+        predicates.add(masterPrimaryFieldPath.in(masterIds));
+        if (this.masterDetailParams.getAlwaysAppliedDetailPredicate() != null) {
+            predicates.add(this.masterDetailParams.getAlwaysAppliedDetailPredicate().apply(cb, detailRoot));
+        }
+        query.where(predicates.toArray(Predicate[]::new));
 
         List<Tuple> detailTuples = this.entityManager.createQuery(query).getResultList();
         Map<E_ID, List<Map<String, Object>>> detailsGroupedByMaster = this.tupleToMap(detailTuples).stream()
@@ -3331,6 +3340,7 @@ public class QueryBuilder<E, E_ID, D> {
         private final SingularAttribute<C, P> detailMasterReferenceField;
         private final SingularAttribute<C, P_ID> detailMasterIdField;
         private final TriFunction<CriteriaBuilder, Root<C>, Map<String, Object>, Predicate> createMasterRowPredicate;
+        private final BiFunction<CriteriaBuilder, Root<C>, Predicate> alwaysAppliedDetailPredicate;
         
         @NonNull
         public static <P, P_ID, C> Builder<P, P_ID, C> builder() {
@@ -3343,6 +3353,7 @@ public class QueryBuilder<E, E_ID, D> {
             this.detailMasterReferenceField = builder.detailMasterReferenceField;
             this.detailMasterIdField = builder.detailMasterIdField;
             this.createMasterRowPredicate = builder.createMasterRowPredicate;
+            this.alwaysAppliedDetailPredicate = builder.alwaysAppliedDetailPredicate;
         }
 
         public static class Builder<P, P_ID, C> {
@@ -3351,6 +3362,7 @@ public class QueryBuilder<E, E_ID, D> {
             private SingularAttribute<C, P> detailMasterReferenceField;
             private SingularAttribute<C, P_ID> detailMasterIdField;
             private TriFunction<CriteriaBuilder, Root<C>, Map<String, Object>, Predicate> createMasterRowPredicate;
+            private BiFunction<CriteriaBuilder, Root<C>, Predicate> alwaysAppliedDetailPredicate;
             
             private Builder() {}
 
@@ -3394,6 +3406,12 @@ public class QueryBuilder<E, E_ID, D> {
             @NonNull
             public Builder<P, P_ID, C> createMasterRowPredicate(@NonNull TriFunction<CriteriaBuilder, Root<C>, Map<String, Object>, Predicate> createMasterRowPredicate) {
                 this.createMasterRowPredicate = createMasterRowPredicate;
+                return this;
+            }
+
+            @NonNull
+            public Builder<P, P_ID, C> alwaysAppliedDetailPredicate(@NonNull BiFunction<CriteriaBuilder, Root<C>, Predicate> alwaysAppliedDetailPredicate) {
+                this.alwaysAppliedDetailPredicate = alwaysAppliedDetailPredicate;
                 return this;
             }
 
