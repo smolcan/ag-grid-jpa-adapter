@@ -12,6 +12,7 @@ import MasterDetailEagerGrid from './master-detail-eager-grid'
 import MasterDetailDynamicRowsGrid from './master-detail-dynamic-rows-grid'
 import MasterDetailTreeDataGrid from './master-detail-tree-data-grid'
 import MasterDetailCustomDetailConditionGrid from './master-detail-custom-detail-condition-grid'
+import MasterDetailAlwaysAppliedDetailPredicateGrid from './master-detail-always-applied-detail-predicate-grid'
 import LazyGrid from './lazy-grid';
 
 ## Enabling Master Detail
@@ -144,6 +145,32 @@ JSON Response example:
 <ShowSqlMonitor serviceUrls={['/docs/master-detail/eager/getRows']}>
 <LazyGrid>
     <MasterDetailEagerGrid></MasterDetailEagerGrid>
+</LazyGrid>
+</ShowSqlMonitor>
+
+## Always Applied Detail Predicate
+
+`alwaysAppliedDetailPredicate` is the detail-side counterpart of [Always Applied Predicate](./filtering/always-applied-predicate.md):
+a predicate `AND`ed into every detail query, both lazy and eager. Seeing a master row does not make all of its
+detail rows the user's to see.
+
+```java
+QueryBuilder.MasterDetailParams.<Submitter, Long, Trade>builder()
+    .detailClass(Trade.class)
+    .detailColDefs(/* ... */)
+    .detailMasterReferenceField(Trade_.submitter)
+    .alwaysAppliedDetailPredicate((cb, detailRoot) -> cb.isTrue(detailRoot.get(Trade_.isSold)))
+    .build()
+```
+
+The grid below uses exactly that predicate, so an expanded submitter only ever shows their sold trades.
+
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/master-detail-always-applied-detail-predicate-grid.tsx)
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/MasterDetailService.java)
+
+<ShowSqlMonitor serviceUrls={['/docs/master-detail/always-applied-detail-predicate/getRows', '/docs/master-detail/always-applied-detail-predicate/getDetailRowData']}>
+<LazyGrid>
+    <MasterDetailAlwaysAppliedDetailPredicateGrid></MasterDetailAlwaysAppliedDetailPredicateGrid>
 </LazyGrid>
 </ShowSqlMonitor>
 
