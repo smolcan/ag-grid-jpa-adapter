@@ -16,6 +16,7 @@ var priceColumn = ColDef.builder(Entity_.price)
 ```
 
 import PivotingGrid from './pivoting-grid';
+import PivotingFilteringGrid from './pivoting-filtering-grid';
 import PivotingLimitColGenGrid from './pivoting-limit-col-gen-grid';
 import ShowSqlMonitor from './show-sql-monitor';
 import LazyGrid from './lazy-grid';
@@ -26,6 +27,33 @@ import LazyGrid from './lazy-grid';
 <ShowSqlMonitor serviceUrls={['/docs/pivoting/getRows']}>
 <LazyGrid>
     <PivotingGrid></PivotingGrid>
+</LazyGrid>
+</ShowSqlMonitor>
+
+## Filtering
+Filters work the same way as without pivoting, they restrict the rows the values are aggregated from.
+In pivot mode they also decide which columns are generated, while expanding a group does not.
+Filters on aggregated values behave as described in
+[Filtering for Aggregated Values](./aggregation.md#filtering-for-aggregated-values).
+
+`pivotMaxGeneratedColumns` is checked against the columns the filtered rows generate, so a filter can bring
+a request back under the limit.
+
+### Example - Filtering
+
+In pivot mode the grid displays the generated columns, so the columns of your grid are reached through the
+**Filters** tool panel on the right.
+
+- `Book` is the pivot column - filtering it changes which columns are generated
+- `Product` and `Portfolio` are the row group columns - filtering them changes which rows are returned
+- `Current Value` and `Previous Value` are aggregated - filtering them drops rows before they are aggregated
+- a generated column (`Book 1_currentValue`) is filtered from its header menu, by its aggregated value
+- Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/pivoting-filtering-grid.tsx)
+- Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/PivotingService.java)
+
+<ShowSqlMonitor serviceUrls={['/docs/pivoting/filtering/getRows']}>
+<LazyGrid>
+    <PivotingFilteringGrid></PivotingFilteringGrid>
 </LazyGrid>
 </ShowSqlMonitor>
 
