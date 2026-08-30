@@ -1213,8 +1213,74 @@ public class QueryBuilder<E, E_ID, D> {
             wherePredicates.add(groupPredicateInfo);
         }
         
-        // pivot values are all aggregates, so nothing else to do in where clause
-        // the rest of filtering should be done in having clause
+        if (this.groupAggFiltering || !this.suppressAggFilteredOnly) {
+            
+            // external filter
+            if (this.isExternalFilterPresent) {
+                Predicate externalFilterPredicate = this.doesExternalFilterPass.apply(cb, root, request.getExternalFilter());
+                if (externalFilterPredicate != null) {
+                    wherePredicates.add(
+                            WherePredicateMetadata.builder()
+                                    .predicate(externalFilterPredicate)
+                                    .isExternalFilterPredicate(true)
+                                    .build()
+                    );
+                }
+            }
+            
+            // quick filter
+            if (this.isQuickFilterPresent) {
+                Predicate quickFilterPredicate = this.createQuickFilterPredicate(cb, root, request.getQuickFilter());
+                if (quickFilterPredicate != null) {
+                    wherePredicates.add(
+                            WherePredicateMetadata.builder()
+                                    .predicate(quickFilterPredicate)
+                                    .isQuickFilterPredicate(true)
+                                    .build()
+                    );
+                }
+            }
+            
+            // filter where
+            Map<String, Object> filterModel = request.getFilterModel();
+            if (filterModel != null && !filterModel.isEmpty()) {
+                if (this.enableAdvancedFilter) {
+                    // advanced filter is always evaluated against the rows
+                    Predicate advancedFilterPredicate = this.createAdvancedFilterPredicate(cb, root, filterModel);
+                    wherePredicates.add(
+                            WherePredicateMetadata.builder()
+                                    .predicate(advancedFilterPredicate)
+                                    .isAdvancedFilterPredicate(true)
+                                    .build()
+                    );
+                } else {
+                    Map<String, Object> rowFilterModel = new LinkedHashMap<>(filterModel);
+                    if (this.groupAggFiltering) {
+                        // filters on aggregated columns will be evaluated in the having clause
+                        for (ColumnVO valueCol : request.getValueCols()) {
+                            rowFilterModel.remove(valueCol.getField());
+                        }
+                    }
+                    // the grid lets the user filter a generated pivot column as well, the filter model
+                    // is then keyed by the generated name (for example "Book 1_currentValue").
+                    // such a column already is an aggregation and is evaluated in the having clause
+                    for (String field : new ArrayList<>(rowFilterModel.keySet())) {
+                        if (!this.colDefs.containsKey(field) && this.colDefs.containsKey(this.originalColNameFromPivoted(field))) {
+                            rowFilterModel.remove(field);
+                        }
+                    }
+                    if (!rowFilterModel.isEmpty()) {
+                        Predicate columnFilterPredicate = this.createColumnFilterPredicate(cb, root, rowFilterModel);
+                        wherePredicates.add(
+                                WherePredicateMetadata.builder()
+                                        .predicate(columnFilterPredicate)
+                                        .isColumnFilterPredicate(true)
+                                        .build()
+                        );
+                    }
+                }
+            }
+        }
         
         return wherePredicates;
     }
@@ -1575,9 +1641,92 @@ public class QueryBuilder<E, E_ID, D> {
      * @return having predicates
      */
     @NonNull
+    @SuppressWarnings("unchecked")
     protected List<HavingMetadata> havingPivoting(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
-        // todo: check how pivoting having clause should work
-        return List.of();
+        Map<String, Object> filterModel = request.getFilterModel();
+        if (this.enableAdvancedFilter || filterModel == null || filterModel.isEmpty()) {
+            // the advanced filter is always evaluated against the rows, in the where clause
+            return List.of();
+        }
+
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
+        Root<E> root = queryContext.getRoot();
+        // expressions of the generated pivot columns, keyed by the name the grid knows them by
+        Map<String, Expression<?>> pivotColumns = queryContext.getPivotingContext().getColumnNamesToExpression();
+
+        List<HavingMetadata> havingPredicates = new ArrayList<>();
+        
+        
+        // filters the user set directly on a generated pivot column, for example "Book 1_currentValue".
+        // that column already is an aggregation, so the filter can only be compared in the having clause,
+        // no matter how group aggregation filtering is configured
+        for (var entry : filterModel.entrySet()) {
+            String field = entry.getKey();
+            Map<String, Object> fieldFilterModel = (Map<String, Object>) entry.getValue();
+            
+            if (this.colDefs.containsKey(field)) {
+                // a column of the grid, not a generated one
+                continue;
+            }
+            
+            ColDef<E, ?> colDef = this.colDefs.get(this.originalColNameFromPivoted(field));
+            if (colDef == null) {
+                // not a generated pivot column either, the where clause reports the unknown column
+                continue;
+            }
+            
+            Expression<?> pivotColumnExpression = Optional.ofNullable(pivotColumns)
+                    .map(pc -> pc.get(field))
+                    .orElse(null);
+            if (pivotColumnExpression == null) {
+                // the grid still holds a filter on a column this request does not generate anymore,
+                // there is nothing to compare it against
+                continue;
+            }
+            IFilter<?, ?, ?> filter = colDef.getFilter();
+            if (filter == null) {
+                throw new IllegalArgumentException("Column " + field + " is not filterable field!");
+            }
+
+            Predicate predicate = filter.toPredicate(cb, (Expression) pivotColumnExpression, fieldFilterModel);
+            havingPredicates.add(
+                    HavingMetadata.builder()
+                            .predicate(predicate)
+                            .isPivoting(true)
+                            .build()
+            );
+        }
+
+        // with group aggregation filtering, a filter set on an aggregated column of the grid is
+        // compared against the aggregation over the whole row (all pivot columns together)
+        if (this.groupAggFiltering) {
+            List<ColumnVO> filteredValueCols = new ArrayList<>(request.getValueCols().size());
+            for (ColumnVO valueCol : request.getValueCols()) {
+                if (filterModel.containsKey(valueCol.getField())) {
+                    filteredValueCols.add(valueCol);
+                }
+            }
+
+            // when an expanded parent group matches the filters, all of its children pass
+            if (!filteredValueCols.isEmpty() && !this.groupAggFilteringExpandedParentsMatch(queryContext, request)) {
+                for (ColumnVO valueCol : filteredValueCols) {
+                    ColDef<E, ?> colDef = this.colDefs.get(valueCol.getField());
+                    var aggregateFunction = this.aggFuncs.get(valueCol.getAggFunc());
+                    Expression<?> aggregatedField = aggregateFunction.apply(cb, colDef.getField().getExpression(cb, root));
+
+                    IFilter<?, ?, ?> filter = colDef.getFilter();
+                    Predicate predicate = filter.toPredicate(cb, (Expression) aggregatedField, (Map<String, Object>) filterModel.get(valueCol.getField()));
+                    havingPredicates.add(
+                            HavingMetadata.builder()
+                                    .predicate(predicate)
+                                    .isPivoting(true)
+                                    .build()
+                    );
+                }
+            }
+        }
+
+        return havingPredicates;
     }
 
 
@@ -2758,9 +2907,62 @@ public class QueryBuilder<E, E_ID, D> {
             // select
             Expression<?> path = colDef.getField().getExpression(cb, root);
             query.select(path).distinct(true);
+
+            // the columns are generated from the same rows the pivot query aggregates, but without
+            // the expanded group keys, so that drilling into a group does not change the generated
+            // columns. same rules as in wherePivoting
+            List<Predicate> predicates = new ArrayList<>();
             if (this.alwaysAppliedPredicate != null) {
-                query.where(this.alwaysAppliedPredicate.apply(cb, root));
+                predicates.add(this.alwaysAppliedPredicate.apply(cb, root));
             }
+            if (this.groupAggFiltering || !this.suppressAggFilteredOnly) {
+                
+                // external filter
+                if (this.isExternalFilterPresent) {
+                    Predicate externalFilterPredicate = this.doesExternalFilterPass.apply(cb, root, request.getExternalFilter());
+                    if (externalFilterPredicate != null) {
+                        predicates.add(externalFilterPredicate);
+                    }
+                }
+                
+                // quick filter
+                if (this.isQuickFilterPresent) {
+                    Predicate quickFilterPredicate = this.createQuickFilterPredicate(cb, root, request.getQuickFilter());
+                    if (quickFilterPredicate != null) {
+                        predicates.add(quickFilterPredicate);
+                    }
+                }
+                
+                // filter where
+                Map<String, Object> filterModel = request.getFilterModel();
+                if (filterModel != null && !filterModel.isEmpty()) {
+                    if (this.enableAdvancedFilter) {
+                        predicates.add(this.createAdvancedFilterPredicate(cb, root, filterModel));
+                    } else {
+                        Map<String, Object> rowFilterModel = new LinkedHashMap<>(filterModel);
+                        if (this.groupAggFiltering) {
+                            // filtered against the aggregated value in the having clause of the pivot query
+                            for (ColumnVO valueCol : request.getValueCols()) {
+                                rowFilterModel.remove(valueCol.getField());
+                            }
+                        }
+                        // filters on a generated pivot column are filters on an aggregation, they do not
+                        // restrict the rows the columns are generated from
+                        for (String filteredField : new ArrayList<>(rowFilterModel.keySet())) {
+                            if (!this.colDefs.containsKey(filteredField) && this.colDefs.containsKey(this.originalColNameFromPivoted(filteredField))) {
+                                rowFilterModel.remove(filteredField);
+                            }
+                        }
+                        if (!rowFilterModel.isEmpty()) {
+                            predicates.add(this.createColumnFilterPredicate(cb, root, rowFilterModel));
+                        }
+                    }
+                }
+            }
+            if (!predicates.isEmpty()) {
+                query.where(predicates.toArray(Predicate[]::new));
+            }
+            
             query.orderBy(cb.asc(path));
 
             // result
@@ -2850,9 +3052,61 @@ public class QueryBuilder<E, E_ID, D> {
         }
 
         query.select(productExpression);
+
+        // counted over the same rows the pivot columns are generated from, otherwise the limit is
+        // checked against columns that are never generated. same rules as in getPivotValues
+        List<Predicate> predicates = new ArrayList<>();
         if (this.alwaysAppliedPredicate != null) {
-            query.where(this.alwaysAppliedPredicate.apply(cb, root));
+            predicates.add(this.alwaysAppliedPredicate.apply(cb, root));
         }
+        if (this.groupAggFiltering || !this.suppressAggFilteredOnly) {
+            
+            // external filter
+            if (this.isExternalFilterPresent) {
+                Predicate externalFilterPredicate = this.doesExternalFilterPass.apply(cb, root, request.getExternalFilter());
+                if (externalFilterPredicate != null) {
+                    predicates.add(externalFilterPredicate);
+                }
+            }
+            
+            // quick filter
+            if (this.isQuickFilterPresent) {
+                Predicate quickFilterPredicate = this.createQuickFilterPredicate(cb, root, request.getQuickFilter());
+                if (quickFilterPredicate != null) {
+                    predicates.add(quickFilterPredicate);
+                }
+            }
+            
+            // filter where
+            Map<String, Object> filterModel = request.getFilterModel();
+            if (filterModel != null && !filterModel.isEmpty()) {
+                if (this.enableAdvancedFilter) {
+                    predicates.add(this.createAdvancedFilterPredicate(cb, root, filterModel));
+                } else {
+                    Map<String, Object> rowFilterModel = new LinkedHashMap<>(filterModel);
+                    if (this.groupAggFiltering) {
+                        // filtered against the aggregated value in the having clause of the pivot query
+                        for (ColumnVO valueCol : request.getValueCols()) {
+                            rowFilterModel.remove(valueCol.getField());
+                        }
+                    }
+                    // filters on a generated pivot column are filters on an aggregation, they do not
+                    // restrict the rows the columns are generated from
+                    for (String field : new ArrayList<>(rowFilterModel.keySet())) {
+                        if (!this.colDefs.containsKey(field) && this.colDefs.containsKey(this.originalColNameFromPivoted(field))) {
+                            rowFilterModel.remove(field);
+                        }
+                    }
+                    if (!rowFilterModel.isEmpty()) {
+                        predicates.add(this.createColumnFilterPredicate(cb, root, rowFilterModel));
+                    }
+                }
+            }
+        }
+        if (!predicates.isEmpty()) {
+            query.where(predicates.toArray(Predicate[]::new));
+        }
+        
         return this.entityManager.createQuery(query).getSingleResult();
     }
 
