@@ -15,13 +15,13 @@ import lombok.Setter;
 public class BooleanAdvancedFilterModel<E> extends ColumnAdvancedFilterModel<E, Boolean> {
     private BooleanAdvancedFilterModelType type;
 
-    public BooleanAdvancedFilterModel(@NonNull ColumnSource<E, Boolean> columnField) {
+    public BooleanAdvancedFilterModel(@NonNull ColumnSource<? super E, Boolean> columnField) {
         super("boolean", columnField);
     }
 
     @Override
     @NonNull
-    public Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<E> root) {
+    public Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<? extends E> root) {
         Predicate predicate;
 
         Expression<Boolean> path = this.getColumnField().getExpression(cb, root);

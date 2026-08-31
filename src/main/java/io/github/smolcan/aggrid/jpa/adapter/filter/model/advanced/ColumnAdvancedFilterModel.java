@@ -9,9 +9,9 @@ import lombok.Setter;
 @Getter
 public abstract class ColumnAdvancedFilterModel<E, T> extends AdvancedFilterModel<E> {
     @NonNull
-    private ColumnSource<E, T> columnField;
+    private ColumnSource<? super E, T> columnField;
     
-    protected ColumnAdvancedFilterModel(@NonNull String filterType, @NonNull ColumnSource<E, T> columnField) {
+    protected ColumnAdvancedFilterModel(@NonNull String filterType, @NonNull ColumnSource<? super E, T> columnField) {
         super(filterType);
         this.columnField = columnField;
     }

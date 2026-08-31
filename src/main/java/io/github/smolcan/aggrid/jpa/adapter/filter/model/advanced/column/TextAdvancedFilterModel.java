@@ -20,13 +20,13 @@ public class TextAdvancedFilterModel<E> extends ColumnAdvancedFilterModel<E, Str
     @NonNull
     private TextFilterParams filterParams = TextFilterParams.builder().build();
     
-    public TextAdvancedFilterModel(@NonNull ColumnSource<E, String> columnField) {
+    public TextAdvancedFilterModel(@NonNull ColumnSource<? super E, String> columnField) {
         super("text", columnField);
     }
     
     @Override
     @NonNull
-    public Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<E> root) {
+    public Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<? extends E> root) {
 
         Expression<String> filterExpression = this.filterParams.generateExpressionFromFilterParams(cb, this.filter != null ? cb.literal(this.filter) : cb.nullLiteral(String.class));
         Expression<String> valueExpression = this.filterParams.generateExpressionFromFilterParams(cb, this.getColumnField().getExpression(cb, root));

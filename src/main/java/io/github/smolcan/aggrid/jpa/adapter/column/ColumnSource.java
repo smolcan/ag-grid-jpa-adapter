@@ -8,8 +8,11 @@ import lombok.NonNull;
 /**
  * Where a column reads its value from: a mapped attribute ({@link FieldPath}) or a database
  * expression ({@link ComputedField}).
+ * <p>
+ * {@code E} is the type the column is declared against, which may be a mapped superclass of the
+ * queried entity: the column resolves against a root of {@code E} or of any of its subtypes.
  *
- * @param <E> the entity type the column is resolved against
+ * @param <E> the type the column is declared against
  * @param <T> the column value type
  */
 public interface ColumnSource<E, T> {
@@ -32,6 +35,6 @@ public interface ColumnSource<E, T> {
      * @return the expression the column value is read from.
      */
     @NonNull
-    Expression<T> getExpression(@NonNull CriteriaBuilder cb, @NonNull Root<E> root);
+    Expression<T> getExpression(@NonNull CriteriaBuilder cb, @NonNull Root<? extends E> root);
 
 }

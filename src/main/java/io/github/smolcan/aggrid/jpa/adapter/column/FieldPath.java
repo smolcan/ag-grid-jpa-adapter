@@ -29,7 +29,7 @@ public class FieldPath<E, T> implements ColumnSource<E, T> {
     }
 
     @NonNull
-    public static <E, T> FieldPath<E, T> of(@NonNull SingularAttribute<E, T> attribute) {
+    public static <E, T> FieldPath<E, T> of(@NonNull SingularAttribute<? super E, T> attribute) {
         List<Attribute<?, ?>> hops = new ArrayList<>(1);
         hops.add(attribute);
         return new FieldPath<>(hops);
@@ -59,12 +59,12 @@ public class FieldPath<E, T> implements ColumnSource<E, T> {
 
     @Override
     @NonNull
-    public Expression<T> getExpression(@NonNull CriteriaBuilder cb, @NonNull Root<E> root) {
+    public Expression<T> getExpression(@NonNull CriteriaBuilder cb, @NonNull Root<? extends E> root) {
         return this.getPath(root);
     }
 
     @NonNull
-    public Path<T> getPath(@NonNull Root<E> root) {
+    public Path<T> getPath(@NonNull Root<? extends E> root) {
         From<?, ?> currentFrom = root;
         Path<?> currentPath = root;
         boolean canJoin = true;

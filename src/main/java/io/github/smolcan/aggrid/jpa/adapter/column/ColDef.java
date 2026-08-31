@@ -58,7 +58,7 @@ public class ColDef<P, T> {
     private final IFilter<T, ?, ?> filter;
     
     @NonNull
-    public static <P, T> Builder<P, T> builder(@NonNull SingularAttribute<P, T> field) {
+    public static <P, T> Builder<P, T> builder(@NonNull SingularAttribute<? super P, T> field) {
         return new Builder<P, T>().field(FieldPath.of(field));
     }
 

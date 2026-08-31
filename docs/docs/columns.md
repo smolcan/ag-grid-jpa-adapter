@@ -41,6 +41,37 @@ QueryBuilder<Entity, Long, Void> queryBuilder = QueryBuilder.builder(Entity.clas
     .build();
 ```
 
+## Inherited columns
+
+Attributes declared on a `@MappedSuperclass` are typed against that superclass in the generated metamodel, and they are accepted everywhere the adapter takes a column or a metamodel attribute — including the primary field.
+
+```java
+@MappedSuperclass
+public abstract class AuditedRecord {
+    @Id
+    private Long recordId;
+    private String owner;
+}
+
+@Entity
+public class Invoice extends AuditedRecord {
+    private String invoiceNumber;
+}
+```
+
+```java
+// AuditedRecord_.recordId is a SingularAttribute<AuditedRecord, Long>, the grid queries Invoice
+QueryBuilder<Invoice, Long, Void> queryBuilder = QueryBuilder.builder(Invoice.class, AuditedRecord_.recordId, entityManager)
+    .colDefs(
+        ColDef.builder(AuditedRecord_.recordId).build(),
+        ColDef.builder(AuditedRecord_.owner).filter(AgSetColumnFilter.forString()).build(),
+        ColDef.builder(Invoice_.invoiceNumber).build()
+    )
+    .build();
+```
+
+The same holds for `FieldPath` hops, `quickFilterSearchInFields`, the tree-data and master-detail attributes, and for a `ComputedField<AuditedRecord, T>` used in a grid over `Invoice`.
+
 ## Computed columns
 
 A column does not have to map to an entity attribute. [`ComputedField`](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/column/ComputedField.java) builds the column from a JPA `Expression`, so the value is produced by the database.
@@ -49,7 +80,7 @@ A column does not have to map to an entity attribute. [`ComputedField`](https://
 |-------------------------------------|-------------------------------------------------|------------------------------------------------------------------------|
 | **`name`**                          | `String`                                        | The column name AG Grid sends and the field name in the response.       |
 | **`javaType`**                      | `Class<T>`                                      | The type the expression evaluates to.                                   |
-| **`expressionFunction`**            | `BiFunction<CriteriaBuilder, Root<E>, Expression<T>>` | Builds the expression for a given query root.                     |
+| **`expressionFunction`**            | `BiFunction<CriteriaBuilder, Root<? extends E>, Expression<T>>` | Builds the expression for a given query root.                     |
 
 The expression is resolved wherever the column is used, so a computed column behaves like a mapped one:
 selecting, filtering, sorting, row grouping, aggregation, pivoting, quick filter, advanced filter and

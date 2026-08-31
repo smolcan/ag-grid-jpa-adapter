@@ -27,7 +27,7 @@ public class JoinAdvancedFilterModel<E> extends AdvancedFilterModel<E> {
 
     @Override
     @NonNull
-    public Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<E> root) {
+    public Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<? extends E> root) {
         List<Predicate> predicates = this.conditions.stream().map(c -> c.toPredicate(cb, root)).collect(Collectors.toList());
         if (this.type == JoinOperator.AND) {
             return cb.and(predicates.toArray(new Predicate[0]));

@@ -24,13 +24,13 @@ public class DateAdvancedFilterModel<E, T> extends ColumnAdvancedFilterModel<E, 
     @NonNull
     private DateFilterParams filterParams = DateFilterParams.builder().build();
     
-    public DateAdvancedFilterModel(@NonNull ColumnSource<E, T> columnField) {
+    public DateAdvancedFilterModel(@NonNull ColumnSource<? super E, T> columnField) {
         super("date", columnField);
     }
     
     @Override
     @NonNull
-    public Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<E> root) {
+    public Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<? extends E> root) {
         this.filterParams.validateDate(this.filter);
         Predicate predicate;
         

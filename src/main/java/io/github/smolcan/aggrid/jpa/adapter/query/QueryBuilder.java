@@ -72,7 +72,7 @@ public class QueryBuilder<E, E_ID, D> {
     protected static final String AUTO_GROUP_COLUMN_NAME = "ag-Grid-AutoColumn";
 
     protected final Class<E> entityClass;
-    protected final SingularAttribute<E, E_ID> primaryField;
+    protected final SingularAttribute<? super E, E_ID> primaryField;
     protected final EntityManager entityManager;
     protected final String serverSidePivotResultFieldSeparator;
     protected final boolean enableAdvancedFilter;
@@ -91,7 +91,7 @@ public class QueryBuilder<E, E_ID, D> {
     protected final boolean isQuickFilterPresent;
     protected final Function<String, List<String>> quickFilterParser;
     protected final TriFunction<CriteriaBuilder, Root<E>, List<String>, Predicate> quickFilterMatcher;
-    protected final List<ColumnSource<E, String>> quickFilterSearchInFields;
+    protected final List<? extends ColumnSource<? super E, String>> quickFilterSearchInFields;
     protected final boolean quickFilterTrimInput;
     protected final boolean quickFilterCaseSensitive;
     protected final BiFunction<CriteriaBuilder, Expression<String>, Expression<String>> quickFilterTextFormatter;
@@ -99,11 +99,11 @@ public class QueryBuilder<E, E_ID, D> {
 
     protected final boolean treeData;
     protected final String isServerSideGroupFieldName;
-    protected final SingularAttribute<E, E> treeDataParentReferenceField;
-    protected final SingularAttribute<E, E_ID> treeDataParentIdField;
+    protected final SingularAttribute<? super E, E> treeDataParentReferenceField;
+    protected final SingularAttribute<? super E, E_ID> treeDataParentIdField;
     protected final Function<String, E_ID> treeDataStringToParentIdTypeConverter;
-    protected final PluralAttribute<E, ? extends Collection<E>, E> treeDataChildrenField;
-    protected final SingularAttribute<E, String> treeDataDataPathFieldName;
+    protected final PluralAttribute<? super E, ? extends Collection<E>, E> treeDataChildrenField;
+    protected final SingularAttribute<? super E, String> treeDataDataPathFieldName;
     protected final String treeDataDataPathSeparator;
 
     protected final boolean masterDetail;
@@ -114,15 +114,15 @@ public class QueryBuilder<E, E_ID, D> {
     protected final boolean grandTotalRow;
 
 
-    protected final Map<String, ColDef<E, ?>> colDefs;
+    protected final Map<String, ColDef<? super E, ?>> colDefs;
     
     @NonNull
-    public static <E, E_ID> Builder<E, E_ID, Void> builder(@NonNull Class<E> entityClass, @NonNull SingularAttribute<E, E_ID> primaryField, @NonNull EntityManager entityManager) {
+    public static <E, E_ID> Builder<E, E_ID, Void> builder(@NonNull Class<E> entityClass, @NonNull SingularAttribute<? super E, E_ID> primaryField, @NonNull EntityManager entityManager) {
         return new Builder<>(entityClass, primaryField, entityManager);
     }
     
     @NonNull
-    public static <E, E_ID, D> Builder<E, E_ID, D> builder(@NonNull Class<E> entityClass, @NonNull SingularAttribute<E, E_ID> primaryField, @NonNull Class<D> detailClass, @NonNull EntityManager entityManager) {
+    public static <E, E_ID, D> Builder<E, E_ID, D> builder(@NonNull Class<E> entityClass, @NonNull SingularAttribute<? super E, E_ID> primaryField, @NonNull Class<D> detailClass, @NonNull EntityManager entityManager) {
         return new Builder<>(entityClass, primaryField, detailClass, entityManager);
     }
     
@@ -273,7 +273,7 @@ public class QueryBuilder<E, E_ID, D> {
                     // otherwise, we count root group
                     : 0;
             String countingGroupCol = request.getRowGroupCols().get(countingGroupColIndex).getId();
-            ColDef<E, ?> countingGroupColDef = this.colDefs.get(countingGroupCol);
+            ColDef<? super E, ?> countingGroupColDef = this.colDefs.get(countingGroupCol);
 
             // subquery will only select the group column 
             Subquery<?> subquery = query.subquery(countingGroupColDef.getField().getExpression(cb, root).getJavaType());
@@ -440,8 +440,8 @@ public class QueryBuilder<E, E_ID, D> {
      */
     @NonNull
     @SuppressWarnings("unchecked")
-    public <T> List<T> supplySetFilterValues(@NonNull ColumnSource<E, T> field) {
-        ColDef<E, T> colDef = (ColDef<E, T>) this.colDefs.get(field.getName());
+    public <T> List<T> supplySetFilterValues(@NonNull ColumnSource<? super E, T> field) {
+        ColDef<? super E, T> colDef = (ColDef<? super E, T>) this.colDefs.get(field.getName());
         if (colDef == null) {
             throw new IllegalArgumentException(String.format("Column definition for field '%s' not found.", field));
         }
@@ -468,7 +468,7 @@ public class QueryBuilder<E, E_ID, D> {
     @NonNull
     @SuppressWarnings("unchecked")
     public List<Object> supplySetFilterValues(@NonNull String fieldName) {
-        ColDef<E, ?> colDef = this.colDefs.get(fieldName);
+        ColDef<? super E, ?> colDef = this.colDefs.get(fieldName);
         if (colDef == null) {
             throw new IllegalArgumentException(String.format("Column definition for field '%s' not found.", fieldName));
         }
@@ -784,7 +784,7 @@ public class QueryBuilder<E, E_ID, D> {
             }
 
             List<Predicate> rowPredicatesForWord = new ArrayList<>(this.quickFilterSearchInFields.size());
-            for (ColumnSource<E, String> field : this.quickFilterSearchInFields) {
+            for (ColumnSource<? super E, String> field : this.quickFilterSearchInFields) {
                 Expression<String> path = field.getExpression(cb, root);
 
                 // transform path expression according to quick filter config
@@ -957,7 +957,7 @@ public class QueryBuilder<E, E_ID, D> {
         // group columns
         for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size() + 1; i++) {
             ColumnVO groupCol = request.getRowGroupCols().get(i);
-            ColDef<E, ?> groupColDef = this.colDefs.get(groupCol.getField());
+            ColDef<? super E, ?> groupColDef = this.colDefs.get(groupCol.getField());
             Expression<?> groupExpression = groupColDef.getField().getExpression(cb, root);
 
             SelectionMetadata groupSelectionMetadata = SelectionMetadata
@@ -1006,7 +1006,7 @@ public class QueryBuilder<E, E_ID, D> {
             // group columns
             for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size() + 1; i++) {
                 ColumnVO groupCol = request.getRowGroupCols().get(i);
-                ColDef<E, ?> groupColDef = this.colDefs.get(groupCol.getField());
+                ColDef<? super E, ?> groupColDef = this.colDefs.get(groupCol.getField());
                 Expression<?> groupExpression = groupColDef.getField().getExpression(cb, root);
 
                 SelectionMetadata groupSelectionMetadata = SelectionMetadata
@@ -1032,7 +1032,7 @@ public class QueryBuilder<E, E_ID, D> {
 
             // aggregated columns
             for (ColumnVO columnVO : request.getValueCols()) {
-                ColDef<E, ?> valueColDef = this.colDefs.get(columnVO.getField());
+                ColDef<? super E, ?> valueColDef = this.colDefs.get(columnVO.getField());
                 Expression<?> path = valueColDef.getField().getExpression(cb, root);
                 var aggregateFunction = this.aggFuncs.get(columnVO.getAggFunc());
                 Expression<?> aggregatedField = aggregateFunction.apply(cb, path);
@@ -1048,7 +1048,7 @@ public class QueryBuilder<E, E_ID, D> {
         } else {
             // groups are already expanded
             // just select columns
-            for (ColDef<E, ?> colDef : this.colDefs.values()) {
+            for (ColDef<? super E, ?> colDef : this.colDefs.values()) {
                 Expression<?> field = colDef.getField().getExpression(cb, root);
                 selections.add(
                         SelectionMetadata.builder()
@@ -1197,7 +1197,7 @@ public class QueryBuilder<E, E_ID, D> {
         for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size(); i++) {
             String groupKey = request.getGroupKeys().get(i);
             String groupCol = request.getRowGroupCols().get(i).getField();
-            ColDef<E, ?> groupColDef = this.colDefs.get(groupCol);
+            ColDef<? super E, ?> groupColDef = this.colDefs.get(groupCol);
             Expression<?> groupColPath = groupColDef.getField().getExpression(cb, root);
             Object groupKeyConverted = groupColDef.getGroupKeyToType().apply(groupKey);
             Predicate groupPredicate = cb.equal(groupColPath, groupKeyConverted);
@@ -1303,7 +1303,7 @@ public class QueryBuilder<E, E_ID, D> {
         for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size(); i++) {
             String groupKey = request.getGroupKeys().get(i);
             String groupCol = request.getRowGroupCols().get(i).getField();
-            ColDef<E, ?> groupColDef = this.colDefs.get(groupCol);
+            ColDef<? super E, ?> groupColDef = this.colDefs.get(groupCol);
             
             Expression<?> groupColPath = groupColDef.getField().getExpression(cb, root);
             Object groupKeyConverted = groupColDef.getGroupKeyToType().apply(groupKey);
@@ -1467,7 +1467,7 @@ public class QueryBuilder<E, E_ID, D> {
 
             List<Predicate> expandedParentPredicates = request.getRowGroupCols().stream()
                     .map(col -> {
-                        ColDef<E, ?> colDef = this.colDefs.get(col.getField());
+                        ColDef<? super E, ?> colDef = this.colDefs.get(col.getField());
                         Expression<?> expandedParentGroupPath = colDef.getField().getExpression(cb, expandedParentRoot);
                         Object groupKeyConverted = colDef.getGroupKeyToType().apply(key);
 
@@ -1485,7 +1485,7 @@ public class QueryBuilder<E, E_ID, D> {
                             .filter(vc -> request.getFilterModel().containsKey(vc.getField()))
                             .map(vc -> {
                                 // create aggregation expression
-                                ColDef<E, ?> colDef = this.colDefs.get(vc.getField());
+                                ColDef<? super E, ?> colDef = this.colDefs.get(vc.getField());
                                 var aggFunc = this.aggFuncs.get(vc.getAggFunc());
                                 Expression<?> aggExpr = aggFunc.apply(cb, colDef.getField().getExpression(cb, expandedParentRoot));
 
@@ -1543,7 +1543,7 @@ public class QueryBuilder<E, E_ID, D> {
 
             List<Predicate> unexpandedChildGroupPredicates = request.getRowGroupCols().stream()
                     .map(col -> {
-                        ColDef<E, ?> colDef = this.colDefs.get(col.getField());
+                        ColDef<? super E, ?> colDef = this.colDefs.get(col.getField());
                         Expression<?> subqueryGroupColumnPath = colDef.getField().getExpression(cb, unexpandedChildGroupRoot);
                         Expression<?> parentQueryGroupColumnPath = colDef.getField().getExpression(cb, root);
                         return cb.equal(subqueryGroupColumnPath, parentQueryGroupColumnPath);
@@ -1559,7 +1559,7 @@ public class QueryBuilder<E, E_ID, D> {
                     request.getValueCols().stream()
                             .filter(vc -> request.getFilterModel().containsKey(vc.getField()))
                             .map(vc -> {
-                                ColDef<E, ?> colDef = this.colDefs.get(vc.getField());
+                                ColDef<? super E, ?> colDef = this.colDefs.get(vc.getField());
                                 // create aggregation expression
                                 Expression<?> aggExpr = this.aggFuncs.get(vc.getAggFunc()).apply(cb, colDef.getField().getExpression(cb, unexpandedChildGroupRoot));
                                 
@@ -1597,7 +1597,7 @@ public class QueryBuilder<E, E_ID, D> {
         List<Predicate> leafNodeExistsSubqueryPredicates = new ArrayList<>();
         request.getRowGroupCols().stream()
                 .map(col -> {
-                    ColDef<E, ?> colDef = this.colDefs.get(col.getField());
+                    ColDef<? super E, ?> colDef = this.colDefs.get(col.getField());
                     Expression<?> subqueryGroupColumnPath = colDef.getField().getExpression(cb, leafNodeRoot);
                     Expression<?> parentQueryGroupColumnPath = colDef.getField().getExpression(cb, root);
                     return cb.equal(subqueryGroupColumnPath, parentQueryGroupColumnPath);
@@ -1607,7 +1607,7 @@ public class QueryBuilder<E, E_ID, D> {
         request.getValueCols().stream()
                 .filter(vc -> request.getFilterModel().containsKey(vc.getField()))
                 .forEach(vc -> {
-                    ColDef<E, ?> colDef = this.colDefs.get(vc.getField());
+                    ColDef<? super E, ?> colDef = this.colDefs.get(vc.getField());
                     Predicate predicate = colDef.getFilter().toPredicate(cb, (Expression) colDef.getField().getExpression(cb, leafNodeRoot), (Map<String, Object>) request.getFilterModel().get(vc.getField()));
                     leafNodeExistsSubqueryPredicates.add(predicate);
                 });
@@ -1669,7 +1669,7 @@ public class QueryBuilder<E, E_ID, D> {
                 continue;
             }
             
-            ColDef<E, ?> colDef = this.colDefs.get(this.originalColNameFromPivoted(field));
+            ColDef<? super E, ?> colDef = this.colDefs.get(this.originalColNameFromPivoted(field));
             if (colDef == null) {
                 // not a generated pivot column either, the where clause reports the unknown column
                 continue;
@@ -1710,7 +1710,7 @@ public class QueryBuilder<E, E_ID, D> {
             // when an expanded parent group matches the filters, all of its children pass
             if (!filteredValueCols.isEmpty() && !this.groupAggFilteringExpandedParentsMatch(queryContext, request)) {
                 for (ColumnVO valueCol : filteredValueCols) {
-                    ColDef<E, ?> colDef = this.colDefs.get(valueCol.getField());
+                    ColDef<? super E, ?> colDef = this.colDefs.get(valueCol.getField());
                     var aggregateFunction = this.aggFuncs.get(valueCol.getAggFunc());
                     Expression<?> aggregatedField = aggregateFunction.apply(cb, colDef.getField().getExpression(cb, root));
 
@@ -1812,7 +1812,8 @@ public class QueryBuilder<E, E_ID, D> {
         // selection to find out whether it has any children
         Expression<Boolean> isServerSideGroupSelection;
         if (this.treeDataChildrenField != null && this.alwaysAppliedPredicate == null) {
-            isServerSideGroupSelection = cb.isNotEmpty(root.get(this.treeDataChildrenField));
+            Expression<Collection<E>> children = root.get(this.treeDataChildrenField.getName());
+            isServerSideGroupSelection = cb.isNotEmpty(children);
         } else {
             // Subquery: Select 1 from Entity where parent = root
             // (must not select count(*) here: a count subquery always returns a row, making EXISTS always true)
@@ -1862,7 +1863,7 @@ public class QueryBuilder<E, E_ID, D> {
             @NonNull ColumnVO aggColumn,
             @NonNull ServerSideGetRowsRequest request
     ) {
-        ColDef<E, ?> aggColumnColDef = this.colDefs.get(aggColumn.getField());
+        ColDef<? super E, ?> aggColumnColDef = this.colDefs.get(aggColumn.getField());
         
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
         Root<E> root = queryContext.getRoot();
@@ -2150,7 +2151,7 @@ public class QueryBuilder<E, E_ID, D> {
         // there is always grouping in pivoting
         for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size() + 1; i++) {
             String groupCol = request.getRowGroupCols().get(i).getField();
-            ColDef<E, ?> groupColDef = this.colDefs.get(groupCol);
+            ColDef<? super E, ?> groupColDef = this.colDefs.get(groupCol);
 
             Expression<?> groupingExpression = queryContext.getSelections().stream()
                     .filter(s -> s.getAlias().equals(groupCol))
@@ -2191,7 +2192,7 @@ public class QueryBuilder<E, E_ID, D> {
         if (hasUnexpandedGroups) {
             for (int i = 0; i < request.getRowGroupCols().size() && i < request.getGroupKeys().size() + 1; i++) {
                 String groupCol = request.getRowGroupCols().get(i).getField();
-                ColDef<E, ?> groupColDef = this.colDefs.get(groupCol);
+                ColDef<? super E, ?> groupColDef = this.colDefs.get(groupCol);
                 
                 Expression<?> groupingExpression = queryContext.getSelections().stream()
                         .filter(s -> s.getAlias().equals(groupCol))
@@ -2231,7 +2232,7 @@ public class QueryBuilder<E, E_ID, D> {
         return request.getSortModel().stream()
                 .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))
                 .map(model -> {
-                    ColDef<E, ?> colDef = this.colDefs.get(model.getColId());
+                    ColDef<? super E, ?> colDef = this.colDefs.get(model.getColId());
                     Expression<?> field = colDef.getField().getExpression(cb, root);
                     if ("absolute".equals(model.getType())) {
                         field = cb.abs((Expression) field);
@@ -2288,7 +2289,7 @@ public class QueryBuilder<E, E_ID, D> {
                     .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))    // ignore auto-generated column
                     .filter(model -> request.getRowGroupCols().stream().anyMatch(rg -> rg.getField().equals(model.getColId()))) // present in group columns
                     .map(sortModel -> {
-                        ColDef<E, ?> colDef = this.colDefs.get(sortModel.getColId());
+                        ColDef<? super E, ?> colDef = this.colDefs.get(sortModel.getColId());
                         Expression<?> groupingColumnExpression = queryContext.getSelections().stream()
                                 .filter(s -> s.getAlias().equals(sortModel.getColId()))
                                 .map(SelectionMetadata::getExpression)
@@ -2355,7 +2356,7 @@ public class QueryBuilder<E, E_ID, D> {
                 .filter(model -> !AUTO_GROUP_COLUMN_NAME.equalsIgnoreCase(model.getColId()))    // ignore auto-generated column
                 .filter(model -> request.getRowGroupCols().stream().anyMatch(rg -> rg.getField().equals(model.getColId()))) // present in group columns
                 .map(sortModel -> {
-                    ColDef<E, ?> colDef = this.colDefs.get(sortModel.getColId());
+                    ColDef<? super E, ?> colDef = this.colDefs.get(sortModel.getColId());
                     Expression<?> groupingColumnExpression = queryContext.getSelections().stream()
                             .filter(s -> s.getAlias().equals(sortModel.getColId()))
                             .map(SelectionMetadata::getExpression)
@@ -2498,7 +2499,7 @@ public class QueryBuilder<E, E_ID, D> {
             Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();
 
             // find col def
-            ColDef<E, ?> colDef = Optional.ofNullable(this.colDefs.get(columnName))
+            ColDef<? super E, ?> colDef = Optional.ofNullable(this.colDefs.get(columnName))
                     .orElseThrow(() -> new IllegalArgumentException("Column " + columnName + " not found in col defs"));
             // filter of given column
             IFilter<?, ?, ?> filter = colDef.getFilter();
@@ -2573,7 +2574,7 @@ public class QueryBuilder<E, E_ID, D> {
             if (!this.colDefs.containsKey(colId)) {
                 throw new IllegalArgumentException("Can not filter on column not defined in col defs!");
             }
-            ColDef<E, ?> columnField = this.colDefs.get(colId);
+            ColDef<? super E, ?> columnField = this.colDefs.get(colId);
             IFilter<?, ?, ?> columnFilter = columnField.getFilter();
             // assert the filter has enabled filtering
             if (columnFilter == null) {
@@ -2586,7 +2587,7 @@ public class QueryBuilder<E, E_ID, D> {
                         throw new IllegalArgumentException("Can not apply text filter on non-text column");
                     }
                     
-                    ColDef<E, String> textColumnField = (ColDef<E, String>) columnField;
+                    ColDef<? super E, String> textColumnField = (ColDef<? super E, String>) columnField;
                     AgTextColumnFilter textColumnFilter = (AgTextColumnFilter) textColumnField.getFilter();
                     
                     TextAdvancedFilterModel<E> textAdvancedFilterModel = new TextAdvancedFilterModel<>(textColumnField.getField());
@@ -2603,7 +2604,7 @@ public class QueryBuilder<E, E_ID, D> {
                         throw new IllegalArgumentException("Can not apply date filter on non-date column");
                     }
 
-                    ColDef<E, ?> dateColumnField = columnField;
+                    ColDef<? super E, ?> dateColumnField = columnField;
                     AgDateColumnFilter<?> dateColumnFilter = (AgDateColumnFilter<?>) dateColumnField.getFilter();
                     
                     DateAdvancedFilterModel<E, ?> dateAdvancedFilterModel = new DateAdvancedFilterModel<>(dateColumnField.getField());
@@ -2619,7 +2620,7 @@ public class QueryBuilder<E, E_ID, D> {
                         throw new IllegalArgumentException("Can not apply number filter on non-number column");
                     }
                     
-                    ColDef<E, ? extends Number> numberColumnField = (ColDef<E, ? extends Number>) columnField;
+                    ColDef<? super E, ? extends Number> numberColumnField = (ColDef<? super E, ? extends Number>) columnField;
                     AgNumberColumnFilter<?> numberColumnFilter = (AgNumberColumnFilter<?>) columnField.getFilter();
                     
                     NumberAdvancedFilterModel<E, ?> numberAdvancedFilterModel = new NumberAdvancedFilterModel<>(numberColumnField.getField());
@@ -2631,7 +2632,7 @@ public class QueryBuilder<E, E_ID, D> {
                     return numberAdvancedFilterModel;
                 }
                 case "boolean": {
-                    ColDef<E, Boolean> booleanColDef = (ColDef<E, Boolean>) columnField;
+                    ColDef<? super E, Boolean> booleanColDef = (ColDef<? super E, Boolean>) columnField;
                     
                     BooleanAdvancedFilterModel<E> booleanAdvancedFilterModel = new BooleanAdvancedFilterModel<>(booleanColDef.getField());
                     booleanAdvancedFilterModel.setType(Optional.ofNullable(filter.get("type")).map(Object::toString).map(v -> {
@@ -2899,7 +2900,7 @@ public class QueryBuilder<E, E_ID, D> {
         Map<String, List<Object>> pivotValues = new LinkedHashMap<>(request.getPivotCols().size());
         for (ColumnVO column : request.getPivotCols()) {
             String field = column.getField();
-            ColDef<E, ?> colDef = this.colDefs.get(column.getField());
+            ColDef<? super E, ?> colDef = this.colDefs.get(column.getField());
 
             CriteriaQuery<Object> query = cb.createQuery(Object.class);
             Root<E> root = query.from(this.entityClass);
@@ -3047,7 +3048,7 @@ public class QueryBuilder<E, E_ID, D> {
 
         Expression<Long> productExpression = cb.literal((long) request.getValueCols().size());
         for (ColumnVO pivotCol : request.getPivotCols()) {
-            ColDef<E, ?> colDef = this.colDefs.get(pivotCol.getField());
+            ColDef<? super E, ?> colDef = this.colDefs.get(pivotCol.getField());
             productExpression = cb.prod(productExpression, cb.countDistinct(colDef.getField().getExpression(cb, root)));
         }
 
@@ -3131,12 +3132,12 @@ public class QueryBuilder<E, E_ID, D> {
 
             request.getValueCols()
                     .forEach(columnVO -> {
-                        ColDef<E, ?> colDef = this.colDefs.get(columnVO.getField());
+                        ColDef<? super E, ?> colDef = this.colDefs.get(columnVO.getField());
                         Expression<?> field = colDef.getField().getExpression(cb, root);
 
                         CriteriaBuilder.Case<?> caseExpression = null;
                         for (Pair<String, Object> pair : pairs) {
-                            ColDef<E, ?> pairKeyColDef = this.colDefs.get(pair.getKey());
+                            ColDef<? super E, ?> pairKeyColDef = this.colDefs.get(pair.getKey());
                             
                             Expression<?> pivotValuePath = pairKeyColDef.getField().getExpression(cb, root);
                             Predicate pivotValueMatches = pair.getValue() == null
@@ -3171,7 +3172,7 @@ public class QueryBuilder<E, E_ID, D> {
         private final Class<D> detailClass;
         private final EntityManager entityManager;
 
-        private SingularAttribute<E, E_ID> primaryField;
+        private SingularAttribute<? super E, E_ID> primaryField;
         private String serverSidePivotResultFieldSeparator = DEFAULT_SERVER_SIDE_PIVOT_RESULT_FIELD_SEPARATOR;
         private Integer pivotMaxGeneratedColumns;
         private boolean enableAdvancedFilter;
@@ -3190,7 +3191,7 @@ public class QueryBuilder<E, E_ID, D> {
         protected boolean isQuickFilterPresent;
         protected Function<String, List<String>> quickFilterParser = DEFAULT_QUICK_FILTER_PARSER;
         protected TriFunction<CriteriaBuilder, Root<E>, List<String>, Predicate> quickFilterMatcher;
-        protected List<ColumnSource<E, String>> quickFilterSearchInFields;
+        protected List<? extends ColumnSource<? super E, String>> quickFilterSearchInFields;
         protected boolean quickFilterTrimInput;
         protected boolean quickFilterCaseSensitive;
         protected BiFunction<CriteriaBuilder, Expression<String>, Expression<String>> quickFilterTextFormatter;
@@ -3198,11 +3199,11 @@ public class QueryBuilder<E, E_ID, D> {
         
         private boolean treeData;
         private String isServerSideGroupFieldName;
-        private SingularAttribute<E, E> treeDataParentReferenceField;
-        private SingularAttribute<E, E_ID> treeDataParentIdField;
+        private SingularAttribute<? super E, E> treeDataParentReferenceField;
+        private SingularAttribute<? super E, E_ID> treeDataParentIdField;
         private Function<String, E_ID> treeDataStringToParentIdTypeConverter;
-        private PluralAttribute<E, ? extends Collection<E>, E> treeDataChildrenField;
-        private SingularAttribute<E, String> treeDataDataPathFieldName;
+        private PluralAttribute<? super E, ? extends Collection<E>, E> treeDataChildrenField;
+        private SingularAttribute<? super E, String> treeDataDataPathFieldName;
         private String treeDataDataPathSeparator;
         
         private boolean masterDetail;
@@ -3212,13 +3213,13 @@ public class QueryBuilder<E, E_ID, D> {
         private Function<Map<String, Object>, MasterDetailParams<E, E_ID, D>> dynamicMasterDetailParams;
         private boolean grandTotalRow;
         
-        private Map<String, ColDef<E, ?>> colDefs;
+        private Map<String, ColDef<? super E, ?>> colDefs;
 
-        protected Builder(@NonNull Class<E> entityClass, @NonNull SingularAttribute<E, E_ID> primaryField, @NonNull EntityManager entityManager) {
+        protected Builder(@NonNull Class<E> entityClass, @NonNull SingularAttribute<? super E, E_ID> primaryField, @NonNull EntityManager entityManager) {
             this(entityClass, primaryField, null, entityManager);
         }
         
-        protected Builder(@NonNull Class<E> entityClass, @NonNull SingularAttribute<E, E_ID> primaryField, Class<D> detailClass, @NonNull EntityManager entityManager) {
+        protected Builder(@NonNull Class<E> entityClass, @NonNull SingularAttribute<? super E, E_ID> primaryField, Class<D> detailClass, @NonNull EntityManager entityManager) {
             this.entityClass = entityClass;
             this.primaryField = primaryField;
             this.detailClass = detailClass;
@@ -3228,7 +3229,7 @@ public class QueryBuilder<E, E_ID, D> {
         }
         
         @NonNull
-        public Builder<E, E_ID, D> primaryField(@NonNull SingularAttribute<E, E_ID> primaryField) {
+        public Builder<E, E_ID, D> primaryField(@NonNull SingularAttribute<? super E, E_ID> primaryField) {
             this.primaryField = primaryField;
             return this;
         }
@@ -3253,18 +3254,18 @@ public class QueryBuilder<E, E_ID, D> {
         
         @SafeVarargs
         @NonNull
-        public final Builder<E, E_ID, D> colDefs(@NonNull ColDef<E, ?>... colDefs) {
+        public final Builder<E, E_ID, D> colDefs(@NonNull ColDef<? super E, ?>... colDefs) {
             this.colDefs = new HashMap<>(colDefs.length);
-            for (ColDef<E, ?> colDef : colDefs) {
+            for (ColDef<? super E, ?> colDef : colDefs) {
                 this.colDefs.put(colDef.getFieldName(), colDef);
             }
             return this;
         }
         
         @NonNull
-        public Builder<E, E_ID, D> colDefs(@NonNull Collection<ColDef<E, ?>> colDefs) {
+        public Builder<E, E_ID, D> colDefs(@NonNull Collection<? extends ColDef<? super E, ?>> colDefs) {
             this.colDefs = new HashMap<>(colDefs.size());
-            for (ColDef<E, ?> colDef : colDefs) {
+            for (ColDef<? super E, ?> colDef : colDefs) {
                 this.colDefs.put(colDef.getFieldName(), colDef);
             }
             return this;
@@ -3307,14 +3308,14 @@ public class QueryBuilder<E, E_ID, D> {
         }
 
         @NonNull
-        public Builder<E, E_ID, D> quickFilterSearchInFields(@NonNull List<ColumnSource<E, String>> quickFilterSearchInFields) {
+        public Builder<E, E_ID, D> quickFilterSearchInFields(@NonNull List<? extends ColumnSource<? super E, String>> quickFilterSearchInFields) {
             this.quickFilterSearchInFields = quickFilterSearchInFields;
             return this;
         }
 
         @SafeVarargs
         @NonNull
-        public final Builder<E, E_ID, D> quickFilterSearchInFields(@NonNull ColumnSource<E, String>... quickFilterSearchInFields) {
+        public final Builder<E, E_ID, D> quickFilterSearchInFields(@NonNull ColumnSource<? super E, String>... quickFilterSearchInFields) {
             this.quickFilterSearchInFields = Arrays.asList(quickFilterSearchInFields);
             return this;
         }
@@ -3399,13 +3400,13 @@ public class QueryBuilder<E, E_ID, D> {
         }
 
         @NonNull
-        public Builder<E, E_ID, D> treeDataParentReferenceField(@NonNull SingularAttribute<E, E> treeDataParentReferenceField) {
+        public Builder<E, E_ID, D> treeDataParentReferenceField(@NonNull SingularAttribute<? super E, E> treeDataParentReferenceField) {
             this.treeDataParentReferenceField = treeDataParentReferenceField;
             return this;
         }
 
         @NonNull
-        public Builder<E, E_ID, D> treeDataParentIdField(@NonNull SingularAttribute<E, E_ID> treeDataParentIdField) {
+        public Builder<E, E_ID, D> treeDataParentIdField(@NonNull SingularAttribute<? super E, E_ID> treeDataParentIdField) {
             this.treeDataParentIdField = treeDataParentIdField;
             return this;
         }
@@ -3416,13 +3417,13 @@ public class QueryBuilder<E, E_ID, D> {
         }
 
         @NonNull
-        public Builder<E, E_ID, D> treeDataChildrenField(@NonNull PluralAttribute<E, ? extends Collection<E>, E> treeDataChildrenField) {
+        public Builder<E, E_ID, D> treeDataChildrenField(@NonNull PluralAttribute<? super E, ? extends Collection<E>, E> treeDataChildrenField) {
             this.treeDataChildrenField = treeDataChildrenField;
             return this;
         }
 
         @NonNull
-        public Builder<E, E_ID, D> treeDataDataPathFieldName(@NonNull SingularAttribute<E, String> treeDataDataPathField) {
+        public Builder<E, E_ID, D> treeDataDataPathFieldName(@NonNull SingularAttribute<? super E, String> treeDataDataPathField) {
             this.treeDataDataPathFieldName = treeDataDataPathField;
             return this;
         }
@@ -3488,7 +3489,7 @@ public class QueryBuilder<E, E_ID, D> {
                 throw new IllegalArgumentException("colDefs cannot be null or empty");
             }
             // validate col defs aggregation functions
-            List<ColDef<E, ?>> colDefsWithUnrecognizedAggFunctions = this.colDefs.values().stream()
+            List<ColDef<? super E, ?>> colDefsWithUnrecognizedAggFunctions = this.colDefs.values().stream()
                     .filter(cd -> cd.getAllowedAggFuncs() != null)
                     .filter(cd -> cd.getAllowedAggFuncs().stream().anyMatch(f -> !this.aggFuncs.containsKey(f)))
                     .collect(Collectors.toList());
@@ -3590,9 +3591,9 @@ public class QueryBuilder<E, E_ID, D> {
     @Getter
     public static class MasterDetailParams<P, P_ID, C> {
         private final Class<C> detailClass;
-        private final Map<String, ColDef<C, ?>> detailColDefs;
-        private final SingularAttribute<C, P> detailMasterReferenceField;
-        private final SingularAttribute<C, P_ID> detailMasterIdField;
+        private final Map<String, ColDef<? super C, ?>> detailColDefs;
+        private final SingularAttribute<? super C, P> detailMasterReferenceField;
+        private final SingularAttribute<? super C, P_ID> detailMasterIdField;
         private final TriFunction<CriteriaBuilder, Root<C>, Map<String, Object>, Predicate> createMasterRowPredicate;
         private final BiFunction<CriteriaBuilder, Root<C>, Predicate> alwaysAppliedDetailPredicate;
         
@@ -3612,9 +3613,9 @@ public class QueryBuilder<E, E_ID, D> {
 
         public static class Builder<P, P_ID, C> {
             private Class<C> detailClass;
-            private Map<String, ColDef<C, ?>> detailColDefs;
-            private SingularAttribute<C, P> detailMasterReferenceField;
-            private SingularAttribute<C, P_ID> detailMasterIdField;
+            private Map<String, ColDef<? super C, ?>> detailColDefs;
+            private SingularAttribute<? super C, P> detailMasterReferenceField;
+            private SingularAttribute<? super C, P_ID> detailMasterIdField;
             private TriFunction<CriteriaBuilder, Root<C>, Map<String, Object>, Predicate> createMasterRowPredicate;
             private BiFunction<CriteriaBuilder, Root<C>, Predicate> alwaysAppliedDetailPredicate;
             
@@ -3628,31 +3629,31 @@ public class QueryBuilder<E, E_ID, D> {
 
             @SafeVarargs
             @NonNull
-            public final Builder<P, P_ID, C> detailColDefs(@NonNull ColDef<C, ?>... colDefs) {
+            public final Builder<P, P_ID, C> detailColDefs(@NonNull ColDef<? super C, ?>... colDefs) {
                 this.detailColDefs = new HashMap<>(colDefs.length);
-                for (ColDef<C, ?> colDef : colDefs) {
+                for (ColDef<? super C, ?> colDef : colDefs) {
                     this.detailColDefs.put(colDef.getFieldName(), colDef);
                 }
                 return this;
             }
 
             @NonNull
-            public Builder<P, P_ID, C> detailColDefs(@NonNull Collection<ColDef<C, ?>> colDefs) {
+            public Builder<P, P_ID, C> detailColDefs(@NonNull Collection<? extends ColDef<? super C, ?>> colDefs) {
                 this.detailColDefs = new HashMap<>(colDefs.size());
-                for (ColDef<C, ?> colDef : colDefs) {
+                for (ColDef<? super C, ?> colDef : colDefs) {
                     this.detailColDefs.put(colDef.getFieldName(), colDef);
                 }
                 return this;
             }
 
             @NonNull
-            public Builder<P, P_ID, C> detailMasterReferenceField(@NonNull SingularAttribute<C, P> detailMasterReferenceField) {
+            public Builder<P, P_ID, C> detailMasterReferenceField(@NonNull SingularAttribute<? super C, P> detailMasterReferenceField) {
                 this.detailMasterReferenceField = detailMasterReferenceField;
                 return this;
             }
 
             @NonNull
-            public Builder<P, P_ID, C>  detailMasterIdField(@NonNull SingularAttribute<C, P_ID> detailMasterIdField) {
+            public Builder<P, P_ID, C>  detailMasterIdField(@NonNull SingularAttribute<? super C, P_ID> detailMasterIdField) {
                 this.detailMasterIdField = detailMasterIdField;
                 return this;
             }

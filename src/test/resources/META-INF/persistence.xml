@@ -10,6 +10,8 @@
     <class>io.github.smolcan.aggrid.jpa.adapter.test.entity.Product</class>
     <class>io.github.smolcan.aggrid.jpa.adapter.test.entity.Employee</class>
     <class>io.github.smolcan.aggrid.jpa.adapter.test.entity.DateSample</class>
+    <class>io.github.smolcan.aggrid.jpa.adapter.test.entity.AuditedRecord</class>
+    <class>io.github.smolcan.aggrid.jpa.adapter.test.entity.Invoice</class>
     <exclude-unlisted-classes>true</exclude-unlisted-classes>
   </persistence-unit>
 

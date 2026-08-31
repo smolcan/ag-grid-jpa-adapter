@@ -13,7 +13,7 @@ import java.util.function.BiFunction;
  * A column backed by a database expression instead of a mapped attribute, such as {@code upper(name)}
  * or a {@code CASE}. Selecting, filtering, sorting, grouping and aggregating all work as usual.
  *
- * @param <E> the entity type the column is resolved against
+ * @param <E> the type the column is declared against, which may be a mapped superclass of the queried entity
  * @param <T> the column value type
  */
 @AllArgsConstructor
@@ -37,7 +37,7 @@ public class ComputedField<E, T> implements ColumnSource<E, T> {
      * @return the function building the expression.
      */
     @NonNull
-    private final BiFunction<CriteriaBuilder, Root<E>, Expression<T>> expressionFunction;
+    private final BiFunction<CriteriaBuilder, Root<? extends E>, Expression<T>> expressionFunction;
 
     @Override
     @NonNull
@@ -53,7 +53,7 @@ public class ComputedField<E, T> implements ColumnSource<E, T> {
 
     @Override
     @NonNull
-    public Expression<T> getExpression(@NonNull CriteriaBuilder cb, @NonNull Root<E> root) {
+    public Expression<T> getExpression(@NonNull CriteriaBuilder cb, @NonNull Root<? extends E> root) {
         return this.expressionFunction.apply(cb, root);
     }
 }

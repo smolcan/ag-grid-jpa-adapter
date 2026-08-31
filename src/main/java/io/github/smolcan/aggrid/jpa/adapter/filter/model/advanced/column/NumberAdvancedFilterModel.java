@@ -24,13 +24,13 @@ public class NumberAdvancedFilterModel<E, T extends Number> extends ColumnAdvanc
     @NonNull
     private NumberFilterParams filterParams = NumberFilterParams.builder().build();
     
-    public NumberAdvancedFilterModel(@NonNull ColumnSource<E, T> columnField) {
+    public NumberAdvancedFilterModel(@NonNull ColumnSource<? super E, T> columnField) {
         super("number", columnField);
     }
     
     @Override
     @NonNull
-    public Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<E> root) {
+    public Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<? extends E> root) {
         Predicate predicate;
 
         // ensuring number compatibility
