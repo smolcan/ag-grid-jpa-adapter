@@ -88,6 +88,51 @@ class DateFilterTest extends ScenarioTestBase {
         assertThat(tradeIds(result)).containsExactly(1L, 2L, 12L);
     }
 
+    // Since grid v36 the date filter model omits the time part unless cellDataType is
+    // dateTime/dateTimeString, so "2024-05-05" arrives where "2024-05-05 00:00:00" used to.
+
+    @Test
+    void equalsAcceptsDateOnlyValue() {
+        LoadSuccessParams result = rows(Map.of("tradeDate", dateFilter("equals", "2024-05-05")));
+        assertThat(tradeIds(result)).containsExactly(5L);
+    }
+
+    @Test
+    void lessThanAcceptsDateOnlyValue() {
+        LoadSuccessParams result = rows(Map.of("tradeDate", dateFilter("lessThan", "2024-04-01")));
+        assertThat(tradeIds(result)).containsExactly(1L, 2L, 3L);
+    }
+
+    @Test
+    void inRangeAcceptsDateOnlyValues() {
+        LoadSuccessParams result = rows(Map.of("tradeDate", dateRangeFilter("2024-02-01", "2024-05-05")));
+        assertThat(tradeIds(result)).containsExactly(2L, 3L, 4L);
+    }
+
+    @Test
+    void dateOnlyValueOnDateTimeColumnMeansMidnight() {
+        LoadSuccessParams result = rows(Map.of("submittedAt", dateFilter("lessThan", "2024-02-15")));
+        // midnight on Feb 15, so the 10:30 trade (2) stays out
+        assertThat(tradeIds(result)).containsExactly(1L);
+    }
+
+    @Test
+    void isoSeparatorValueIsAccepted() {
+        // useIsoSeparator: true puts a 'T' between the date and the time
+        LoadSuccessParams result = rows(Map.of("tradeDate", dateFilter("equals", "2024-05-05T00:00:00")));
+        assertThat(tradeIds(result)).containsExactly(5L);
+    }
+
+    @Test
+    void combinedConditionsMayMixDateOnlyAndDateTimeValues() {
+        LoadSuccessParams result = rows(Map.of(
+                "tradeDate", combined("OR",
+                        dateFilter("lessThan", "2024-03-01"),
+                        dateFilter("greaterThan", "2025-03-31 00:00:00"))
+        ));
+        assertThat(tradeIds(result)).containsExactly(1L, 2L, 12L);
+    }
+
     @Test
     void minValidYearRejectsAncientDates() {
         // DateFilterParams defaults minValidYear to 1000

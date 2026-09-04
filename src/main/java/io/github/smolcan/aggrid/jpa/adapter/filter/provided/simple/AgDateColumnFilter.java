@@ -11,6 +11,8 @@ import lombok.NonNull;
 import java.sql.Timestamp;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.ChronoField;
 import java.time.temporal.WeekFields;
 import java.util.Locale;
 import java.util.Map;
@@ -19,6 +21,15 @@ import java.util.Optional;
 
 @SuppressWarnings("java:S119")
 public abstract class AgDateColumnFilter<DT extends Comparable<? super DT>> extends SimpleFilter<DT, DateFilterModel, DateFilterParams> {
+    
+    private static final DateTimeFormatter FILTER_MODEL_DATE_FORMATTER = new DateTimeFormatterBuilder()
+            .appendPattern("yyyy-MM-dd")
+            .optionalStart().appendLiteral(' ').appendPattern("HH:mm:ss").optionalEnd()
+            .optionalStart().appendLiteral('T').appendPattern("HH:mm:ss").optionalEnd()
+            .parseDefaulting(ChronoField.HOUR_OF_DAY, 0)
+            .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
+            .parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0)
+            .toFormatter();
 
     @NonNull
     public static AgLocalDateColumnFilter forLocalDate() {
@@ -63,12 +74,10 @@ public abstract class AgDateColumnFilter<DT extends Comparable<? super DT>> exte
     @Override
     @NonNull
     public DateFilterModel recognizeFilterModel(@NonNull Map<String, Object> filterModel) {
-        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        
         DateFilterModel dateFilterModel = new DateFilterModel();
         dateFilterModel.setType(SimpleFilterModelType.valueOf(filterModel.get("type").toString()));
-        dateFilterModel.setDateFrom(Optional.ofNullable(filterModel.get("dateFrom")).map(Object::toString).map(d -> LocalDateTime.parse(d, dateTimeFormatter)).orElse(null));
-        dateFilterModel.setDateTo(Optional.ofNullable(filterModel.get("dateTo")).map(Object::toString).map(d -> LocalDateTime.parse(d, dateTimeFormatter)).orElse(null));
+        dateFilterModel.setDateFrom(Optional.ofNullable(filterModel.get("dateFrom")).map(Object::toString).map(d -> LocalDateTime.parse(d, FILTER_MODEL_DATE_FORMATTER)).orElse(null));
+        dateFilterModel.setDateTo(Optional.ofNullable(filterModel.get("dateTo")).map(Object::toString).map(d -> LocalDateTime.parse(d, FILTER_MODEL_DATE_FORMATTER)).orElse(null));
 
         return dateFilterModel;
     }
