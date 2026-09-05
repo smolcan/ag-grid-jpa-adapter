@@ -70,6 +70,16 @@ Date filter model is represented by [DateFilterModel](https://github.com/smolcan
 
 If more than one Filter Condition is set, then multiple instances of the model are created and wrapped inside a Combined Model ([`CombinedSimpleModel<DateFilterModel>`](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/model/simple/CombinedSimpleModel.java)).
 
+:::info
+`dateFrom` and `dateTo` are accepted in these formats:
+
+| Format | Example |
+| :--- | :--- |
+| `yyyy-MM-dd HH:mm:ss` | `2024-05-05 13:45:00` |
+| `yyyy-MM-dd'T'HH:mm:ss` | `2024-05-05T13:45:00` |
+| `yyyy-MM-dd` | `2024-05-05` |
+:::
+
 
 ## Grid using Server Side Date Filter
 
