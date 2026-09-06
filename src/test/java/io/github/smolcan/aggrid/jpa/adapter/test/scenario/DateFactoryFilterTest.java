@@ -1,6 +1,7 @@
 package io.github.smolcan.aggrid.jpa.adapter.test.scenario;
 
 import io.github.smolcan.aggrid.jpa.adapter.column.ColDef;
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.DateFilterParams;
 import io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple.AgDateColumnFilter;
 import io.github.smolcan.aggrid.jpa.adapter.query.QueryBuilder;
 import io.github.smolcan.aggrid.jpa.adapter.request.ServerSideGetRowsRequest;
@@ -31,6 +32,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class DateFactoryFilterTest extends ScenarioTestBase {
 
     private static final ZoneId ZONE = ZoneId.of("Europe/Bratislava");
+    // the zone now travels on the filter params instead of the factory; immutable, so one instance is shared
+    private static final DateFilterParams ZONED_PARAMS = DateFilterParams.builder().zoneId(ZONE).build();
     private static final LocalDateTime BASE = LocalDateTime.of(2024, 3, 10, 10, 0, 0);
 
     @BeforeAll
@@ -59,11 +62,11 @@ class DateFactoryFilterTest extends ScenarioTestBase {
         return QueryBuilder.builder(DateSample.class, DateSample_.sampleId, entityManager)
                 .colDefs(
                         ColDef.builder(DateSample_.sampleId).build(),
-                        ColDef.builder(DateSample_.instantValue).filter(AgDateColumnFilter.forInstant(ZONE)).build(),
-                        ColDef.builder(DateSample_.offsetDateTimeValue).filter(AgDateColumnFilter.forOffsetDateTime(ZONE)).build(),
-                        ColDef.builder(DateSample_.zonedDateTimeValue).filter(AgDateColumnFilter.forZonedDateTime(ZONE)).build(),
-                        ColDef.builder(DateSample_.utilDateValue).filter(AgDateColumnFilter.forUtilDate(ZONE)).build(),
-                        ColDef.builder(DateSample_.timestampValue).filter(AgDateColumnFilter.forTimestamp(ZONE)).build(),
+                        ColDef.builder(DateSample_.instantValue).filter(AgDateColumnFilter.forInstant().filterParams(ZONED_PARAMS)).build(),
+                        ColDef.builder(DateSample_.offsetDateTimeValue).filter(AgDateColumnFilter.forOffsetDateTime().filterParams(ZONED_PARAMS)).build(),
+                        ColDef.builder(DateSample_.zonedDateTimeValue).filter(AgDateColumnFilter.forZonedDateTime().filterParams(ZONED_PARAMS)).build(),
+                        ColDef.builder(DateSample_.utilDateValue).filter(AgDateColumnFilter.forUtilDate().filterParams(ZONED_PARAMS)).build(),
+                        ColDef.builder(DateSample_.timestampValue).filter(AgDateColumnFilter.forTimestamp().filterParams(ZONED_PARAMS)).build(),
                         ColDef.builder(DateSample_.sqlDateValue).filter(AgDateColumnFilter.forSqlDate()).build()
                 )
                 .build();

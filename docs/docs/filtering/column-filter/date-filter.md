@@ -20,11 +20,11 @@ var colDef = ColDef.builder(Trade_.birthDate)
 | :--- | :--- |
 | `java.time.LocalDate` | `AgDateColumnFilter.forLocalDate()` |
 | `java.time.LocalDateTime` | `AgDateColumnFilter.forLocalDateTime()` |
-| `java.time.Instant` | `AgDateColumnFilter.forInstant(zoneId)` |
-| `java.time.OffsetDateTime` | `AgDateColumnFilter.forOffsetDateTime(zoneId)` |
-| `java.time.ZonedDateTime` | `AgDateColumnFilter.forZonedDateTime(zoneId)` |
-| `java.util.Date` | `AgDateColumnFilter.forUtilDate(zoneId)` |
-| `java.sql.Timestamp` | `AgDateColumnFilter.forTimestamp(zoneId)` |
+| `java.time.Instant` | `AgDateColumnFilter.forInstant()` |
+| `java.time.OffsetDateTime` | `AgDateColumnFilter.forOffsetDateTime()` |
+| `java.time.ZonedDateTime` | `AgDateColumnFilter.forZonedDateTime()` |
+| `java.util.Date` | `AgDateColumnFilter.forUtilDate()` |
+| `java.sql.Timestamp` | `AgDateColumnFilter.forTimestamp()` |
 | `java.sql.Date` | `AgDateColumnFilter.forSqlDate()` |
 
 
@@ -43,6 +43,7 @@ Date Filters are configured though the filter params ([DateFilterParams](https:/
 | **`maxValidYear`**         | `Integer`   | -       | This is the maximum year that may be entered in a date field for the value to be considered valid.                                    |
 | **`minValidDate`**         | `LocalDate` | -       | The minimum valid date that can be entered in the filter. If set, this will override `minValidYear` - the minimum valid year setting.                                                                            |
 | **`minValidYear`**         | `Integer`   | `1000`    | This is the minimum year that may be entered in a date field for the value to be considered valid.                                                             |
+| **`zoneId`**         | `ZoneId`   | `UTC`    | The zone the filter values are interpreted in. Used to convert to zoned column types (`Instant`, `OffsetDateTime`, `ZonedDateTime`, `java.util.Date`, `Timestamp`) and to resolve "now" for the relative date options. |
 
 Example of using filter parameters.
 ```java

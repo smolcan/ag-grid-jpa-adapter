@@ -11,6 +11,9 @@ import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade_;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
+import lombok.Getter;
+import lombok.NonNull;
+import lombok.Setter;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -23,18 +26,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class CustomFilterTest extends ScenarioTestBase {
 
+    @Setter
+    @Getter
     static class CustomNumberFilterModel implements IFilterModel {
         private String value;
 
-        public String getValue() {
-            return value;
-        }
-
-        public void setValue(String value) {
-            this.value = value;
-        }
     }
 
+    @Getter
     static class CustomNumberFilterParams implements IFilterParams {
         private final boolean includeNullValues;
 
@@ -42,9 +41,6 @@ class CustomFilterTest extends ScenarioTestBase {
             this.includeNullValues = includeNullValues;
         }
 
-        public boolean isIncludeNullValues() {
-            return includeNullValues;
-        }
     }
 
     static class CustomNumberFilter<T extends Number> extends IFilter<T, CustomNumberFilterModel, CustomNumberFilterParams> {
@@ -57,12 +53,12 @@ class CustomFilterTest extends ScenarioTestBase {
         }
 
         @Override
-        public CustomNumberFilterParams getDefaultFilterParams() {
+        public @NonNull CustomNumberFilterParams getDefaultFilterParams() {
             return new CustomNumberFilterParams(false);
         }
 
         @Override
-        protected Predicate toPredicate(CriteriaBuilder cb, Expression<T> expression, CustomNumberFilterModel model) {
+        protected @NonNull Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Expression<T> expression, CustomNumberFilterModel model) {
             String value = model.getValue();
             if (value == null || value.equalsIgnoreCase("All")) {
                 return cb.and();

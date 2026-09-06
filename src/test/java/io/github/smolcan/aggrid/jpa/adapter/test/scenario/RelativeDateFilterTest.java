@@ -14,21 +14,23 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The relative date options resolve against LocalDateTime.now() inside the adapter,
- * so this class seeds extra trades at offsets relative to today. The day-based options
- * below are deterministic for any run date, and the standard dataset (2024/2025 dates)
- * stays outside every tested window. Week/month/quarter/year options need anchors tied
- * to calendar boundaries and live in {@link CalendarRelativeDateFilterTest}.
+ * The relative date options resolve against the zone in the date filter params, which defaults
+ * to UTC, so this class seeds extra trades at offsets relative to today in UTC. Anchoring to the
+ * JVM's default zone instead would make these fail whenever the local date differs from the UTC one.
+ * The day-based options below are deterministic for any run date, and the standard dataset
+ * (2024/2025 dates) stays outside every tested window. Week/month/quarter/year options need anchors
+ * tied to calendar boundaries and live in {@link CalendarRelativeDateFilterTest}.
  */
 class RelativeDateFilterTest extends ScenarioTestBase {
 
-    private static final LocalDate TODAY = LocalDate.now();
+    private static final LocalDate TODAY = LocalDate.now(ZoneOffset.UTC);
 
     @BeforeAll
     static void seedRelativeTrades() {

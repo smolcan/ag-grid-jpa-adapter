@@ -7,6 +7,8 @@ import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.*;
 
 @Getter
@@ -35,6 +37,12 @@ public class DateFilterParams extends ScalarFilterParams {
      * @return the minimum valid year.
      */
     private final Integer minValidYear;
+    /**
+     * @param zoneId.
+     * @return zone id.
+     */
+    @NonNull
+    private final ZoneId zoneId;
 
     public void validateDate(LocalDateTime dateTime) {
         if (dateTime == null) {
@@ -76,6 +84,7 @@ public class DateFilterParams extends ScalarFilterParams {
         // Hand-declared so Lombok keeps these defaults (ColDef-style) instead of using @Builder.Default.
         private Set<SimpleFilterModelType> filterOptions = Collections.emptySet();
         private Integer minValidYear = 1000;
+        private ZoneId zoneId = ZoneOffset.UTC;
 
         @NonNull
         public B filterOptions(@NonNull SimpleFilterModelType... type) {
@@ -86,6 +95,12 @@ public class DateFilterParams extends ScalarFilterParams {
         @NonNull
         public B filterOptions(@NonNull Collection<SimpleFilterModelType> type) {
             this.filterOptions = new HashSet<>(type);
+            return self();
+        }
+        
+        @NonNull
+        public B zoneId(@NonNull ZoneId zoneId) {
+            this.zoneId = zoneId;
             return self();
         }
     }

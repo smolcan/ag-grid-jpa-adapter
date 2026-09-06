@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.temporal.IsoFields;
 import java.util.List;
 import java.util.Map;
@@ -21,8 +22,9 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The week/month/quarter/year relative options resolve against {@code LocalDateTime.now()} inside the
- * adapter, so their windows move with the run date. Each row seeded here sits inside exactly one window
+ * The week/month/quarter/year relative options resolve against the zone in the date filter params,
+ * which defaults to UTC, so their windows move with the run date and are anchored here to today in UTC.
+ * Each row seeded here sits inside exactly one window
  * <em>by construction</em> (the first day of a period, or a whole period away from today), which makes
  * the assertions hold on any run date without re-deriving the adapter's boundary arithmetic. They assert
  * containment rather than exact result sets, because the standard 2024/2025 dataset drifts in and out of
@@ -30,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class CalendarRelativeDateFilterTest extends ScenarioTestBase {
 
-    private static final LocalDate TODAY = LocalDate.now();
+    private static final LocalDate TODAY = LocalDate.now(ZoneOffset.UTC);
     private static final LocalDate FIRST_OF_MONTH = TODAY.withDayOfMonth(1);
     // quarter start taken from IsoFields rather than recomputed the way the adapter does
     private static final LocalDate FIRST_OF_QUARTER = TODAY
