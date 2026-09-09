@@ -37,6 +37,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.cartesianProduct;
 
@@ -70,6 +71,7 @@ import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.cartesianProduct;
 public class QueryBuilder<E, E_ID, D> {
     protected static final DateTimeFormatter DATE_FORMATTER_FOR_DATE_ADVANCED_FILTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     protected static final String AUTO_GROUP_COLUMN_NAME = "ag-Grid-AutoColumn";
+    protected static final int DEFAULT_STREAM_CHUNK_SIZE = 1000;
 
     protected final Class<E> entityClass;
     protected final SingularAttribute<? super E, E_ID> primaryField;
@@ -87,6 +89,7 @@ public class QueryBuilder<E, E_ID, D> {
     protected final boolean getChildCount;
     protected final String getChildCountFieldName;
     protected final boolean includeRowCountInLoadSuccessParams;
+    protected final int streamChunkSize;
     
     protected final boolean isQuickFilterPresent;
     protected final Function<String, List<String>> quickFilterParser;
@@ -143,6 +146,7 @@ public class QueryBuilder<E, E_ID, D> {
         this.getChildCount = builder.getChildCount;
         this.getChildCountFieldName = builder.getChildCountFieldName;
         this.includeRowCountInLoadSuccessParams = builder.includeRowCountInLoadSuccessParams;
+        this.streamChunkSize = builder.streamChunkSize;
         this.isQuickFilterPresent = builder.isQuickFilterPresent;
         this.quickFilterParser = builder.quickFilterParser;
         this.quickFilterMatcher = builder.quickFilterMatcher;
@@ -322,6 +326,133 @@ public class QueryBuilder<E, E_ID, D> {
         }
     }
     
+    /**
+     * Streams every row the request matches, in chunks of the configured {@code streamChunkSize}.
+     *
+     * @param request the AG Grid server-side request the rows are exported for.
+     * @return a lazy stream over the matching rows.
+     * @see #streamRows(ServerSideGetRowsRequest, int)
+     */
+    @NonNull
+    public Stream<Map<String, Object>> streamRows(@NonNull ServerSideGetRowsRequest request) {
+        return this.streamRows(request, this.streamChunkSize);
+    }
+
+    /**
+     * Streams every row the request matches, in chunks of the received {@code chunkSize}.
+     *
+     * @param request the AG Grid server-side request the rows are exported for.
+     * @param chunkSize the number of rows read per query.
+     * @return a lazy stream over the matching rows.
+     */
+    @NonNull
+    public Stream<Map<String, Object>> streamRows(@NonNull ServerSideGetRowsRequest request, int chunkSize) {
+        if (chunkSize <= 0) {
+            throw new IllegalArgumentException("Chunk size must be greater than 0, was " + chunkSize);
+        }
+        this.validateRequest(request);
+
+        Iterator<Map<String, Object>> rows = new Iterator<>() {
+            private List<Map<String, Object>> chunk = List.of();
+            private int indexInChunk;
+            private int offset;
+            private boolean lastChunkRead;
+
+            @Override
+            public boolean hasNext() {
+                if (this.indexInChunk == this.chunk.size() && !this.lastChunkRead) {
+                    this.chunk = streamRowsChunk(request, this.offset, chunkSize);
+                    this.indexInChunk = 0;
+                    this.offset += chunkSize;
+                    // a chunk that came back short is the last one, no need to ask for another
+                    this.lastChunkRead = this.chunk.size() < chunkSize;
+                }
+                return this.indexInChunk < this.chunk.size();
+            }
+
+            @Override
+            public Map<String, Object> next() {
+                if (!this.hasNext()) {
+                    throw new NoSuchElementException();
+                }
+                return this.chunk.get(this.indexInChunk++);
+            }
+        };
+
+        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(rows, Spliterator.ORDERED | Spliterator.NONNULL), false);
+    }
+
+    /**
+     * Reads one chunk of a {@link #streamRows(ServerSideGetRowsRequest, int)} run
+     * 
+     * @param request the server-side request parameters from the grid
+     * @param offset the number of rows to skip
+     * @param chunkSize the number of rows to read
+     * @return the row data of the chunk
+     */
+    @NonNull
+    protected List<Map<String, Object>> streamRowsChunk(@NonNull ServerSideGetRowsRequest request, int offset, int chunkSize) {
+        CriteriaBuilder cb = this.entityManager.getCriteriaBuilder();
+        CriteriaQuery<Tuple> query = cb.createTupleQuery();
+        Root<E> root = query.from(this.entityClass);
+        // record all the context we put into query
+        QueryContext<E> queryContext = new QueryContext<>(cb, query, root);
+
+        this.select(queryContext, request);
+        this.where(queryContext, request);
+        this.groupBy(queryContext, request);
+        this.having(queryContext, request);
+        this.orderBy(queryContext, request);
+        this.orderByStreamTiebreaker(queryContext);
+        queryContext.setFirstResult(offset);
+        queryContext.setMaxResults(chunkSize);
+
+        List<Map<String, Object>> rowData = this.tupleToMap(this.apply(query, queryContext));
+        if (this.masterDetail && !this.masterDetailLazy) {
+            this.attachDetailRowDataToMasters(rowData);
+        }
+        return rowData;
+    }
+
+    /**
+     * Makes the order of a {@link #streamRows(ServerSideGetRowsRequest, int)} query a total one, so that
+     * paging the chunks by offset cannot repeat or skip rows tied on the sort model: appends the primary
+     * key, or the group columns when the rows are grouped.
+     *
+     * @param queryContext the current query state container
+     */
+    protected void orderByStreamTiebreaker(@NonNull QueryContext<E> queryContext) {
+        CriteriaBuilder cb = queryContext.getCriteriaBuilder();
+        List<OrderMetadata> orders = new ArrayList<>(queryContext.getOrders());
+        Set<String> orderedColumns = orders.stream().map(OrderMetadata::getColId).collect(Collectors.toSet());
+
+        if (queryContext.getGrouping().isEmpty()) {
+            // rows are unique by primary key
+            if (orderedColumns.add(this.primaryField.getName())) {
+                orders.add(
+                        OrderMetadata.builder()
+                                .order(cb.asc(queryContext.getRoot().get(this.primaryField)))
+                                .colId(this.primaryField.getName())
+                                .build()
+                );
+            }
+        } else {
+            // grouped rows are unique by their group key
+            for (GroupingMetadata grouping : queryContext.getGrouping()) {
+                if (orderedColumns.add(grouping.getColumn())) {
+                    orders.add(
+                            OrderMetadata.builder()
+                                    .order(cb.asc(grouping.getGropingExpression()))
+                                    .colId(grouping.getColumn())
+                                    .build()
+                    );
+                }
+            }
+        }
+
+        queryContext.setOrders(orders);
+    }
+
     /**
      * Computes aggregated values across all rows matching the request filters,
      * intended to populate the grid's grand total row.
@@ -3187,6 +3318,7 @@ public class QueryBuilder<E, E_ID, D> {
         protected boolean getChildCount;
         protected String getChildCountFieldName;
         protected boolean includeRowCountInLoadSuccessParams;
+        protected int streamChunkSize = DEFAULT_STREAM_CHUNK_SIZE;
 
         protected boolean isQuickFilterPresent;
         protected Function<String, List<String>> quickFilterParser = DEFAULT_QUICK_FILTER_PARSER;
@@ -3365,6 +3497,15 @@ public class QueryBuilder<E, E_ID, D> {
         @NonNull
         public Builder<E, E_ID, D> includeRowCountInLoadSuccessParams(boolean includeRowCountInLoadSuccessParams) {
             this.includeRowCountInLoadSuccessParams = includeRowCountInLoadSuccessParams;
+            return this;
+        }
+
+        @NonNull
+        public Builder<E, E_ID, D> streamChunkSize(int streamChunkSize) {
+            if (streamChunkSize < 1) {
+                throw new IllegalArgumentException("streamChunkSize must be at least 1, was " + streamChunkSize);
+            }
+            this.streamChunkSize = streamChunkSize;
             return this;
         }
         
