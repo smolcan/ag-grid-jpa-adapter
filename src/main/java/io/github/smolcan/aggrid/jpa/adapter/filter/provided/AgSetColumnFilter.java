@@ -64,7 +64,7 @@ public abstract class AgSetColumnFilter<T> extends IProvidedFilter<T, SetFilterM
 
     @Override
     @NonNull
-    protected Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Expression<T> expression, @NonNull SetFilterModel filterModel) {
+    public Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Expression<T> expression, @NonNull SetFilterModel filterModel) {
         if (filterModel.getValues().isEmpty()) {
             // empty values, FALSE predicate
             return cb.disjunction();

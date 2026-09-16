@@ -28,9 +28,11 @@ If a column does not have a filter set in `ColDef`, attempting to apply an Advan
 - **Date & DateString Filters** → [DateFilterParams](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/model/simple/params/DateFilterParams.java)
 - **Number Filters** → [NumberFilterParams](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/model/simple/params/NumberFilterParams.java)
 - **Boolean Filters** → No filter parameters
+- **Set Filters** → [SetFilterParams](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/src/main/java/io/github/smolcan/aggrid/jpa/adapter/filter/model/simple/params/SetFilterParams.java)
 
 ## Grid using Server Side Advanced Filter
 
+- `Product` uses a set filter
 - Source code for this grid available [here](https://github.com/smolcan/ag-grid-jpa-adapter/blob/main/docs/docs/filtering/advanced-filter/advanced-filter-grid.tsx)
 - Backend source code available [here](https://github.com/smolcan/ag-grid-jpa-adapter-docs-backend/blob/main/src/main/java/io/github/smolcan/ag_grid_jpa_adapter_docs_backend/service/docs/AdvancedFilterService.java)
 
@@ -39,7 +41,7 @@ import ShowSqlMonitor from './../../show-sql-monitor';
 import AdvancedFilterGrid from './advanced-filter-grid';
 import LazyGrid from '../../lazy-grid';
 
-<ShowSqlMonitor serviceUrls={['/docs/filtering/advanced-filter/getRows']}>
+<ShowSqlMonitor serviceUrls={['/docs/filtering/advanced-filter/getRows', '/docs/filtering/advanced-filter/supplySetFilterValues']}>
 <LazyGrid>
 <AdvancedFilterGrid></AdvancedFilterGrid>
 </LazyGrid>

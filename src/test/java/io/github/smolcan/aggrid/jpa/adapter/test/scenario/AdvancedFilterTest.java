@@ -5,6 +5,7 @@ import io.github.smolcan.aggrid.jpa.adapter.column.FieldPath;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.SimpleFilterModelType;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.DateFilterParams;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.NumberFilterParams;
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.SetFilterParams;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextFilterParams;
 import io.github.smolcan.aggrid.jpa.adapter.filter.provided.AgSetColumnFilter;
 import io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple.AgDateColumnFilter;
@@ -13,12 +14,18 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple.AgTextColumnF
 import io.github.smolcan.aggrid.jpa.adapter.query.QueryBuilder;
 import io.github.smolcan.aggrid.jpa.adapter.request.ServerSideGetRowsRequest;
 import io.github.smolcan.aggrid.jpa.adapter.response.LoadSuccessParams;
+import io.github.smolcan.aggrid.jpa.adapter.test.entity.DealType;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Product_;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade_;
+import io.github.smolcan.aggrid.jpa.adapter.test.infrastructure.TradeTestData;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Expression;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -374,6 +381,142 @@ class AdvancedFilterTest extends ScenarioTestBase {
 
         request.setFilterModel(column("text", "portfolio", "startsWith", "del"));
         assertThat(tradeIds(queryBuilder.getRows(request))).containsExactly(9L, 10L);
+    }
+
+    private static Map<String, Object> set(String colId, String type, String... values) {
+        Map<String, Object> model = new HashMap<>();
+        model.put("filterType", "set");
+        model.put("colId", colId);
+        model.put("type", type);
+        model.put("values", Arrays.asList(values));
+        return model;
+    }
+
+    private List<Long> setRows(Map<String, Object> filterModel) {
+        return setRows(SetFilterParams.builder().build(), filterModel);
+    }
+
+    private List<Long> setRows(SetFilterParams portfolioParams, Map<String, Object> filterModel) {
+        QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
+                .colDefs(
+                        ColDef.builder(Trade_.tradeId).build(),
+                        ColDef.builder(Trade_.portfolio).filter(AgSetColumnFilter.forString().filterParams(portfolioParams)).build(),
+                        ColDef.builder(Trade_.submitterId).filter(AgSetColumnFilter.forNumber()).build(),
+                        ColDef.builder(Trade_.tradeDate).filter(AgSetColumnFilter.forDate()).build(),
+                        ColDef.builder(Trade_.sold).filter(AgSetColumnFilter.forBoolean()).build(),
+                        ColDef.builder(Trade_.dealType).filter(AgSetColumnFilter.forEnum(DealType.class)).build(),
+                        ColDef.builder(Trade_.externalId).filter(AgSetColumnFilter.forUUID()).build()
+                )
+                .enableAdvancedFilter(true)
+                .build();
+
+        ServerSideGetRowsRequest request = sortedByIdRequest(0, 100);
+        request.setFilterModel(filterModel);
+        return tradeIds(queryBuilder.getRows(request));
+    }
+
+    @Test
+    void setMatchesCaseInsensitivelyByDefault() {
+        assertThat(setRows(set("portfolio", "isAnyOf", "alpha", "delta")))
+                .containsExactly(1L, 2L, 3L, 9L, 10L);
+        assertThat(setRows(set("portfolio", "isNoneOf", "alpha", "delta")))
+                .containsExactly(4L, 5L, 6L, 7L, 8L, 11L, 12L);
+    }
+
+    @Test
+    void setCaseSensitiveParam() {
+        SetFilterParams caseSensitive = SetFilterParams.builder().caseSensitive(true).build();
+        assertThat(setRows(caseSensitive, set("portfolio", "isAnyOf", "alpha")))
+                .containsExactly(3L);
+        assertThat(setRows(caseSensitive, set("portfolio", "isNoneOf", "alpha")))
+                .containsExactly(1L, 2L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L, 12L);
+    }
+
+    @Test
+    void setIsAnyOfWithBlank() {
+        // submitterId is null on 5
+        assertThat(setRows(set("submitterId", "isAnyOf", "101", null)))
+                .containsExactly(1L, 5L);
+        assertThat(setRows(set("submitterId", "isAnyOf", (String) null)))
+                .containsExactly(5L);
+    }
+
+    @Test
+    void setIsNoneOfKeepsBlanksUnlessBlankIsSelected() {
+        assertThat(setRows(set("submitterId", "isNoneOf", "101", "102")))
+                .containsExactly(3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L, 12L);
+        assertThat(setRows(set("submitterId", "isNoneOf", "101", "102", null)))
+                .containsExactly(3L, 4L, 6L, 7L, 8L, 9L, 10L, 11L, 12L);
+        assertThat(setRows(set("submitterId", "isNoneOf", (String) null)))
+                .containsExactly(1L, 2L, 3L, 4L, 6L, 7L, 8L, 9L, 10L, 11L, 12L);
+    }
+
+    @Test
+    void setEmptySelection() {
+        assertThat(setRows(set("portfolio", "isAnyOf"))).isEmpty();
+        assertThat(setRows(set("portfolio", "isNoneOf"))).hasSize(TradeTestData.TRADE_COUNT);
+    }
+
+    @Test
+    void setParsesValuesWithTheColumnsSetFilter() {
+        assertThat(setRows(set("tradeDate", "isAnyOf", "2024-01-10", "2025-04-18")))
+                .containsExactly(1L, 12L);
+        // sold is null on 8 and 12
+        assertThat(setRows(set("sold", "isNoneOf", "true")))
+                .containsExactly(4L, 5L, 6L, 7L, 8L, 11L, 12L);
+        assertThat(setRows(set("dealType", "isNoneOf", "BUY", "SELL")))
+                .containsExactly(4L, 7L, 11L);
+        // externalId is null on 10
+        assertThat(setRows(set("externalId", "isNoneOf", TradeTestData.externalId(1).toString())))
+                .containsExactly(2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L, 12L);
+    }
+
+    @Test
+    void setWorksWithCustomSetFilter() {
+        // keys arrive prefixed and compare upper-cased, only this filter knows both
+        AgSetColumnFilter<String> customSetFilter = new AgSetColumnFilter<>() {
+            @Override
+            protected @NotNull Expression<String> modifyColumnExpression(@NotNull CriteriaBuilder cb, @NotNull Expression<String> expression) {
+                return cb.upper(expression);
+            }
+
+            @Override
+            protected @NotNull Expression<String> parseValueToExpression(@NotNull CriteriaBuilder cb, @NotNull String value) {
+                return cb.literal(value.substring("p:".length()).toUpperCase());
+            }
+        };
+        QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
+                .colDefs(
+                        ColDef.builder(Trade_.tradeId).build(),
+                        ColDef.builder(Trade_.portfolio).filter(customSetFilter).build()
+                )
+                .enableAdvancedFilter(true)
+                .build();
+
+        ServerSideGetRowsRequest request = sortedByIdRequest(0, 100);
+        request.setFilterModel(set("portfolio", "isAnyOf", "p:gamma"));
+        assertThat(tradeIds(queryBuilder.getRows(request))).containsExactly(7L, 8L);
+
+        request.setFilterModel(set("portfolio", "isNoneOf", "p:gamma"));
+        assertThat(tradeIds(queryBuilder.getRows(request)))
+                .containsExactly(1L, 2L, 3L, 4L, 5L, 6L, 9L, 10L, 11L, 12L);
+    }
+
+    @Test
+    void setInsideJoin() {
+        LoadSuccessParams result = rows(join("AND",
+                set("sold", "isAnyOf", "false"),
+                column("number", "currentValue", "greaterThan", 100)
+        ));
+        // not sold (4, 5, 6, 7, 11) and above 100
+        assertThat(tradeIds(result)).containsExactly(5L, 6L);
+    }
+
+    @Test
+    void rejectsSetFilterOnNonSetColumn() {
+        assertThatThrownBy(() -> rows(set("portfolio", "isAnyOf", "alpha")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("non-set");
     }
 
     @Test

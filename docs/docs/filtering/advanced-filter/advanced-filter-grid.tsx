@@ -8,6 +8,7 @@ import {
     GridReadyEvent,
     IServerSideDatasource,
     ServerSideRowModelModule,
+    SetFilterModule, SetFilterParams,
     TextFilterParams,
     themeQuartz, ValidationModule
 } from 'ag-grid-enterprise';
@@ -16,7 +17,7 @@ import { ModuleRegistry } from 'ag-grid-community';
 import { CustomFilterModule } from 'ag-grid-community';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
-ModuleRegistry.registerModules([ ServerSideRowModelModule, AdvancedFilterModule, CustomFilterModule, ValidationModule, ColumnAutoSizeModule ]);
+ModuleRegistry.registerModules([ ServerSideRowModelModule, AdvancedFilterModule, SetFilterModule, CustomFilterModule, ValidationModule, ColumnAutoSizeModule ]);
 
 const AdvancedFilterGrid = () => {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -53,6 +54,32 @@ const AdvancedFilterGrid = () => {
             headerName: 'Product',
             field: 'product',
             cellDataType: 'text',
+            filter: 'agSetColumnFilter',
+            filterParams: {
+                values: params => {
+                    const field = params.colDef.field;
+                    fetch(`${API_URL}/docs/filtering/advanced-filter/supplySetFilterValues/${field}`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                    })
+                    .then(async response => {
+                        if (!response.ok) {
+                            const errorText = await response.text(); // Read plain text from Spring Boot
+                            throw new Error(errorText || `HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        params.success(data.data)
+                    })
+                    .catch(error => {
+                        console.error('Error fetching data:', error);
+                        setErrorMessage(error.message || 'Failed to fetch data');
+                    });
+                }
+            } as SetFilterParams,
         },
         {
             headerName: 'Book',

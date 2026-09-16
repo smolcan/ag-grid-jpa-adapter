@@ -8,6 +8,7 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.IFilter;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.JoinOperator;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.JoinAdvancedFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.column.*;
+import io.github.smolcan.aggrid.jpa.adapter.filter.provided.AgSetColumnFilter;
 import io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple.AgDateColumnFilter;
 import io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple.AgNumberColumnFilter;
 import io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple.AgTextColumnFilter;
@@ -2676,6 +2677,7 @@ public class QueryBuilder<E, E_ID, D> {
      *   <li>{@code number}: Number-based filter (with {@link BigDecimal} conversion)</li>
      *   <li>{@code boolean}: Boolean-based filter</li>
      *   <li>{@code object}: Generic object filter</li>
+     *   <li>{@code set}: Set filter ({@code isAnyOf} / {@code isNoneOf}), values parsed by the column's {@link AgSetColumnFilter}</li>
      *   <li>{@code join}: Composite filter that combines multiple conditions (recursive)</li>
      * </ul>
      *
@@ -2778,6 +2780,21 @@ public class QueryBuilder<E, E_ID, D> {
                         }
                     }).orElseThrow());
                     return booleanAdvancedFilterModel;
+                }
+                case "set": {
+                    if (!(columnFilter instanceof AgSetColumnFilter)) {
+                        throw new IllegalArgumentException("Can not apply set filter on non-set column");
+                    }
+
+                    ColDef<? super E, Object> setColumnField = (ColDef<? super E, Object>) columnField;
+                    AgSetColumnFilter<Object> setColumnFilter = (AgSetColumnFilter<Object>) columnFilter;
+
+                    SetAdvancedFilterModel<E, Object> setAdvancedFilterModel = new SetAdvancedFilterModel<>(setColumnField.getField(), setColumnFilter);
+                    setAdvancedFilterModel.setType(SetAdvancedFilterModelType.valueOf(filter.get("type").toString()));
+                    setAdvancedFilterModel.setValues(Optional.ofNullable((List<?>) filter.get("values"))
+                            .map(values -> values.stream().map(v -> v == null ? null : v.toString()).collect(Collectors.toList()))
+                            .orElseGet(ArrayList::new));
+                    return setAdvancedFilterModel;
                 }
                 default: throw new UnsupportedOperationException("Unsupported advanced filter type: " + filterType);
             }
