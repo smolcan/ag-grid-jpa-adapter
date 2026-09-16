@@ -49,7 +49,15 @@ class RelativeDateFilterTest extends ScenarioTestBase {
         return new Trade(id, "Relative", null, null, BigDecimal.ONE, null, tradeDate, null, null, null, null, null);
     }
 
+    /** Runs the option through both the column filter and the advanced filter, which must agree. */
     private List<Long> rows(String relativeOption) {
+        List<Long> columnFilterIds = rows(false, Map.of("tradeDate", filter(relativeOption)));
+        List<Long> advancedFilterIds = rows(true, Map.of("filterType", "date", "colId", "tradeDate", "type", relativeOption));
+        assertThat(advancedFilterIds).as("advanced filter %s", relativeOption).isEqualTo(columnFilterIds);
+        return columnFilterIds;
+    }
+
+    private List<Long> rows(boolean advancedFilter, Map<String, Object> filterModel) {
         QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
                 .colDefs(
                         ColDef.builder(Trade_.tradeId).build(),
@@ -59,10 +67,11 @@ class RelativeDateFilterTest extends ScenarioTestBase {
                                         .build()))
                                 .build()
                 )
+                .enableAdvancedFilter(advancedFilter)
                 .build();
 
         ServerSideGetRowsRequest request = sortedByIdRequest(0, 100);
-        request.setFilterModel(Map.of("tradeDate", filter(relativeOption)));
+        request.setFilterModel(filterModel);
         return tradeIds(queryBuilder.getRows(request));
     }
 

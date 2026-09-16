@@ -85,16 +85,25 @@ class CalendarRelativeDateFilterTest extends ScenarioTestBase {
         return rows(relativeOption, DateFilterParams.builder().filterOptions(SimpleFilterModelType.values()).build());
     }
 
+    /** Runs the option through both the column filter and the advanced filter, which must agree. */
     private List<Long> rows(String relativeOption, DateFilterParams params) {
+        List<Long> columnFilterIds = rows(false, Map.of("tradeDate", filter(relativeOption)), params);
+        List<Long> advancedFilterIds = rows(true, Map.of("filterType", "date", "colId", "tradeDate", "type", relativeOption), params);
+        assertThat(advancedFilterIds).as("advanced filter %s", relativeOption).isEqualTo(columnFilterIds);
+        return columnFilterIds;
+    }
+
+    private List<Long> rows(boolean advancedFilter, Map<String, Object> filterModel, DateFilterParams params) {
         QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
                 .colDefs(
                         ColDef.builder(Trade_.tradeId).build(),
                         ColDef.builder(Trade_.tradeDate).filter(AgDateColumnFilter.forLocalDate().filterParams(params)).build()
                 )
+                .enableAdvancedFilter(advancedFilter)
                 .build();
 
         ServerSideGetRowsRequest request = sortedByIdRequest(0, 100);
-        request.setFilterModel(Map.of("tradeDate", filter(relativeOption)));
+        request.setFilterModel(filterModel);
         return tradeIds(queryBuilder.getRows(request));
     }
 
