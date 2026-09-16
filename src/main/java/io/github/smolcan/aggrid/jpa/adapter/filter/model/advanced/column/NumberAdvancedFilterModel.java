@@ -13,6 +13,7 @@ import lombok.NonNull;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.util.Objects;
 
 @Getter
 @Setter
@@ -21,6 +22,7 @@ public class NumberAdvancedFilterModel<E, T extends Number> extends ColumnAdvanc
     @Setter(onMethod_ = {@NonNull})
     private ScalarAdvancedFilterModelType type;
     private BigDecimal filter;
+    private BigDecimal filterTo;
     @NonNull
     private NumberFilterParams filterParams = NumberFilterParams.builder().build();
     
@@ -83,6 +85,19 @@ public class NumberAdvancedFilterModel<E, T extends Number> extends ColumnAdvanc
             case greaterThanOrEqual: {
                 predicate = cb.ge(path, this.filter);
                 if (filterParams.isIncludeBlanksInGreaterThan()) {
+                    predicate = cb.or(predicate, cb.isNull(path));
+                }
+                break;
+            }
+            case inRange: {
+                Objects.requireNonNull(filter);
+                Objects.requireNonNull(filterTo);
+                if (filterParams.isInRangeInclusive()) {
+                    predicate = cb.and(cb.ge(path, filter), cb.le(path, filterTo));
+                } else {
+                    predicate = cb.and(cb.gt(path, filter), cb.lt(path, filterTo));
+                }
+                if (filterParams.isIncludeBlanksInRange()) {
                     predicate = cb.or(predicate, cb.isNull(path));
                 }
                 break;

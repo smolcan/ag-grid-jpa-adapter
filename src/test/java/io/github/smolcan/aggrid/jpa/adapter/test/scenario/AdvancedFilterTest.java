@@ -18,6 +18,7 @@ import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade_;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +52,12 @@ class AdvancedFilterTest extends ScenarioTestBase {
         if (filterValue != null) {
             model.put("filter", filterValue);
         }
+        return model;
+    }
+
+    private static Map<String, Object> range(String filterType, String colId, Object from, Object to) {
+        Map<String, Object> model = column(filterType, colId, "inRange", from);
+        model.put("filterTo", to);
         return model;
     }
 
@@ -273,6 +280,73 @@ class AdvancedFilterTest extends ScenarioTestBase {
                 .containsExactly(8L, 10L, 11L, 12L);
         assertThat(rowsWithColumn(tradeDateColumn(greaterThanBlanks), column("date", "tradeDate", "greaterThanOrEqual", "2025-01-01")))
                 .containsExactly(8L, 9L, 10L, 11L, 12L);
+    }
+
+    @Test
+    void numberInRangeIsExclusiveByDefault() {
+        // strictly between: only 75.25 (8)
+        assertThat(tradeIds(rows(range("number", "currentValue", 42.42, 100.00))))
+                .containsExactly(8L);
+    }
+
+    @Test
+    void numberInRangeParams() {
+        // previousValue: 60 (3), 70 (8), 90 (1), 95.5 (11); null on 2, 6, 12
+        assertThat(rowsWithColumn(
+                previousValueColumn(NumberFilterParams.builder().inRangeInclusive(true).build()),
+                range("number", "previousValue", 60, 95.5)))
+                .containsExactly(1L, 3L, 8L, 11L);
+        assertThat(rowsWithColumn(
+                previousValueColumn(NumberFilterParams.builder().includeBlanksInRange(true).build()),
+                range("number", "previousValue", 60, 95.5)))
+                .containsExactly(1L, 2L, 6L, 8L, 12L);
+    }
+
+    @Test
+    void dateInRangeIsExclusiveByDefault() {
+        // endpoints are trades 2 and 5
+        assertThat(tradeIds(rows(range("date", "tradeDate", "2024-02-15", "2024-05-05"))))
+                .containsExactly(3L, 4L);
+    }
+
+    @Test
+    void dateInRangeParams() {
+        assertThat(rowsWithColumn(
+                tradeDateColumn(DateFilterParams.builder().inRangeInclusive(true).build()),
+                range("date", "tradeDate", "2024-02-15", "2024-05-05")))
+                .containsExactly(2L, 3L, 4L, 5L);
+        // tradeDate is null on 8
+        assertThat(rowsWithColumn(
+                tradeDateColumn(DateFilterParams.builder().includeBlanksInRange(true).build()),
+                range("date", "tradeDate", "2024-02-15", "2024-05-05")))
+                .containsExactly(3L, 4L, 8L);
+    }
+
+    @Test
+    void inRangeInsideJoin() {
+        LoadSuccessParams result = rows(join("OR",
+                range("number", "currentValue", -100, 0),
+                range("dateString", "tradeDate", "2025-02-01", "2025-12-31")
+        ));
+        // negatives (3, 7) — 0.00 (4) is an excluded endpoint — or traded after Feb 1 2025 (10, 11, 12)
+        assertThat(tradeIds(result)).containsExactly(3L, 7L, 10L, 11L, 12L);
+    }
+
+    @Test
+    void inRangeRequiresFilterTo() {
+        assertThatThrownBy(() -> rows(column("number", "currentValue", "inRange", 0)))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> rows(column("date", "tradeDate", "inRange", "2024-01-01")))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void dateInRangeValidatesFilterTo() {
+        assertThatThrownBy(() -> rowsWithColumn(
+                tradeDateColumn(DateFilterParams.builder().maxValidDate(LocalDate.of(2024, 12, 31)).build()),
+                range("date", "tradeDate", "2024-01-01", "2025-06-01")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Max valid date");
     }
 
     @Test

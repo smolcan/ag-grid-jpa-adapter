@@ -13,6 +13,7 @@ import lombok.NonNull;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.util.Objects;
 
 @Getter
 @Setter
@@ -21,6 +22,7 @@ public class DateAdvancedFilterModel<E, T> extends ColumnAdvancedFilterModel<E, 
     @Setter(onMethod_ = {@NonNull})
     private ScalarAdvancedFilterModelType type;
     private LocalDate filter;
+    private LocalDate filterTo;
     @NonNull
     private DateFilterParams filterParams = DateFilterParams.builder().build();
     
@@ -32,6 +34,7 @@ public class DateAdvancedFilterModel<E, T> extends ColumnAdvancedFilterModel<E, 
     @NonNull
     public Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<? extends E> root) {
         this.filterParams.validateDate(this.filter);
+        this.filterParams.validateDate(this.filterTo);
         Predicate predicate;
         
         Expression<LocalDate> path = this.getColumnField().getExpression(cb, root).as(LocalDate.class);
@@ -82,6 +85,19 @@ public class DateAdvancedFilterModel<E, T> extends ColumnAdvancedFilterModel<E, 
             case greaterThanOrEqual: {
                 predicate = cb.greaterThanOrEqualTo(path, this.filter);
                 if (filterParams.isIncludeBlanksInGreaterThan()) {
+                    predicate = cb.or(predicate, cb.isNull(path));
+                }
+                break;
+            }
+            case inRange: {
+                Objects.requireNonNull(filter);
+                Objects.requireNonNull(filterTo);
+                if (filterParams.isInRangeInclusive()) {
+                    predicate = cb.and(cb.greaterThanOrEqualTo(path, filter), cb.lessThanOrEqualTo(path, filterTo));
+                } else {
+                    predicate = cb.and(cb.greaterThan(path, filter), cb.lessThan(path, filterTo));
+                }
+                if (filterParams.isIncludeBlanksInRange()) {
                     predicate = cb.or(predicate, cb.isNull(path));
                 }
                 break;

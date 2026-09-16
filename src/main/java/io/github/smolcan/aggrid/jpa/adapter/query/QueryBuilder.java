@@ -2741,6 +2741,7 @@ public class QueryBuilder<E, E_ID, D> {
                     DateAdvancedFilterModel<E, ?> dateAdvancedFilterModel = new DateAdvancedFilterModel<>(dateColumnField.getField());
                     dateAdvancedFilterModel.setType(ScalarAdvancedFilterModelType.valueOf(filter.get("type").toString()));
                     dateAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).map(f -> LocalDate.parse(f, DATE_FORMATTER_FOR_DATE_ADVANCED_FILTER)).orElse(null));
+                    dateAdvancedFilterModel.setFilterTo(Optional.ofNullable(filter.get("filterTo")).map(Object::toString).map(f -> LocalDate.parse(f, DATE_FORMATTER_FOR_DATE_ADVANCED_FILTER)).orElse(null));
                     if (dateColumnFilter.getFilterParams() != null) {
                         dateAdvancedFilterModel.setFilterParams(dateColumnFilter.getFilterParams());
                     }
@@ -2757,6 +2758,7 @@ public class QueryBuilder<E, E_ID, D> {
                     NumberAdvancedFilterModel<E, ?> numberAdvancedFilterModel = new NumberAdvancedFilterModel<>(numberColumnField.getField());
                     numberAdvancedFilterModel.setType(ScalarAdvancedFilterModelType.valueOf(filter.get("type").toString()));
                     numberAdvancedFilterModel.setFilter(Optional.ofNullable(filter.get("filter")).map(Object::toString).map(BigDecimal::new).orElse(null));
+                    numberAdvancedFilterModel.setFilterTo(Optional.ofNullable(filter.get("filterTo")).map(Object::toString).map(BigDecimal::new).orElse(null));
                     if (numberColumnFilter.getFilterParams() != null) {
                         numberAdvancedFilterModel.setFilterParams(numberColumnFilter.getFilterParams());
                     }

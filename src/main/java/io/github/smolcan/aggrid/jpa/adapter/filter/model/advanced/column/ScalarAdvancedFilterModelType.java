@@ -8,6 +8,7 @@ public enum ScalarAdvancedFilterModelType {
     greaterThanOrEqual,
     lessThan,
     lessThanOrEqual,
+    inRange,
     blank,
     notBlank,
     ;
