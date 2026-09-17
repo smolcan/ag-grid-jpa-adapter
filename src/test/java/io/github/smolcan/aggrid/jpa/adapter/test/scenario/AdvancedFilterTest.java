@@ -2,6 +2,7 @@ package io.github.smolcan.aggrid.jpa.adapter.test.scenario;
 
 import io.github.smolcan.aggrid.jpa.adapter.column.ColDef;
 import io.github.smolcan.aggrid.jpa.adapter.column.FieldPath;
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.ColumnAdvancedFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.SimpleFilterModelType;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.DateFilterParams;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.NumberFilterParams;
@@ -21,9 +22,12 @@ import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade_;
 import io.github.smolcan.aggrid.jpa.adapter.test.infrastructure.TradeTestData;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -517,6 +521,58 @@ class AdvancedFilterTest extends ScenarioTestBase {
         assertThatThrownBy(() -> rows(set("portfolio", "isAnyOf", "alpha")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("non-set");
+    }
+
+    /** currentValue strictly between the condition's filter and filterTo */
+    private static ColumnAdvancedFilterModel<Trade, BigDecimal> betweenExclusive(Map<String, Object> filter) {
+        BigDecimal from = new BigDecimal(filter.get("filter").toString());
+        BigDecimal to = new BigDecimal(filter.get("filterTo").toString());
+        return new ColumnAdvancedFilterModel<>("number", FieldPath.of(Trade_.currentValue)) {
+            @Override
+            public Predicate toPredicate(CriteriaBuilder cb, Root<? extends Trade> root) {
+                Expression<BigDecimal> currentValue = getColumnField().getExpression(cb, root);
+                return cb.and(cb.gt(currentValue, from), cb.lt(currentValue, to));
+            }
+        };
+    }
+
+    private LoadSuccessParams customOptionRows(Map<String, Object> filterModel) {
+        QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
+                .colDefs(
+                        ColDef.builder(Trade_.tradeId).build(),
+                        ColDef.builder(Trade_.portfolio).filter(new AgTextColumnFilter()).build(),
+                        ColDef.builder(Trade_.currentValue).filter(new AgNumberColumnFilter<>()).build()
+                )
+                .enableAdvancedFilter(true)
+                .registerCustomAdvancedFilter("betweenExclusive", AdvancedFilterTest::betweenExclusive)
+                .build();
+
+        ServerSideGetRowsRequest request = sortedByIdRequest(0, 100);
+        request.setFilterModel(filterModel);
+        return queryBuilder.getRows(request);
+    }
+
+    @Test
+    void customOptionIsFoundByType() {
+        // as ag-grid sends it: the column's data type as filterType, the option's displayKey as type
+        Map<String, Object> condition = range("number", "currentValue", 30, 300);
+        condition.put("type", "betweenExclusive");
+
+        // 42.42 (12), 75.25 (8), 100 (1, 11), 150 (9), 250.50 (2)
+        assertThat(tradeIds(customOptionRows(condition)))
+                .containsExactly(1L, 2L, 8L, 9L, 11L, 12L);
+    }
+
+    @Test
+    void customOptionInsideJoin() {
+        Map<String, Object> condition = range("number", "currentValue", 30, 300);
+        condition.put("type", "betweenExclusive");
+
+        LoadSuccessParams result = customOptionRows(join("AND",
+                condition,
+                column("text", "portfolio", "contains", "alpha")
+        ));
+        assertThat(tradeIds(result)).containsExactly(1L, 2L);
     }
 
     @Test

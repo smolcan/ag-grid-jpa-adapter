@@ -6,6 +6,7 @@ import io.github.smolcan.aggrid.jpa.adapter.exceptions.InvalidRequestException;
 import io.github.smolcan.aggrid.jpa.adapter.exceptions.OnPivotMaxColumnsExceededException;
 import io.github.smolcan.aggrid.jpa.adapter.filter.IFilter;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.JoinOperator;
+import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.ColumnAdvancedFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.JoinAdvancedFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.column.*;
 import io.github.smolcan.aggrid.jpa.adapter.filter.provided.AgSetColumnFilter;
@@ -79,6 +80,7 @@ public class QueryBuilder<E, E_ID, D> {
     protected final EntityManager entityManager;
     protected final String serverSidePivotResultFieldSeparator;
     protected final boolean enableAdvancedFilter;
+    protected final Map<String, Function<Map<String, Object>, ColumnAdvancedFilterModel<E, ?>>> registeredCustomAdvancedFilters;
     protected final Integer pivotMaxGeneratedColumns;
     protected final boolean paginateChildRows;
     protected final boolean groupAggFiltering;
@@ -136,6 +138,7 @@ public class QueryBuilder<E, E_ID, D> {
         this.primaryField = builder.primaryField;
         this.serverSidePivotResultFieldSeparator = builder.serverSidePivotResultFieldSeparator;
         this.enableAdvancedFilter = builder.enableAdvancedFilter;
+        this.registeredCustomAdvancedFilters = builder.registeredCustomAdvancedFilters == null ? Collections.emptyMap() : builder.registeredCustomAdvancedFilters;
         this.pivotMaxGeneratedColumns = builder.pivotMaxGeneratedColumns;
         this.paginateChildRows = builder.paginateChildRows;
         this.groupAggFiltering = builder.groupAggFiltering;
@@ -2713,7 +2716,12 @@ public class QueryBuilder<E, E_ID, D> {
             if (columnFilter == null) {
                 throw new IllegalArgumentException("Can not filter on column which has filtering turned-off");
             }
-            
+
+            String type = Optional.ofNullable(filter.get("type")).map(Object::toString).orElse(null);
+            if (type != null && this.registeredCustomAdvancedFilters.containsKey(type)) {
+                return Objects.requireNonNull(this.registeredCustomAdvancedFilters.get(type).apply(filter));
+            }
+
             switch (filterType) {
                 case "text": case "object": {
                     if (!(columnFilter instanceof AgTextColumnFilter)) {
@@ -3326,6 +3334,7 @@ public class QueryBuilder<E, E_ID, D> {
         private String serverSidePivotResultFieldSeparator = DEFAULT_SERVER_SIDE_PIVOT_RESULT_FIELD_SEPARATOR;
         private Integer pivotMaxGeneratedColumns;
         private boolean enableAdvancedFilter;
+        private Map<String, Function<Map<String, Object>, ColumnAdvancedFilterModel<E, ?>>> registeredCustomAdvancedFilters;
         private boolean paginateChildRows;
         private boolean groupAggFiltering;
         private boolean suppressAggFilteredOnly;
@@ -3425,6 +3434,21 @@ public class QueryBuilder<E, E_ID, D> {
         @NonNull
         public Builder<E, E_ID, D> enableAdvancedFilter(boolean enableAdvancedFilter) {
             this.enableAdvancedFilter = enableAdvancedFilter;
+            return this;
+        }
+
+        @NonNull
+        public Builder<E, E_ID, D> registerCustomAdvancedFilters(@NonNull Map<String, Function<Map<String, Object>, ColumnAdvancedFilterModel<E, ?>>> registeredCustomAdvancedFilters) {
+            registeredCustomAdvancedFilters.forEach(this::registerCustomAdvancedFilter);
+            return this;
+        }
+        
+        @NonNull
+        public Builder<E, E_ID, D> registerCustomAdvancedFilter(@NonNull String type, @NonNull Function<Map<String, Object>, ColumnAdvancedFilterModel<E, ?>> advancedFilterModelFunction) {
+            if (this.registeredCustomAdvancedFilters == null) {
+                this.registeredCustomAdvancedFilters = new HashMap<>();
+            }
+            registeredCustomAdvancedFilters.put(type, advancedFilterModelFunction);
             return this;
         }
         
