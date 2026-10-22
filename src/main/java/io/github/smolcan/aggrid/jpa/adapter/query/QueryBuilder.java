@@ -3282,7 +3282,7 @@ public class QueryBuilder<E, E_ID, D> {
                         if (value instanceof LocalDate) {
                             return ((LocalDate) value).format(DateTimeFormatter.ISO_LOCAL_DATE);
                         } else if (value instanceof LocalDateTime) {
-                            return ((LocalDateTime) value).format(DateTimeFormatter.ISO_LOCAL_DATE);
+                            return ((LocalDateTime) value).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
                         } else {
                             return String.valueOf(value);
                         }
