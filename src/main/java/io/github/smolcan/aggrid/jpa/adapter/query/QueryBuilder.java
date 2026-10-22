@@ -1436,10 +1436,12 @@ public class QueryBuilder<E, E_ID, D> {
             wherePredicates.add(groupPredicateInfo);
         }
         
+        // a request built without a filter model is treated like the empty one the grid sends
+        Map<String, Object> filterModel = request.getFilterModel() != null ? request.getFilterModel() : Map.of();
         boolean hasAnyFilteringOnAggregatedColumns = !this.enableAdvancedFilter &&
-                request.getFilterModel().keySet().stream().anyMatch(k -> request.getValueCols().stream().anyMatch(vc -> vc.getField().equals(k)));
+                filterModel.keySet().stream().anyMatch(k -> request.getValueCols().stream().anyMatch(vc -> vc.getField().equals(k)));
         boolean hasAnyFilteringOnNonAggregatedColumns = this.enableAdvancedFilter ||
-                request.getFilterModel().keySet().stream().noneMatch(k -> request.getValueCols().stream().anyMatch(vc -> vc.getField().equals(k)));
+                filterModel.keySet().stream().noneMatch(k -> request.getValueCols().stream().anyMatch(vc -> vc.getField().equals(k)));
         boolean hasUnexpandedGroups = request.getRowGroupCols().size() > request.getGroupKeys().size();
         
         

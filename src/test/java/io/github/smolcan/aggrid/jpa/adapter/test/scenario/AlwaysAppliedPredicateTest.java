@@ -62,7 +62,7 @@ class AlwaysAppliedPredicateTest extends ScenarioTestBase {
 
     private ServerSideGetRowsRequest groupedByBookRequest() {
         ServerSideGetRowsRequest request = emptyRequest(0, 100);
-        // grouping without a filterModel throws inside whereGrouping, so the suite always sends one
+        // like the grid, which always sends a filterModel (possibly empty)
         request.setFilterModel(new HashMap<>());
         request.getRowGroupCols().add(groupCol("book"));
         request.getValueCols().add(valueCol("currentValue", "sum"));

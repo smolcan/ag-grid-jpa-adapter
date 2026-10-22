@@ -45,8 +45,7 @@ class GroupingTest extends ScenarioTestBase {
     }
 
     /**
-     * Grouping request sorted by the group column; AG Grid always sends a filterModel
-     * object (possibly empty), and grouping mode relies on it being non-null.
+     * Grouping request sorted by the group column, with the empty filterModel AG Grid sends.
      */
     private ServerSideGetRowsRequest groupedByPortfolioRequest(String... groupKeys) {
         ServerSideGetRowsRequest request = emptyRequest(0, 100);
@@ -65,6 +64,22 @@ class GroupingTest extends ScenarioTestBase {
         // H2 binary collation: uppercase sorts before lowercase
         assertThat(columnValues(result, "portfolio"))
                 .containsExactly("Alpha", "BETA", "Beta", "Delta", "Epsilon", "Gamma", "alpha", "delta");
+    }
+
+    @Test
+    void missingFilterModelIsTreatedAsNoFilter() {
+        // a request built in code, e.g. for an export, has no filterModel unless one is set
+        ServerSideGetRowsRequest groups = groupedByPortfolioRequest();
+        groups.setFilterModel(null);
+        ServerSideGetRowsRequest leaves = groupedByPortfolioRequest("Beta");
+        leaves.setFilterModel(null);
+
+        assertThat(groupingQueryBuilder().getRows(groups).getRowData()).hasSize(8);
+        assertThat(groupingQueryBuilder().countRows(groups)).isEqualTo(8);
+        assertThat(tradeIds(groupingQueryBuilder().getRows(leaves))).containsExactlyInAnyOrder(4L, 5L);
+        // group aggregation filtering takes its own path through the same check
+        assertThat(groupAggFilteringQueryBuilder().getRows(groups).getRowData()).hasSize(8);
+        assertThat(tradeIds(groupAggFilteringQueryBuilder().getRows(leaves))).containsExactlyInAnyOrder(4L, 5L);
     }
 
     @Test

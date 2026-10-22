@@ -76,7 +76,7 @@ class ComputedColumnTest extends ScenarioTestBase {
 
     private ServerSideGetRowsRequest groupedBy(String field) {
         ServerSideGetRowsRequest request = emptyRequest(0, 100);
-        // grouping without a filterModel throws inside whereGrouping, so the suite always sends one
+        // like the grid, which always sends a filterModel (possibly empty)
         request.setFilterModel(new HashMap<>());
         request.getRowGroupCols().add(groupCol(field));
         request.getValueCols().add(valueCol("valueAfterFee", "sum"));
