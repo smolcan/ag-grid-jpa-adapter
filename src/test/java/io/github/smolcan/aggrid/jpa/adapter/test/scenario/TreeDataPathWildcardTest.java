@@ -21,9 +21,8 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Tree data whose paths contain LIKE wildcards. Each wildcard root has a lookalike root that a
- * {@code LIKE} pattern built from its path would also match: "a_b/%" matches "axb/104" and
- * "c%/%" matches "cd/108", so the descendants of the lookalike would count as its own.
+ * Tree data whose paths contain LIKE wildcards, next to lookalike paths that a LIKE pattern
+ * would also match ("a_b/%" matches "axb/104").
  */
 class TreeDataPathWildcardTest extends ScenarioTestBase {
 

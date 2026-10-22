@@ -8,17 +8,13 @@ import java.util.Set;
 
 public class Utils {
 
-    /**
-     * Escape character of the LIKE patterns built from user input, see {@link #escapeLike(String)}.
-     * Not a backslash, which MySQL and MariaDB already treat as an escape of their own.
-     */
+    /** Escape character for LIKE patterns. Not a backslash, which MySQL and MariaDB treat specially. */
     public static final char LIKE_ESCAPE_CHAR = '!';
 
     private Utils() {}
 
     /**
-     * Escapes the LIKE wildcards ({@code %} and {@code _}) and the escape character itself, so that
-     * the value matches literally in a LIKE pattern that uses {@link #LIKE_ESCAPE_CHAR}.
+     * Escapes {@code %}, {@code _} and {@link #LIKE_ESCAPE_CHAR}, so that the value matches literally in a LIKE pattern.
      *
      * @param value the text to escape
      * @return the escaped text

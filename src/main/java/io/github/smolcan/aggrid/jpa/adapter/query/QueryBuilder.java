@@ -232,25 +232,16 @@ public class QueryBuilder<E, E_ID, D> {
     }
 
     /**
-     * Counts the rows or groups at the level the request loads, which is the row count the grid expects
-     * for that level.
-     * <p>
-     * The count depends on how far the request has expanded the row groups:
+     * Counts the rows or groups at the level the request loads:
      * <ul>
-     *   <li>If no grouping is applied, it counts the entity rows that match the filter criteria.</li>
-     *   <li>If some group columns are not expanded yet, it counts the distinct values of the first unexpanded
-     *       group column inside the expanded groups (the root groups when nothing is expanded), taking into
-     *       account all filters and having conditions.</li>
-     *   <li>If every group column is expanded, it counts the entity rows inside the expanded group.</li>
+     *   <li>no grouping: the rows</li>
+     *   <li>some groups not expanded yet: the groups of the first unexpanded group column</li>
+     *   <li>all groups expanded: the rows inside the expanded group</li>
      * </ul>
-     * <p>
-     * The grid combines the counts of the levels itself, so the same count serves pagination with or
-     * without the grid's {@code paginateChildRows} option.
      *
-     * @param request The {@link ServerSideGetRowsRequest} containing filtering, grouping, and other criteria information.
-     * @return The count of rows or groups that match the criteria in the request.
-     * @throws OnPivotMaxColumnsExceededException If the number of pivot columns to be generated exceeds the configured limit.
-     * @see #getRows(ServerSideGetRowsRequest) For retrieving the actual row data.
+     * @param request the server-side request parameters from the grid
+     * @return the count of rows or groups
+     * @throws OnPivotMaxColumnsExceededException if the number of pivot columns to be generated exceeds the configured limit
      */
     @SuppressWarnings("unchecked")
     public long countRows(@NonNull ServerSideGetRowsRequest request) throws OnPivotMaxColumnsExceededException {
@@ -1390,7 +1381,7 @@ public class QueryBuilder<E, E_ID, D> {
                     // is then keyed by the generated name (for example "Book 1_currentValue").
                     // such a column already is an aggregation and is evaluated in the having clause
                     for (String field : new ArrayList<>(rowFilterModel.keySet())) {
-                        if (!this.colDefs.containsKey(field) && this.colDefs.containsKey(this.originalColNameFromPivoted(field))) {
+                        if (!this.colDefs.containsKey(field) && this.originalColNameFromPivoted(field, request) != null) {
                             rowFilterModel.remove(field);
                         }
                     }
@@ -1794,11 +1785,12 @@ public class QueryBuilder<E, E_ID, D> {
                 continue;
             }
             
-            ColDef<? super E, ?> colDef = this.colDefs.get(this.originalColNameFromPivoted(field));
-            if (colDef == null) {
+            String originalColName = this.originalColNameFromPivoted(field, request);
+            if (originalColName == null) {
                 // not a generated pivot column either, the where clause reports the unknown column
                 continue;
             }
+            ColDef<? super E, ?> colDef = this.colDefs.get(originalColName);
             
             Expression<?> pivotColumnExpression = Optional.ofNullable(pivotColumns)
                     .map(pc -> pc.get(field))
@@ -2160,17 +2152,14 @@ public class QueryBuilder<E, E_ID, D> {
 
 
     /**
-     * Creates predicate that checks if a node is a descendant of another node in tree-data mode:
-     * its data path starts with the data path of the other node followed by the separator.
-     * <p>
-     * The paths are compared with {@code LOCATE} rather than {@code LIKE}, so that characters in the paths
-     * which are wildcards in a {@code LIKE} pattern ({@code %}, {@code _}, or {@code [} on SQL Server)
-     * only match themselves.
+     * Creates predicate that checks if a node is a descendant of another node in tree-data mode,
+     * i.e. its data path starts with the other node's data path and the separator.
+     * Uses {@code LOCATE} rather than {@code LIKE}, so that wildcard characters in the paths match only themselves.
      *
-     * @param cb the criteria builder
-     * @param descendant root of the node that may be a descendant
-     * @param ancestor root of the node that may be an ancestor
-     * @return a condition that is true if {@code descendant} is a descendant of {@code ancestor}
+     * @param cb criteria builder
+     * @param descendant root of the possible descendant
+     * @param ancestor root of the possible ancestor
+     * @return the predicate
      */
     @NonNull
     protected Predicate createTreeDataDescendantPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<E> descendant, @NonNull Root<E> ancestor) {
@@ -2962,8 +2951,7 @@ public class QueryBuilder<E, E_ID, D> {
                         boolean isInColDefs = this.colDefs.containsKey(c.getColId());
                         if (!isInColDefs && request.isPivotMode()) {
                             // check pivoted cols
-                            String pivotedColumnOriginalName = this.originalColNameFromPivoted(c.getColId());
-                            isInColDefs = this.colDefs.containsKey(pivotedColumnOriginalName);
+                            isInColDefs = this.originalColNameFromPivoted(c.getColId(), request) != null;
                         }
                         return !isInColDefs;
                     }).collect(Collectors.toList());
@@ -2988,8 +2976,8 @@ public class QueryBuilder<E, E_ID, D> {
                         boolean isNotSortable = notSortableColDefs.contains(sm.getColId());
                         if (!isNotSortable && request.isPivotMode()) {
                             // check pivoted cols
-                            String pivotedColumnOriginalName = this.originalColNameFromPivoted(sm.getColId());
-                            isNotSortable = notSortableColDefs.contains(pivotedColumnOriginalName);
+                            String pivotedColumnOriginalName = this.originalColNameFromPivoted(sm.getColId(), request);
+                            isNotSortable = pivotedColumnOriginalName != null && notSortableColDefs.contains(pivotedColumnOriginalName);
                         }
                         return isNotSortable;
                     }).collect(Collectors.toList());
@@ -3108,7 +3096,7 @@ public class QueryBuilder<E, E_ID, D> {
                         // filters on a generated pivot column are filters on an aggregation, they do not
                         // restrict the rows the columns are generated from
                         for (String filteredField : new ArrayList<>(rowFilterModel.keySet())) {
-                            if (!this.colDefs.containsKey(filteredField) && this.colDefs.containsKey(this.originalColNameFromPivoted(filteredField))) {
+                            if (!this.colDefs.containsKey(filteredField) && this.originalColNameFromPivoted(filteredField, request) != null) {
                                 rowFilterModel.remove(filteredField);
                             }
                         }
@@ -3174,12 +3162,25 @@ public class QueryBuilder<E, E_ID, D> {
     /**
      * Extracts original column name from pivoted name <br>
      * For example: Piv1_Piv2_Piv3_originalCol will be originalCol
+     * <p>
+     * Matches the end of the name, so column names containing the separator work too.
+     * Prefers the request's value columns over other column definitions, and the longest match.
+     *
      * @param pivotedName                           pivoted column name
-     * @return                                      original name of the column
+     * @param request                               request
+     * @return                                      original name of the column, or {@code null} if none matches
      */
+    protected String originalColNameFromPivoted(@NonNull String pivotedName, @NonNull ServerSideGetRowsRequest request) {
+        return this.longestPivotedColumnMatch(pivotedName, request.getValueCols().stream().map(ColumnVO::getField))
+                .or(() -> this.longestPivotedColumnMatch(pivotedName, this.colDefs.keySet().stream()))
+                .orElse(null);
+    }
+
     @NonNull
-    protected String originalColNameFromPivoted(@NonNull String pivotedName) {
-        return pivotedName.substring(pivotedName.lastIndexOf(this.serverSidePivotResultFieldSeparator) + 1);
+    private Optional<String> longestPivotedColumnMatch(@NonNull String pivotedName, @NonNull Stream<String> columnNames) {
+        return columnNames
+                .filter(columnName -> pivotedName.endsWith(this.serverSidePivotResultFieldSeparator + columnName))
+                .max(Comparator.comparingInt(String::length));
     }
 
     /**
@@ -3252,7 +3253,7 @@ public class QueryBuilder<E, E_ID, D> {
                     // filters on a generated pivot column are filters on an aggregation, they do not
                     // restrict the rows the columns are generated from
                     for (String field : new ArrayList<>(rowFilterModel.keySet())) {
-                        if (!this.colDefs.containsKey(field) && this.colDefs.containsKey(this.originalColNameFromPivoted(field))) {
+                        if (!this.colDefs.containsKey(field) && this.originalColNameFromPivoted(field, request) != null) {
                             rowFilterModel.remove(field);
                         }
                     }
@@ -3454,9 +3455,7 @@ public class QueryBuilder<E, E_ID, D> {
         /**
          * @param paginateChildRows ignored.
          * @return this builder.
-         * @deprecated has no effect. {@link QueryBuilder#countRows(ServerSideGetRowsRequest)} always counts the
-         * level the request loads, which is the count the grid expects whether its own {@code paginateChildRows}
-         * option is set or not.
+         * @deprecated has no effect, {@link QueryBuilder#countRows(ServerSideGetRowsRequest)} always counts the level the request loads.
          */
         @Deprecated(since = "1.1.8", forRemoval = true)
         @NonNull
