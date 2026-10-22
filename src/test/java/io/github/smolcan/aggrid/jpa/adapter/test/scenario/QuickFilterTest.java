@@ -8,7 +8,11 @@ import io.github.smolcan.aggrid.jpa.adapter.response.LoadSuccessParams;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Product_;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade_;
+import io.github.smolcan.aggrid.jpa.adapter.test.infrastructure.CountingDriver;
+import io.github.smolcan.aggrid.jpa.adapter.utils.Utils;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -71,6 +75,13 @@ class QuickFilterTest extends ScenarioTestBase {
         // no field contains a literal '_' or '%': as wildcards, "b_1" would match B-1 and b-1, and "%" every row
         assertThat(rows(false, "b_1").getRowData()).isEmpty();
         assertThat(rows(false, "%").getRowData()).isEmpty();
+    }
+
+    @Test
+    void plainWordsAddNoEscapeClause() {
+        // an ESCAPE clause makes some databases (Oracle) check every row more slowly, so only text that needs it gets one
+        List<String> sql = CountingDriver.sql(() -> rows(false, "alpha gold"));
+        assertThat(sql).isNotEmpty().noneMatch(statement -> statement.contains("'" + Utils.LIKE_ESCAPE_CHAR + "'"));
     }
 
     @Test

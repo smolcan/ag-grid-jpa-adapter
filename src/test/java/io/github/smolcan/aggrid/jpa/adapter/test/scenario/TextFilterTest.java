@@ -10,8 +10,11 @@ import io.github.smolcan.aggrid.jpa.adapter.request.ServerSideGetRowsRequest;
 import io.github.smolcan.aggrid.jpa.adapter.response.LoadSuccessParams;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade_;
+import io.github.smolcan.aggrid.jpa.adapter.test.infrastructure.CountingDriver;
+import io.github.smolcan.aggrid.jpa.adapter.utils.Utils;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -71,6 +74,13 @@ class TextFilterTest extends ScenarioTestBase {
         assertThat(tradeIds(rows(Map.of("book", filter("endsWith", "%"))))).isEmpty();
         // so no portfolio contains "%", and none is excluded
         assertThat(tradeIds(rows(Map.of("portfolio", filter("notContains", "%"))))).hasSize(12);
+    }
+
+    @Test
+    void plainFilterTextAddsNoEscapeClause() {
+        // an ESCAPE clause makes some databases (Oracle) check every row more slowly, so only text that needs it gets one
+        List<String> sql = CountingDriver.sql(() -> rows(Map.of("portfolio", filter("contains", "alpha"))));
+        assertThat(sql).isNotEmpty().noneMatch(statement -> statement.contains("'" + Utils.LIKE_ESCAPE_CHAR + "'"));
     }
 
     @Test

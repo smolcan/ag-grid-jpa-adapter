@@ -41,9 +41,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.LIKE_ESCAPE_CHAR;
 import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.cartesianProduct;
 import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.escapeLike;
+import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.like;
+import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.needsLikeEscape;
 
 /**
  * A robust JPA adapter designed to seamlessly integrate AG Grid's Server-Side Row Model (SSRM)
@@ -887,6 +888,7 @@ public class QueryBuilder<E, E_ID, D> {
         for (String word : words) {
             // the word goes into a LIKE pattern, escape its wildcards so that they match literally
             Expression<String> wordExpression = cb.literal(escapeLike(word));
+            boolean escapeWord = needsLikeEscape(word);
             
             // transform word expression according to quick filter config
             if (this.quickFilterTrimInput) {
@@ -914,7 +916,7 @@ public class QueryBuilder<E, E_ID, D> {
                     path = this.quickFilterTextFormatter.apply(cb, path);
                 }
                 
-                Predicate rowWordPredicate = cb.like(path, cb.concat(cb.concat("%", wordExpression), "%"), LIKE_ESCAPE_CHAR);
+                Predicate rowWordPredicate = like(cb, path, cb.concat(cb.concat("%", wordExpression), "%"), escapeWord);
                 rowPredicatesForWord.add(rowWordPredicate);
             }
 
@@ -2156,7 +2158,9 @@ public class QueryBuilder<E, E_ID, D> {
     /**
      * Creates predicate that checks if a node is a descendant of another node in tree-data mode,
      * i.e. its data path starts with the other node's data path and the separator.
-     * Uses {@code LOCATE} rather than {@code LIKE}, so that wildcard characters in the paths match only themselves.
+     * {@code LIKE} lets the database use an index on the path, {@code LOCATE} drops its false matches on {@code %} and {@code _}.
+     * Override it if paths can hold other characters special to {@code LIKE}, such as {@code [} on SQL Server
+     * or a backslash with EclipseLink.
      *
      * @param cb criteria builder
      * @param descendant root of the possible descendant
@@ -2165,8 +2169,12 @@ public class QueryBuilder<E, E_ID, D> {
      */
     @NonNull
     protected Predicate createTreeDataDescendantPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<E> descendant, @NonNull Root<E> ancestor) {
-        Expression<String> descendantPathPrefix = cb.concat(ancestor.get(this.treeDataDataPathFieldName), this.treeDataDataPathSeparator);
-        return cb.equal(cb.locate(descendant.get(this.treeDataDataPathFieldName), descendantPathPrefix), 1);
+        Expression<String> descendantPath = descendant.get(this.treeDataDataPathFieldName);
+        Expression<String> ancestorPath = ancestor.get(this.treeDataDataPathFieldName);
+        // literals: SQL Server's driver sends parameters as Unicode, which rules out a varchar index
+        Predicate likeDescendant = cb.like(descendantPath, cb.concat(ancestorPath, cb.literal(this.treeDataDataPathSeparator + "%")));
+        Predicate startsWithAncestor = cb.equal(cb.locate(descendantPath, cb.concat(ancestorPath, cb.literal(this.treeDataDataPathSeparator))), 1);
+        return cb.and(likeDescendant, startsWithAncestor);
     }
 
     /**

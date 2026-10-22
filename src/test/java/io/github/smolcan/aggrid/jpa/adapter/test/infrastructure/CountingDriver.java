@@ -11,6 +11,9 @@ import java.sql.DriverPropertyInfo;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
@@ -20,6 +23,9 @@ public final class CountingDriver implements Driver {
     public static final String URL_PREFIX = "jdbc:counting:";
 
     private static final AtomicLong EXECUTED_STATEMENTS = new AtomicLong();
+
+    /** Collects the SQL of statements while {@link #sql(Runnable)} runs, null otherwise. */
+    private static volatile List<String> capturedSql;
 
     static {
         try {
@@ -34,6 +40,18 @@ public final class CountingDriver implements Driver {
         long before = EXECUTED_STATEMENTS.get();
         action.run();
         return EXECUTED_STATEMENTS.get() - before;
+    }
+
+    /** SQL of the statements run on any connection while {@code action} ran. */
+    public static List<String> sql(Runnable action) {
+        List<String> sql = Collections.synchronizedList(new ArrayList<>());
+        capturedSql = sql;
+        try {
+            action.run();
+        } finally {
+            capturedSql = null;
+        }
+        return List.copyOf(sql);
     }
 
     @Override
@@ -80,6 +98,13 @@ public final class CountingDriver implements Driver {
         throw new SQLFeatureNotSupportedException();
     }
 
+    private static void capture(Object[] args) {
+        List<String> captured = capturedSql;
+        if (captured != null && args != null && args.length > 0 && args[0] instanceof String) {
+            captured.add((String) args[0]);
+        }
+    }
+
     private static Object invokeUnwrapped(Object target, Method method, Object[] args) throws Throwable {
         try {
             return method.invoke(target, args);
@@ -99,6 +124,9 @@ public final class CountingDriver implements Driver {
 
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+            if (method.getName().startsWith("prepare")) {
+                capture(args);
+            }
             Object result = invokeUnwrapped(delegate, method, args);
             if (!(result instanceof Statement)) {
                 return result;
@@ -125,6 +153,8 @@ public final class CountingDriver implements Driver {
             // execute, executeQuery, executeUpdate, executeLargeUpdate, executeBatch
             if (method.getName().startsWith("execute")) {
                 EXECUTED_STATEMENTS.incrementAndGet();
+                // a plain Statement gets its SQL here, a PreparedStatement got it when it was prepared
+                capture(args);
             }
             return invokeUnwrapped(delegate, method, args);
         }

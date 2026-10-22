@@ -45,6 +45,7 @@ public class TextAdvancedFilterModel<E> extends ColumnAdvancedFilterModel<E, Str
 
         // filter text for the LIKE patterns, with its wildcards escaped so that they match literally
         Expression<String> likeFilterExpression = this.filterParams.generateExpressionFromFilterParams(cb, this.filter != null ? cb.literal(Utils.escapeLike(this.filter)) : cb.nullLiteral(String.class));
+        boolean escapeLike = this.filter != null && Utils.needsLikeEscape(this.filter);
 
         Predicate predicate;
         switch (this.type) {
@@ -65,19 +66,19 @@ public class TextAdvancedFilterModel<E> extends ColumnAdvancedFilterModel<E, Str
                 break;
             }
             case contains: {
-                predicate = cb.like(valueExpression, cb.concat(cb.concat("%", likeFilterExpression), "%"), Utils.LIKE_ESCAPE_CHAR);
+                predicate = Utils.like(cb, valueExpression, cb.concat(cb.concat("%", likeFilterExpression), "%"), escapeLike);
                 break;
             }
             case notContains: {
-                predicate = cb.notLike(valueExpression, cb.concat(cb.concat("%", likeFilterExpression), "%"), Utils.LIKE_ESCAPE_CHAR);
+                predicate = Utils.notLike(cb, valueExpression, cb.concat(cb.concat("%", likeFilterExpression), "%"), escapeLike);
                 break;
             }
             case startsWith: {
-                predicate = cb.like(valueExpression, cb.concat(likeFilterExpression, "%"), Utils.LIKE_ESCAPE_CHAR);
+                predicate = Utils.like(cb, valueExpression, cb.concat(likeFilterExpression, "%"), escapeLike);
                 break;
             }
             case endsWith: {
-                predicate = cb.like(valueExpression, cb.concat("%", likeFilterExpression), Utils.LIKE_ESCAPE_CHAR);
+                predicate = Utils.like(cb, valueExpression, cb.concat("%", likeFilterExpression), escapeLike);
                 break;
             }
             default: {
