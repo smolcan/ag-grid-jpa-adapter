@@ -82,7 +82,6 @@ public class QueryBuilder<E, E_ID, D> {
     protected final boolean enableAdvancedFilter;
     protected final Map<String, Function<Map<String, Object>, ColumnAdvancedFilterModel<E, ?>>> registeredCustomAdvancedFilters;
     protected final Integer pivotMaxGeneratedColumns;
-    protected final boolean paginateChildRows;
     protected final boolean groupAggFiltering;
     protected final boolean suppressAggFilteredOnly;
     protected final boolean isExternalFilterPresent;
@@ -140,7 +139,6 @@ public class QueryBuilder<E, E_ID, D> {
         this.enableAdvancedFilter = builder.enableAdvancedFilter;
         this.registeredCustomAdvancedFilters = builder.registeredCustomAdvancedFilters == null ? Collections.emptyMap() : builder.registeredCustomAdvancedFilters;
         this.pivotMaxGeneratedColumns = builder.pivotMaxGeneratedColumns;
-        this.paginateChildRows = builder.paginateChildRows;
         this.groupAggFiltering = builder.groupAggFiltering;
         this.suppressAggFilteredOnly = builder.groupAggFiltering || builder.suppressAggFilteredOnly;
         this.isExternalFilterPresent = builder.isExternalFilterPresent;
@@ -232,20 +230,20 @@ public class QueryBuilder<E, E_ID, D> {
     }
 
     /**
-     * Counts the number of rows or groups that match the criteria specified in the request.
+     * Counts the rows or groups at the level the request loads, which is the row count the grid expects
+     * for that level.
      * <p>
-     * This method determines the total count of rows or groups based on the filtering and grouping
-     * specifications in the provided {@link ServerSideGetRowsRequest}. The behavior differs depending
-     * on whether the request contains row grouping:
+     * The count depends on how far the request has expanded the row groups:
      * <ul>
-     *   <li>If no grouping is applied, it counts the total number of entity rows that match the filter criteria.</li>
-     *   <li>If grouping is applied, it counts the distinct values of the root group column that would be displayed
-     *       at the current grouping level, taking into account all filters and having conditions.</li>
+     *   <li>If no grouping is applied, it counts the entity rows that match the filter criteria.</li>
+     *   <li>If some group columns are not expanded yet, it counts the distinct values of the first unexpanded
+     *       group column inside the expanded groups (the root groups when nothing is expanded), taking into
+     *       account all filters and having conditions.</li>
+     *   <li>If every group column is expanded, it counts the entity rows inside the expanded group.</li>
      * </ul>
      * <p>
-     *     
-     * This count can be used for server-side pagination calculations or to determine the total
-     * number of rows/groups available when displaying partial results.
+     * The grid combines the counts of the levels itself, so the same count serves pagination with or
+     * without the grid's {@code paginateChildRows} option.
      *
      * @param request The {@link ServerSideGetRowsRequest} containing filtering, grouping, and other criteria information.
      * @return The count of rows or groups that match the criteria in the request.
@@ -261,25 +259,14 @@ public class QueryBuilder<E, E_ID, D> {
         Root<E> root = query.from(this.entityClass);
         // record all the context we put into query
         QueryContext<E> queryContext = new QueryContext<>(cb, query, root);
-        
-        // we count groups when there is grouping
-        boolean hasGroupCols = !request.getRowGroupCols().isEmpty();
-        boolean countingGroups = hasGroupCols;
-        if (hasGroupCols && this.paginateChildRows) {
-            // if paginateChildRows is turned on and all groups are expanded, we count records inside group (not counting groups)
-            boolean allGroupsExpanded = request.getRowGroupCols().size() == request.getGroupKeys().size();
-            if (allGroupsExpanded) {
-                countingGroups = false;
-            }
-        }
-        
+
+        // we count groups while some group column is not expanded yet,
+        // once all groups are expanded we count records inside group (not counting groups)
+        boolean countingGroups = request.getRowGroupCols().size() > request.getGroupKeys().size();
+
         if (countingGroups) {
-            // select the group col that we are counting
-            int countingGroupColIndex = this.paginateChildRows
-                    // when paginating child rows, we count the first unexpanded group (next after last group key)
-                    ? request.getGroupKeys().size()
-                    // otherwise, we count root group
-                    : 0;
+            // select the group col that we are counting, the first unexpanded group (next after last group key)
+            int countingGroupColIndex = request.getGroupKeys().size();
             String countingGroupCol = request.getRowGroupCols().get(countingGroupColIndex).getId();
             ColDef<? super E, ?> countingGroupColDef = this.colDefs.get(countingGroupCol);
 
@@ -3335,7 +3322,6 @@ public class QueryBuilder<E, E_ID, D> {
         private Integer pivotMaxGeneratedColumns;
         private boolean enableAdvancedFilter;
         private Map<String, Function<Map<String, Object>, ColumnAdvancedFilterModel<E, ?>>> registeredCustomAdvancedFilters;
-        private boolean paginateChildRows;
         private boolean groupAggFiltering;
         private boolean suppressAggFilteredOnly;
         private boolean isExternalFilterPresent;
@@ -3452,9 +3438,16 @@ public class QueryBuilder<E, E_ID, D> {
             return this;
         }
         
+        /**
+         * @param paginateChildRows ignored.
+         * @return this builder.
+         * @deprecated has no effect. {@link QueryBuilder#countRows(ServerSideGetRowsRequest)} always counts the
+         * level the request loads, which is the count the grid expects whether its own {@code paginateChildRows}
+         * option is set or not.
+         */
+        @Deprecated(since = "1.1.8", forRemoval = true)
         @NonNull
         public Builder<E, E_ID, D> paginateChildRows(boolean paginateChildRows) {
-            this.paginateChildRows = paginateChildRows;
             return this;
         }
 

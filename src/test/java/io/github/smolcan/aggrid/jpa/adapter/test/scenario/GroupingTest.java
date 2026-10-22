@@ -373,30 +373,43 @@ class GroupingTest extends ScenarioTestBase {
     }
 
     @Test
-    void paginateChildRowsCountsRowsInsideExpandedGroups() {
+    void countRowsCountsRowsInsideExpandedGroups() {
         QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
                 .colDefs(
                         ColDef.builder(Trade_.tradeId).build(),
                         ColDef.builder(Trade_.portfolio).enableRowGroup(true, key -> key).build()
                 )
-                .paginateChildRows(true)
                 .build();
 
-        // no expanded groups: still counts root groups
+        // no expanded groups: counts root groups
         assertThat(queryBuilder.countRows(groupedByPortfolioRequest())).isEqualTo(8);
         // group expanded: counts the rows inside it
         assertThat(queryBuilder.countRows(groupedByPortfolioRequest("Beta"))).isEqualTo(2);
     }
 
     @Test
-    void paginateChildRowsCountsChildGroupsOfExpandedGroup() {
+    @SuppressWarnings("removal")
+    void deprecatedPaginateChildRowsDoesNotChangeTheCount() {
+        QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
+                .colDefs(
+                        ColDef.builder(Trade_.tradeId).build(),
+                        ColDef.builder(Trade_.portfolio).enableRowGroup(true, key -> key).build()
+                )
+                .paginateChildRows(false)
+                .build();
+
+        assertThat(queryBuilder.countRows(groupedByPortfolioRequest())).isEqualTo(8);
+        assertThat(queryBuilder.countRows(groupedByPortfolioRequest("Beta"))).isEqualTo(2);
+    }
+
+    @Test
+    void countRowsCountsChildGroupsOfExpandedGroup() {
         QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
                 .colDefs(
                         ColDef.builder(Trade_.tradeId).build(),
                         ColDef.builder(Trade_.portfolio).enableRowGroup(true, key -> key).build(),
                         ColDef.builder(FieldPath.of(Trade_.product).to(Product_.name)).enableRowGroup(true, key -> key).build()
                 )
-                .paginateChildRows(true)
                 .build();
 
         ServerSideGetRowsRequest request = emptyRequest(0, 100);

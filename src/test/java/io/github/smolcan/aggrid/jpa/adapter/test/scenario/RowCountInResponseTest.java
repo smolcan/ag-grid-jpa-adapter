@@ -102,21 +102,51 @@ class RowCountInResponseTest extends ScenarioTestBase {
     }
 
     @Test
-    void rowCountCountsChildRowsOfAnExpandedGroupWhenPaginatingChildRows() {
-        QueryBuilder<Trade, Long, Void> queryBuilder = config()
-                .includeRowCountInLoadSuccessParams(true)
-                .paginateChildRows(true)
-                .build();
-
+    void rowCountCountsChildRowsOfAnExpandedGroup() {
         ServerSideGetRowsRequest request = groupedRequest("portfolio");
         request.getGroupKeys().add("Alpha");
 
-        LoadSuccessParams result = queryBuilder.getRows(request);
+        LoadSuccessParams result = withRowCount().getRows(request);
 
-        // trades 1 and 2 are the "Alpha" portfolio, and with every group expanded the count
-        // switches from counting groups to counting the rows inside them
+        // trades 1 and 2 are the "Alpha" portfolio. the count is for the level being loaded, not
+        // the root groups: a grid told there is 1 row would show only one of Alpha's two trades
         assertThat(result.getRowData()).hasSize(2);
         assertThat(result.getRowCount()).isEqualTo(2);
+    }
+
+    @Test
+    void rowCountCountsChildGroupsOfAnExpandedGroup() {
+        ServerSideGetRowsRequest request = groupedRequest("portfolio");
+        request.getRowGroupCols().add(groupCol("book"));
+        request.getGroupKeys().add("Alpha");
+
+        LoadSuccessParams result = withRowCount().getRows(request);
+
+        // Alpha's child groups are books B-1 and B-2
+        assertThat(result.getRowData()).hasSize(2);
+        assertThat(result.getRowCount()).isEqualTo(2);
+    }
+
+    @Test
+    void rowCountOfAnExpandedGroupIsTheWholeLevelNotThePage() {
+        ServerSideGetRowsRequest request = groupedRequest("portfolio");
+        request.getGroupKeys().add("Alpha");
+        request.setEndRow(1);
+
+        LoadSuccessParams result = withRowCount().getRows(request);
+
+        assertThat(result.getRowData()).hasSize(1);
+        assertThat(result.getRowCount()).isEqualTo(2);
+    }
+
+    @Test
+    void rowCountAgreesWithTheCountRowsMethodOnAnExpandedGroup() {
+        ServerSideGetRowsRequest request = groupedRequest("portfolio");
+        request.getRowGroupCols().add(groupCol("book"));
+        request.getGroupKeys().add("Alpha");
+
+        assertThat(withRowCount().getRows(request).getRowCount())
+                .isEqualTo(config().build().countRows(request));
     }
 
     /**
