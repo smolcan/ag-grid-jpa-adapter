@@ -118,6 +118,13 @@ class AdvancedFilterTest extends ScenarioTestBase {
     }
 
     @Test
+    void textWildcardsMatchLiterally() {
+        // no book contains a literal '_' or '%': as wildcards, "B_1" would match B-1 and b-1
+        assertThat(tradeIds(rows(column("text", "book", "contains", "B_1")))).isEmpty();
+        assertThat(tradeIds(rows(column("text", "portfolio", "notContains", "%")))).hasSize(12);
+    }
+
+    @Test
     void joinWithOr() {
         LoadSuccessParams result = rows(join("OR",
                 column("text", "portfolio", "equals", "alpha"),

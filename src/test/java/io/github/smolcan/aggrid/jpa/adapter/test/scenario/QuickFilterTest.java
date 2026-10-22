@@ -67,6 +67,28 @@ class QuickFilterTest extends ScenarioTestBase {
     }
 
     @Test
+    void wildcardsInWordsMatchLiterally() {
+        // no field contains a literal '_' or '%': as wildcards, "b_1" would match B-1 and b-1, and "%" every row
+        assertThat(rows(false, "b_1").getRowData()).isEmpty();
+        assertThat(rows(false, "%").getRowData()).isEmpty();
+    }
+
+    @Test
+    void escapedCharactersInWordsStillMatchThemselves() {
+        QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
+                .colDefs(ColDef.builder(Trade_.tradeId).build())
+                .isQuickFilterPresent(true)
+                .quickFilterSearchInFields(TextFilterTest.bookWithWildcards())
+                .build();
+
+        ServerSideGetRowsRequest request = sortedByIdRequest(0, 100);
+        request.setQuickFilter("1_!%");
+
+        // B-1 (1, 6) and b-1 (12)
+        assertThat(tradeIds(queryBuilder.getRows(request))).containsExactly(1L, 6L, 12L);
+    }
+
+    @Test
     void nullQuickFilterMatchesEverything() {
         assertThat(tradeIds(rows(false, null))).hasSize(12);
     }

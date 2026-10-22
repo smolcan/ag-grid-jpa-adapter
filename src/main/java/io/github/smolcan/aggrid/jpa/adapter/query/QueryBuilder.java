@@ -41,7 +41,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.LIKE_ESCAPE_CHAR;
 import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.cartesianProduct;
+import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.escapeLike;
 
 /**
  * A robust JPA adapter designed to seamlessly integrate AG Grid's Server-Side Row Model (SSRM)
@@ -892,7 +894,8 @@ public class QueryBuilder<E, E_ID, D> {
         // predicates for each row
         List<Predicate> wordsPredicates = new ArrayList<>(words.size());
         for (String word : words) {
-            Expression<String> wordExpression = cb.literal(word);
+            // the word goes into a LIKE pattern, escape its wildcards so that they match literally
+            Expression<String> wordExpression = cb.literal(escapeLike(word));
             
             // transform word expression according to quick filter config
             if (this.quickFilterTrimInput) {
@@ -920,7 +923,7 @@ public class QueryBuilder<E, E_ID, D> {
                     path = this.quickFilterTextFormatter.apply(cb, path);
                 }
                 
-                Predicate rowWordPredicate = cb.like(path, cb.concat(cb.concat("%", wordExpression), "%"));
+                Predicate rowWordPredicate = cb.like(path, cb.concat(cb.concat("%", wordExpression), "%"), LIKE_ESCAPE_CHAR);
                 rowPredicatesForWord.add(rowWordPredicate);
             }
 
@@ -1878,10 +1881,7 @@ public class QueryBuilder<E, E_ID, D> {
         countChildrenSubquery.select(cb.count(countChildrenRoot));
 
         List<Predicate> predicates = new ArrayList<>();
-        Predicate childrenPathPredicate = cb.like(
-                countChildrenRoot.get(this.treeDataDataPathFieldName),
-                cb.concat(root.get(this.treeDataDataPathFieldName), this.treeDataDataPathSeparator + "%")
-        );
+        Predicate childrenPathPredicate = this.createTreeDataDescendantPredicate(cb, countChildrenRoot, root);
         predicates.add(childrenPathPredicate);
         if (this.alwaysAppliedPredicate != null) {
             predicates.add(this.alwaysAppliedPredicate.apply(cb, countChildrenRoot));
@@ -1999,10 +1999,7 @@ public class QueryBuilder<E, E_ID, D> {
         treeAggregationSubquery.select((Expression) aggregationSelection);
 
         List<Predicate> predicates = new ArrayList<>();
-        Predicate childrenPathPredicate = cb.like(
-                treeAggregationRoot.get(this.treeDataDataPathFieldName),
-                cb.concat(root.get(this.treeDataDataPathFieldName), this.treeDataDataPathSeparator + "%")
-        );
+        Predicate childrenPathPredicate = this.createTreeDataDescendantPredicate(cb, treeAggregationRoot, root);
         predicates.add(childrenPathPredicate);
         if (this.alwaysAppliedPredicate != null) {
             predicates.add(this.alwaysAppliedPredicate.apply(cb, treeAggregationRoot));
@@ -2163,6 +2160,25 @@ public class QueryBuilder<E, E_ID, D> {
 
 
     /**
+     * Creates predicate that checks if a node is a descendant of another node in tree-data mode:
+     * its data path starts with the data path of the other node followed by the separator.
+     * <p>
+     * The paths are compared with {@code LOCATE} rather than {@code LIKE}, so that characters in the paths
+     * which are wildcards in a {@code LIKE} pattern ({@code %}, {@code _}, or {@code [} on SQL Server)
+     * only match themselves.
+     *
+     * @param cb the criteria builder
+     * @param descendant root of the node that may be a descendant
+     * @param ancestor root of the node that may be an ancestor
+     * @return a condition that is true if {@code descendant} is a descendant of {@code ancestor}
+     */
+    @NonNull
+    protected Predicate createTreeDataDescendantPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<E> descendant, @NonNull Root<E> ancestor) {
+        Expression<String> descendantPathPrefix = cb.concat(ancestor.get(this.treeDataDataPathFieldName), this.treeDataDataPathSeparator);
+        return cb.equal(cb.locate(descendant.get(this.treeDataDataPathFieldName), descendantPathPrefix), 1);
+    }
+
+    /**
      * Creates predicate that checks if any child further down the tree matches the filter criteria.
      *
      * @param request The grid request containing the active filters.
@@ -2179,10 +2195,7 @@ public class QueryBuilder<E, E_ID, D> {
         Root<E> childrenRoot = childrenMatchSubquery.from(this.entityClass);
 
         // generate children predicate: path starts with parent path
-        Predicate childrenPathPredicate = cb.like(
-                childrenRoot.get(this.treeDataDataPathFieldName),
-                cb.concat(root.get(this.treeDataDataPathFieldName), this.treeDataDataPathSeparator + "%")
-        );
+        Predicate childrenPathPredicate = this.createTreeDataDescendantPredicate(cb, childrenRoot, root);
         
         // generate filter predicates
         List<Predicate> predicates = new ArrayList<>();
