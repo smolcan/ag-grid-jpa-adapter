@@ -19,7 +19,9 @@ import io.github.smolcan.aggrid.jpa.adapter.test.entity.DealType;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Product_;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade_;
+import io.github.smolcan.aggrid.jpa.adapter.test.infrastructure.CountingDriver;
 import io.github.smolcan.aggrid.jpa.adapter.test.infrastructure.TradeTestData;
+import io.github.smolcan.aggrid.jpa.adapter.utils.Utils;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
@@ -122,6 +124,13 @@ class AdvancedFilterTest extends ScenarioTestBase {
         // no book contains a literal '_' or '%': as wildcards, "B_1" would match B-1 and b-1
         assertThat(tradeIds(rows(column("text", "book", "contains", "B_1")))).isEmpty();
         assertThat(tradeIds(rows(column("text", "portfolio", "notContains", "%")))).hasSize(12);
+    }
+
+    @Test
+    void plainTextAddsNoEscapeClause() {
+        // an ESCAPE clause makes some databases (Oracle) check every row more slowly, so only text that needs it gets one
+        List<String> sql = CountingDriver.sql(() -> rows(column("text", "portfolio", "contains", "alpha")));
+        assertThat(sql).isNotEmpty().noneMatch(statement -> statement.contains("'" + Utils.LIKE_ESCAPE_CHAR + "'"));
     }
 
     @Test

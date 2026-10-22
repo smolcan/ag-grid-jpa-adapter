@@ -9,6 +9,7 @@ import io.github.smolcan.aggrid.jpa.adapter.request.SortDirection;
 import io.github.smolcan.aggrid.jpa.adapter.response.LoadSuccessParams;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Employee;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Employee_;
+import io.github.smolcan.aggrid.jpa.adapter.test.infrastructure.CountingDriver;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -98,6 +100,13 @@ class TreeDataPathWildcardTest extends ScenarioTestBase {
 
         // a_b sums only its own child (20), not axb's (40); c% only its own (60), not cd's (80)
         assertThat(doubleValues(result, "salary")).containsExactly(1060.0, 150.0, 130.0, 20.0, 40.0, 60.0, 80.0);
+    }
+
+    @Test
+    void descendantCheckKeepsALikeThatCanUseAnIndexOnThePath() {
+        // with LOCATE alone, Oracle and SQL Server read every path for every node instead of seeking the index
+        List<String> sql = CountingDriver.sql(() -> treeQueryBuilder().getRows(rootRequest()));
+        assertThat(sql).anyMatch(statement -> statement.toLowerCase(Locale.ROOT).contains(" like "));
     }
 
     @Test
