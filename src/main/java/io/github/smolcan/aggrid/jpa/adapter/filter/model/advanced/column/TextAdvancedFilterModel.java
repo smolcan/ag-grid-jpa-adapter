@@ -5,6 +5,7 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.advanced.ColumnAdvanced
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.SimpleFilterModelType;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextFilterParams;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextMatcherParams;
+import io.github.smolcan.aggrid.jpa.adapter.utils.Utils;
 import jakarta.persistence.criteria.*;
 import lombok.Getter;
 import lombok.NonNull;
@@ -41,7 +42,10 @@ public class TextAdvancedFilterModel<E> extends ColumnAdvancedFilterModel<E, Str
 
             return this.filterParams.getTextMatcher().apply(cb, textMatcherParams);
         }
-        
+
+        // filter text for the LIKE patterns, with its wildcards escaped so that they match literally
+        Expression<String> likeFilterExpression = this.filterParams.generateExpressionFromFilterParams(cb, this.filter != null ? cb.literal(Utils.escapeLike(this.filter)) : cb.nullLiteral(String.class));
+
         Predicate predicate;
         switch (this.type) {
             case blank: {
@@ -61,19 +65,19 @@ public class TextAdvancedFilterModel<E> extends ColumnAdvancedFilterModel<E, Str
                 break;
             }
             case contains: {
-                predicate = cb.like(valueExpression, cb.concat(cb.concat("%", filterExpression), "%"));
+                predicate = cb.like(valueExpression, cb.concat(cb.concat("%", likeFilterExpression), "%"), Utils.LIKE_ESCAPE_CHAR);
                 break;
             }
             case notContains: {
-                predicate = cb.notLike(valueExpression, cb.concat(cb.concat("%", filterExpression), "%"));
+                predicate = cb.notLike(valueExpression, cb.concat(cb.concat("%", likeFilterExpression), "%"), Utils.LIKE_ESCAPE_CHAR);
                 break;
             }
             case startsWith: {
-                predicate = cb.like(valueExpression, cb.concat(filterExpression, "%"));
+                predicate = cb.like(valueExpression, cb.concat(likeFilterExpression, "%"), Utils.LIKE_ESCAPE_CHAR);
                 break;
             }
             case endsWith: {
-                predicate = cb.like(valueExpression, cb.concat("%", filterExpression));
+                predicate = cb.like(valueExpression, cb.concat("%", likeFilterExpression), Utils.LIKE_ESCAPE_CHAR);
                 break;
             }
             default: {

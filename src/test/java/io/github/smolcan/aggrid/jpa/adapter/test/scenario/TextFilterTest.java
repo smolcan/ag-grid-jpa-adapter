@@ -1,6 +1,7 @@
 package io.github.smolcan.aggrid.jpa.adapter.test.scenario;
 
 import io.github.smolcan.aggrid.jpa.adapter.column.ColDef;
+import io.github.smolcan.aggrid.jpa.adapter.column.ComputedField;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.SimpleFilterModelType;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextFilterParams;
 import io.github.smolcan.aggrid.jpa.adapter.filter.provided.simple.AgTextColumnFilter;
@@ -59,6 +60,42 @@ class TextFilterTest extends ScenarioTestBase {
     void endsWith() {
         LoadSuccessParams result = rows(Map.of("portfolio", filter("endsWith", "ta")));
         assertThat(tradeIds(result)).containsExactly(4L, 5L, 6L, 9L, 10L);
+    }
+
+    @Test
+    void wildcardsInFilterTextMatchLiterally() {
+        // no book contains a literal '_' or '%': as wildcards, "B_1" would match B-1 and b-1, and "%" every book
+        assertThat(tradeIds(rows(Map.of("book", filter("contains", "B_1"))))).isEmpty();
+        assertThat(tradeIds(rows(Map.of("book", filter("contains", "%"))))).isEmpty();
+        assertThat(tradeIds(rows(Map.of("book", filter("startsWith", "_"))))).isEmpty();
+        assertThat(tradeIds(rows(Map.of("book", filter("endsWith", "%"))))).isEmpty();
+        // so no portfolio contains "%", and none is excluded
+        assertThat(tradeIds(rows(Map.of("portfolio", filter("notContains", "%"))))).hasSize(12);
+    }
+
+    @Test
+    void escapedCharactersStillMatchThemselves() {
+        QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
+                .colDefs(
+                        ColDef.builder(Trade_.tradeId).build(),
+                        ColDef.builder(bookWithWildcards()).filter(new AgTextColumnFilter()).build()
+                )
+                .build();
+
+        ServerSideGetRowsRequest request = sortedByIdRequest(0, 100);
+        request.setFilterModel(Map.of("bookWithWildcards", filter("contains", "1_!%")));
+
+        // '_', '%' and the escape character '!' all match themselves: B-1 (1, 6) and b-1 (12)
+        assertThat(tradeIds(queryBuilder.getRows(request))).containsExactly(1L, 6L, 12L);
+    }
+
+    /** The book with "_!%" appended, so the values contain both LIKE wildcards and the escape character. */
+    static ComputedField<Trade, String> bookWithWildcards() {
+        return ComputedField.<Trade, String>builder()
+                .name("bookWithWildcards")
+                .javaType(String.class)
+                .expressionFunction((cb, root) -> cb.concat(root.get(Trade_.book), "_!%"))
+                .build();
     }
 
     @Test

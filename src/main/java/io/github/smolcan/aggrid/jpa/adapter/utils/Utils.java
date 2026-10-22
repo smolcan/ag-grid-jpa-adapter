@@ -8,7 +8,28 @@ import java.util.Set;
 
 public class Utils {
 
+    /** Escape character for LIKE patterns. Not a backslash, which MySQL and MariaDB treat specially. */
+    public static final char LIKE_ESCAPE_CHAR = '!';
+
     private Utils() {}
+
+    /**
+     * Escapes {@code %}, {@code _} and {@link #LIKE_ESCAPE_CHAR}, so that the value matches literally in a LIKE pattern.
+     *
+     * @param value the text to escape
+     * @return the escaped text
+     */
+    @NonNull
+    public static String escapeLike(@NonNull String value) {
+        StringBuilder escaped = new StringBuilder(value.length());
+        for (char c : value.toCharArray()) {
+            if (c == LIKE_ESCAPE_CHAR || c == '%' || c == '_') {
+                escaped.append(LIKE_ESCAPE_CHAR);
+            }
+            escaped.append(c);
+        }
+        return escaped.toString();
+    }
 
     @NonNull
     public static <T> List<List<T>> cartesianProduct(@NonNull List<Set<T>> sets) {

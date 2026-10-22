@@ -1,6 +1,7 @@
 package io.github.smolcan.aggrid.jpa.adapter.test.scenario;
 
 import io.github.smolcan.aggrid.jpa.adapter.column.ColDef;
+import io.github.smolcan.aggrid.jpa.adapter.column.ComputedField;
 import io.github.smolcan.aggrid.jpa.adapter.column.FieldPath;
 import io.github.smolcan.aggrid.jpa.adapter.exceptions.OnPivotMaxColumnsExceededException;
 import io.github.smolcan.aggrid.jpa.adapter.query.QueryBuilder;
@@ -184,6 +185,84 @@ class PivotingTest extends ScenarioTestBase {
 
         LoadSuccessParams result = queryBuilder.getRows(pivotRequest());
         assertThat(result.getPivotResultFields()).contains("Gold|currentValue", "Silver|currentValue");
+    }
+
+    @Test
+    void sortingByPivotResultColumnWhoseValueColumnNameContainsTheSeparator() {
+        QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
+                .colDefs(
+                        ColDef.builder(Trade_.portfolio).enableRowGroup(true, key -> key).build(),
+                        ColDef.builder(currentValueWithSeparator()).enableValue(true).build(),
+                        ColDef.builder(FieldPath.of(Trade_.product).to(Product_.name)).enablePivot(true).build()
+                )
+                .build();
+
+        // "Gold_current_value" is the value column current_value, not "value"
+        LoadSuccessParams result = queryBuilder.getRows(pivotRequestSortedDescBy("current_value", "Gold_current_value"));
+        assertOrderedByGoldDescending(result);
+    }
+
+    @Test
+    void sortingByPivotResultColumnPrefersTheLongestMatchingValueColumn() {
+        ComputedField<Trade, BigDecimal> value = ComputedField.<Trade, BigDecimal>builder()
+                .name("value")
+                .javaType(BigDecimal.class)
+                .expressionFunction((cb, root) -> root.get(Trade_.currentValue))
+                .build();
+        QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
+                .colDefs(
+                        ColDef.builder(Trade_.portfolio).enableRowGroup(true, key -> key).build(),
+                        ColDef.builder(value).enableValue(true).sortable(false).build(),
+                        ColDef.builder(currentValueWithSeparator()).enableValue(true).build(),
+                        ColDef.builder(FieldPath.of(Trade_.product).to(Product_.name)).enablePivot(true).build()
+                )
+                .build();
+
+        // "Gold_current_value" also ends with "_value", which is not sortable: resolving to it would
+        // reject the sort
+        LoadSuccessParams result = queryBuilder.getRows(pivotRequestSortedDescBy("current_value", "Gold_current_value"));
+        assertOrderedByGoldDescending(result);
+    }
+
+    @Test
+    void sortingByPivotResultColumnWithMultiCharacterSeparator() {
+        QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
+                .colDefs(
+                        ColDef.builder(Trade_.portfolio).enableRowGroup(true, key -> key).build(),
+                        ColDef.builder(Trade_.currentValue).enableValue(true).build(),
+                        ColDef.builder(FieldPath.of(Trade_.product).to(Product_.name)).enablePivot(true).build()
+                )
+                .serverSidePivotResultFieldSeparator("||")
+                .build();
+
+        LoadSuccessParams result = queryBuilder.getRows(pivotRequestSortedDescBy("currentValue", "Gold||currentValue"));
+        assertOrderedByGoldDescending(result);
+    }
+
+    /** current_value: the currentValue column under a name that contains the default pivot separator. */
+    static ComputedField<Trade, BigDecimal> currentValueWithSeparator() {
+        return ComputedField.<Trade, BigDecimal>builder()
+                .name("current_value")
+                .javaType(BigDecimal.class)
+                .expressionFunction((cb, root) -> root.get(Trade_.currentValue))
+                .build();
+    }
+
+    private ServerSideGetRowsRequest pivotRequestSortedDescBy(String valueCol, String sortColId) {
+        ServerSideGetRowsRequest request = pivotRequest();
+        request.getValueCols().clear();
+        request.getValueCols().add(valueCol(valueCol, "sum"));
+        request.getSortModel().clear();
+        request.getSortModel().add(sortItem(sortColId, SortDirection.desc));
+        return request;
+    }
+
+    /** Same order as {@link #sortingByPivotedResultColumn()}: the portfolios by their Gold sum, descending. */
+    private static void assertOrderedByGoldDescending(LoadSuccessParams result) {
+        assertThat(result.getRowData()).hasSize(8);
+        int firstWithGold = TestPersistence.nullsSortLow() ? 0 : 4;
+        assertThat(columnValues(result, "portfolio").subList(firstWithGold, firstWithGold + 4))
+                .containsExactly("BETA", "delta", "Alpha", "alpha");
     }
 
     @Test

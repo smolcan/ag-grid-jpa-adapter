@@ -4,6 +4,7 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.SimpleFilterMode
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.TextFilterModel;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextFilterParams;
 import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.TextMatcherParams;
+import io.github.smolcan.aggrid.jpa.adapter.utils.Utils;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
@@ -50,8 +51,10 @@ public class AgTextColumnFilter extends SimpleFilter<String, TextFilterModel, Te
             
             return this.filterParams.getTextMatcher().apply(cb, textMatcherParams);
         }
-        
-        
+
+        // filter text for the LIKE patterns, with its wildcards escaped so that they match literally
+        Expression<String> likeFilterExpression = this.filterParams.generateExpressionFromFilterParams(cb, filterModel.getFilter() != null ? cb.literal(Utils.escapeLike(filterModel.getFilter())) : cb.nullLiteral(String.class));
+
         Predicate predicate;
         switch (filterModel.getType()) {
             case empty: case blank: {
@@ -71,19 +74,19 @@ public class AgTextColumnFilter extends SimpleFilter<String, TextFilterModel, Te
                 break;
             }
             case contains: {
-                predicate = cb.like(valueExpression, cb.concat(cb.concat("%", filterExpression), "%"));
+                predicate = cb.like(valueExpression, cb.concat(cb.concat("%", likeFilterExpression), "%"), Utils.LIKE_ESCAPE_CHAR);
                 break;
             }
             case notContains: {
-                predicate = cb.notLike(valueExpression, cb.concat(cb.concat("%", filterExpression), "%"));
+                predicate = cb.notLike(valueExpression, cb.concat(cb.concat("%", likeFilterExpression), "%"), Utils.LIKE_ESCAPE_CHAR);
                 break;
             }
             case startsWith: {
-                predicate = cb.like(valueExpression, cb.concat(filterExpression, "%"));
+                predicate = cb.like(valueExpression, cb.concat(likeFilterExpression, "%"), Utils.LIKE_ESCAPE_CHAR);
                 break;
             }
             case endsWith: {
-                predicate = cb.like(valueExpression, cb.concat("%", filterExpression));
+                predicate = cb.like(valueExpression, cb.concat("%", likeFilterExpression), Utils.LIKE_ESCAPE_CHAR);
                 break;
             }
             default: {

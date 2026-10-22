@@ -45,8 +45,7 @@ class GroupingTest extends ScenarioTestBase {
     }
 
     /**
-     * Grouping request sorted by the group column; AG Grid always sends a filterModel
-     * object (possibly empty), and grouping mode relies on it being non-null.
+     * Grouping request sorted by the group column, with the empty filterModel AG Grid sends.
      */
     private ServerSideGetRowsRequest groupedByPortfolioRequest(String... groupKeys) {
         ServerSideGetRowsRequest request = emptyRequest(0, 100);
@@ -65,6 +64,22 @@ class GroupingTest extends ScenarioTestBase {
         // H2 binary collation: uppercase sorts before lowercase
         assertThat(columnValues(result, "portfolio"))
                 .containsExactly("Alpha", "BETA", "Beta", "Delta", "Epsilon", "Gamma", "alpha", "delta");
+    }
+
+    @Test
+    void missingFilterModelIsTreatedAsNoFilter() {
+        // a request built in code, e.g. for an export, has no filterModel unless one is set
+        ServerSideGetRowsRequest groups = groupedByPortfolioRequest();
+        groups.setFilterModel(null);
+        ServerSideGetRowsRequest leaves = groupedByPortfolioRequest("Beta");
+        leaves.setFilterModel(null);
+
+        assertThat(groupingQueryBuilder().getRows(groups).getRowData()).hasSize(8);
+        assertThat(groupingQueryBuilder().countRows(groups)).isEqualTo(8);
+        assertThat(tradeIds(groupingQueryBuilder().getRows(leaves))).containsExactlyInAnyOrder(4L, 5L);
+        // group aggregation filtering takes its own path through the same check
+        assertThat(groupAggFilteringQueryBuilder().getRows(groups).getRowData()).hasSize(8);
+        assertThat(tradeIds(groupAggFilteringQueryBuilder().getRows(leaves))).containsExactlyInAnyOrder(4L, 5L);
     }
 
     @Test
@@ -373,30 +388,43 @@ class GroupingTest extends ScenarioTestBase {
     }
 
     @Test
-    void paginateChildRowsCountsRowsInsideExpandedGroups() {
+    void countRowsCountsRowsInsideExpandedGroups() {
         QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
                 .colDefs(
                         ColDef.builder(Trade_.tradeId).build(),
                         ColDef.builder(Trade_.portfolio).enableRowGroup(true, key -> key).build()
                 )
-                .paginateChildRows(true)
                 .build();
 
-        // no expanded groups: still counts root groups
+        // no expanded groups: counts root groups
         assertThat(queryBuilder.countRows(groupedByPortfolioRequest())).isEqualTo(8);
         // group expanded: counts the rows inside it
         assertThat(queryBuilder.countRows(groupedByPortfolioRequest("Beta"))).isEqualTo(2);
     }
 
     @Test
-    void paginateChildRowsCountsChildGroupsOfExpandedGroup() {
+    @SuppressWarnings("removal")
+    void deprecatedPaginateChildRowsDoesNotChangeTheCount() {
+        QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
+                .colDefs(
+                        ColDef.builder(Trade_.tradeId).build(),
+                        ColDef.builder(Trade_.portfolio).enableRowGroup(true, key -> key).build()
+                )
+                .paginateChildRows(false)
+                .build();
+
+        assertThat(queryBuilder.countRows(groupedByPortfolioRequest())).isEqualTo(8);
+        assertThat(queryBuilder.countRows(groupedByPortfolioRequest("Beta"))).isEqualTo(2);
+    }
+
+    @Test
+    void countRowsCountsChildGroupsOfExpandedGroup() {
         QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
                 .colDefs(
                         ColDef.builder(Trade_.tradeId).build(),
                         ColDef.builder(Trade_.portfolio).enableRowGroup(true, key -> key).build(),
                         ColDef.builder(FieldPath.of(Trade_.product).to(Product_.name)).enableRowGroup(true, key -> key).build()
                 )
-                .paginateChildRows(true)
                 .build();
 
         ServerSideGetRowsRequest request = emptyRequest(0, 100);

@@ -267,6 +267,28 @@ class PivotFilteringTest extends ScenarioTestBase {
     }
 
     @Test
+    void filterOnGeneratedPivotColumnWhoseValueColumnNameContainsTheSeparator() {
+        QueryBuilder<Trade, Long, Void> queryBuilder = QueryBuilder.builder(Trade.class, Trade_.tradeId, entityManager)
+                .colDefs(
+                        ColDef.builder(Trade_.portfolio).enableRowGroup(true, key -> key).build(),
+                        ColDef.builder(PivotingTest.currentValueWithSeparator()).enableValue(true).filter(new AgNumberColumnFilter<>()).build(),
+                        ColDef.builder(FieldPath.of(Trade_.product).to(Product_.name)).enablePivot(true).build()
+                )
+                .build();
+
+        ServerSideGetRowsRequest request = pivotRequest();
+        request.getValueCols().clear();
+        request.getValueCols().add(valueCol("current_value", "sum"));
+        // "Silver_current_value" is the generated column of current_value, not a column named "value"
+        request.setFilterModel(filterModel("Silver_current_value", filter("greaterThan", 300)));
+
+        LoadSuccessParams result = queryBuilder.getRows(request);
+        // silver sums are Alpha 250.50, Beta 500.00, Gamma 75.25, Epsilon 42.42
+        assertThat(columnValues(result, "portfolio")).containsExactly("Beta");
+        assertThat(cell(row(result, "Beta"), "Silver_current_value")).isEqualTo(500.00);
+    }
+
+    @Test
     void filterOnPivotColumnThatIsNoLongerGeneratedIsIgnored() {
         ServerSideGetRowsRequest request = pivotRequest();
         Map<String, Object> model = filterModel("product.name", filter("equals", "Gold"));

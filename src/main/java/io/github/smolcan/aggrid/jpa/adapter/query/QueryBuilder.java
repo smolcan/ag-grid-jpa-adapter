@@ -41,7 +41,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.LIKE_ESCAPE_CHAR;
 import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.cartesianProduct;
+import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.escapeLike;
 
 /**
  * A robust JPA adapter designed to seamlessly integrate AG Grid's Server-Side Row Model (SSRM)
@@ -82,7 +84,6 @@ public class QueryBuilder<E, E_ID, D> {
     protected final boolean enableAdvancedFilter;
     protected final Map<String, Function<Map<String, Object>, ColumnAdvancedFilterModel<E, ?>>> registeredCustomAdvancedFilters;
     protected final Integer pivotMaxGeneratedColumns;
-    protected final boolean paginateChildRows;
     protected final boolean groupAggFiltering;
     protected final boolean suppressAggFilteredOnly;
     protected final boolean isExternalFilterPresent;
@@ -140,7 +141,6 @@ public class QueryBuilder<E, E_ID, D> {
         this.enableAdvancedFilter = builder.enableAdvancedFilter;
         this.registeredCustomAdvancedFilters = builder.registeredCustomAdvancedFilters == null ? Collections.emptyMap() : builder.registeredCustomAdvancedFilters;
         this.pivotMaxGeneratedColumns = builder.pivotMaxGeneratedColumns;
-        this.paginateChildRows = builder.paginateChildRows;
         this.groupAggFiltering = builder.groupAggFiltering;
         this.suppressAggFilteredOnly = builder.groupAggFiltering || builder.suppressAggFilteredOnly;
         this.isExternalFilterPresent = builder.isExternalFilterPresent;
@@ -232,25 +232,16 @@ public class QueryBuilder<E, E_ID, D> {
     }
 
     /**
-     * Counts the number of rows or groups that match the criteria specified in the request.
-     * <p>
-     * This method determines the total count of rows or groups based on the filtering and grouping
-     * specifications in the provided {@link ServerSideGetRowsRequest}. The behavior differs depending
-     * on whether the request contains row grouping:
+     * Counts the rows or groups at the level the request loads:
      * <ul>
-     *   <li>If no grouping is applied, it counts the total number of entity rows that match the filter criteria.</li>
-     *   <li>If grouping is applied, it counts the distinct values of the root group column that would be displayed
-     *       at the current grouping level, taking into account all filters and having conditions.</li>
+     *   <li>no grouping: the rows</li>
+     *   <li>some groups not expanded yet: the groups of the first unexpanded group column</li>
+     *   <li>all groups expanded: the rows inside the expanded group</li>
      * </ul>
-     * <p>
-     *     
-     * This count can be used for server-side pagination calculations or to determine the total
-     * number of rows/groups available when displaying partial results.
      *
-     * @param request The {@link ServerSideGetRowsRequest} containing filtering, grouping, and other criteria information.
-     * @return The count of rows or groups that match the criteria in the request.
-     * @throws OnPivotMaxColumnsExceededException If the number of pivot columns to be generated exceeds the configured limit.
-     * @see #getRows(ServerSideGetRowsRequest) For retrieving the actual row data.
+     * @param request the server-side request parameters from the grid
+     * @return the count of rows or groups
+     * @throws OnPivotMaxColumnsExceededException if the number of pivot columns to be generated exceeds the configured limit
      */
     @SuppressWarnings("unchecked")
     public long countRows(@NonNull ServerSideGetRowsRequest request) throws OnPivotMaxColumnsExceededException {
@@ -261,25 +252,14 @@ public class QueryBuilder<E, E_ID, D> {
         Root<E> root = query.from(this.entityClass);
         // record all the context we put into query
         QueryContext<E> queryContext = new QueryContext<>(cb, query, root);
-        
-        // we count groups when there is grouping
-        boolean hasGroupCols = !request.getRowGroupCols().isEmpty();
-        boolean countingGroups = hasGroupCols;
-        if (hasGroupCols && this.paginateChildRows) {
-            // if paginateChildRows is turned on and all groups are expanded, we count records inside group (not counting groups)
-            boolean allGroupsExpanded = request.getRowGroupCols().size() == request.getGroupKeys().size();
-            if (allGroupsExpanded) {
-                countingGroups = false;
-            }
-        }
-        
+
+        // we count groups while some group column is not expanded yet,
+        // once all groups are expanded we count records inside group (not counting groups)
+        boolean countingGroups = request.getRowGroupCols().size() > request.getGroupKeys().size();
+
         if (countingGroups) {
-            // select the group col that we are counting
-            int countingGroupColIndex = this.paginateChildRows
-                    // when paginating child rows, we count the first unexpanded group (next after last group key)
-                    ? request.getGroupKeys().size()
-                    // otherwise, we count root group
-                    : 0;
+            // select the group col that we are counting, the first unexpanded group (next after last group key)
+            int countingGroupColIndex = request.getGroupKeys().size();
             String countingGroupCol = request.getRowGroupCols().get(countingGroupColIndex).getId();
             ColDef<? super E, ?> countingGroupColDef = this.colDefs.get(countingGroupCol);
 
@@ -905,7 +885,8 @@ public class QueryBuilder<E, E_ID, D> {
         // predicates for each row
         List<Predicate> wordsPredicates = new ArrayList<>(words.size());
         for (String word : words) {
-            Expression<String> wordExpression = cb.literal(word);
+            // the word goes into a LIKE pattern, escape its wildcards so that they match literally
+            Expression<String> wordExpression = cb.literal(escapeLike(word));
             
             // transform word expression according to quick filter config
             if (this.quickFilterTrimInput) {
@@ -933,7 +914,7 @@ public class QueryBuilder<E, E_ID, D> {
                     path = this.quickFilterTextFormatter.apply(cb, path);
                 }
                 
-                Predicate rowWordPredicate = cb.like(path, cb.concat(cb.concat("%", wordExpression), "%"));
+                Predicate rowWordPredicate = cb.like(path, cb.concat(cb.concat("%", wordExpression), "%"), LIKE_ESCAPE_CHAR);
                 rowPredicatesForWord.add(rowWordPredicate);
             }
 
@@ -1400,7 +1381,7 @@ public class QueryBuilder<E, E_ID, D> {
                     // is then keyed by the generated name (for example "Book 1_currentValue").
                     // such a column already is an aggregation and is evaluated in the having clause
                     for (String field : new ArrayList<>(rowFilterModel.keySet())) {
-                        if (!this.colDefs.containsKey(field) && this.colDefs.containsKey(this.originalColNameFromPivoted(field))) {
+                        if (!this.colDefs.containsKey(field) && this.originalColNameFromPivoted(field, request) != null) {
                             rowFilterModel.remove(field);
                         }
                     }
@@ -1455,10 +1436,12 @@ public class QueryBuilder<E, E_ID, D> {
             wherePredicates.add(groupPredicateInfo);
         }
         
+        // a request built without a filter model is treated like the empty one the grid sends
+        Map<String, Object> filterModel = request.getFilterModel() != null ? request.getFilterModel() : Map.of();
         boolean hasAnyFilteringOnAggregatedColumns = !this.enableAdvancedFilter &&
-                request.getFilterModel().keySet().stream().anyMatch(k -> request.getValueCols().stream().anyMatch(vc -> vc.getField().equals(k)));
+                filterModel.keySet().stream().anyMatch(k -> request.getValueCols().stream().anyMatch(vc -> vc.getField().equals(k)));
         boolean hasAnyFilteringOnNonAggregatedColumns = this.enableAdvancedFilter ||
-                request.getFilterModel().keySet().stream().noneMatch(k -> request.getValueCols().stream().anyMatch(vc -> vc.getField().equals(k)));
+                filterModel.keySet().stream().noneMatch(k -> request.getValueCols().stream().anyMatch(vc -> vc.getField().equals(k)));
         boolean hasUnexpandedGroups = request.getRowGroupCols().size() > request.getGroupKeys().size();
         
         
@@ -1804,11 +1787,12 @@ public class QueryBuilder<E, E_ID, D> {
                 continue;
             }
             
-            ColDef<? super E, ?> colDef = this.colDefs.get(this.originalColNameFromPivoted(field));
-            if (colDef == null) {
+            String originalColName = this.originalColNameFromPivoted(field, request);
+            if (originalColName == null) {
                 // not a generated pivot column either, the where clause reports the unknown column
                 continue;
             }
+            ColDef<? super E, ?> colDef = this.colDefs.get(originalColName);
             
             Expression<?> pivotColumnExpression = Optional.ofNullable(pivotColumns)
                     .map(pc -> pc.get(field))
@@ -1891,10 +1875,7 @@ public class QueryBuilder<E, E_ID, D> {
         countChildrenSubquery.select(cb.count(countChildrenRoot));
 
         List<Predicate> predicates = new ArrayList<>();
-        Predicate childrenPathPredicate = cb.like(
-                countChildrenRoot.get(this.treeDataDataPathFieldName),
-                cb.concat(root.get(this.treeDataDataPathFieldName), this.treeDataDataPathSeparator + "%")
-        );
+        Predicate childrenPathPredicate = this.createTreeDataDescendantPredicate(cb, countChildrenRoot, root);
         predicates.add(childrenPathPredicate);
         if (this.alwaysAppliedPredicate != null) {
             predicates.add(this.alwaysAppliedPredicate.apply(cb, countChildrenRoot));
@@ -2012,10 +1993,7 @@ public class QueryBuilder<E, E_ID, D> {
         treeAggregationSubquery.select((Expression) aggregationSelection);
 
         List<Predicate> predicates = new ArrayList<>();
-        Predicate childrenPathPredicate = cb.like(
-                treeAggregationRoot.get(this.treeDataDataPathFieldName),
-                cb.concat(root.get(this.treeDataDataPathFieldName), this.treeDataDataPathSeparator + "%")
-        );
+        Predicate childrenPathPredicate = this.createTreeDataDescendantPredicate(cb, treeAggregationRoot, root);
         predicates.add(childrenPathPredicate);
         if (this.alwaysAppliedPredicate != null) {
             predicates.add(this.alwaysAppliedPredicate.apply(cb, treeAggregationRoot));
@@ -2176,6 +2154,22 @@ public class QueryBuilder<E, E_ID, D> {
 
 
     /**
+     * Creates predicate that checks if a node is a descendant of another node in tree-data mode,
+     * i.e. its data path starts with the other node's data path and the separator.
+     * Uses {@code LOCATE} rather than {@code LIKE}, so that wildcard characters in the paths match only themselves.
+     *
+     * @param cb criteria builder
+     * @param descendant root of the possible descendant
+     * @param ancestor root of the possible ancestor
+     * @return the predicate
+     */
+    @NonNull
+    protected Predicate createTreeDataDescendantPredicate(@NonNull CriteriaBuilder cb, @NonNull Root<E> descendant, @NonNull Root<E> ancestor) {
+        Expression<String> descendantPathPrefix = cb.concat(ancestor.get(this.treeDataDataPathFieldName), this.treeDataDataPathSeparator);
+        return cb.equal(cb.locate(descendant.get(this.treeDataDataPathFieldName), descendantPathPrefix), 1);
+    }
+
+    /**
      * Creates predicate that checks if any child further down the tree matches the filter criteria.
      *
      * @param request The grid request containing the active filters.
@@ -2192,10 +2186,7 @@ public class QueryBuilder<E, E_ID, D> {
         Root<E> childrenRoot = childrenMatchSubquery.from(this.entityClass);
 
         // generate children predicate: path starts with parent path
-        Predicate childrenPathPredicate = cb.like(
-                childrenRoot.get(this.treeDataDataPathFieldName),
-                cb.concat(root.get(this.treeDataDataPathFieldName), this.treeDataDataPathSeparator + "%")
-        );
+        Predicate childrenPathPredicate = this.createTreeDataDescendantPredicate(cb, childrenRoot, root);
         
         // generate filter predicates
         List<Predicate> predicates = new ArrayList<>();
@@ -2962,8 +2953,7 @@ public class QueryBuilder<E, E_ID, D> {
                         boolean isInColDefs = this.colDefs.containsKey(c.getColId());
                         if (!isInColDefs && request.isPivotMode()) {
                             // check pivoted cols
-                            String pivotedColumnOriginalName = this.originalColNameFromPivoted(c.getColId());
-                            isInColDefs = this.colDefs.containsKey(pivotedColumnOriginalName);
+                            isInColDefs = this.originalColNameFromPivoted(c.getColId(), request) != null;
                         }
                         return !isInColDefs;
                     }).collect(Collectors.toList());
@@ -2988,8 +2978,8 @@ public class QueryBuilder<E, E_ID, D> {
                         boolean isNotSortable = notSortableColDefs.contains(sm.getColId());
                         if (!isNotSortable && request.isPivotMode()) {
                             // check pivoted cols
-                            String pivotedColumnOriginalName = this.originalColNameFromPivoted(sm.getColId());
-                            isNotSortable = notSortableColDefs.contains(pivotedColumnOriginalName);
+                            String pivotedColumnOriginalName = this.originalColNameFromPivoted(sm.getColId(), request);
+                            isNotSortable = pivotedColumnOriginalName != null && notSortableColDefs.contains(pivotedColumnOriginalName);
                         }
                         return isNotSortable;
                     }).collect(Collectors.toList());
@@ -3108,7 +3098,7 @@ public class QueryBuilder<E, E_ID, D> {
                         // filters on a generated pivot column are filters on an aggregation, they do not
                         // restrict the rows the columns are generated from
                         for (String filteredField : new ArrayList<>(rowFilterModel.keySet())) {
-                            if (!this.colDefs.containsKey(filteredField) && this.colDefs.containsKey(this.originalColNameFromPivoted(filteredField))) {
+                            if (!this.colDefs.containsKey(filteredField) && this.originalColNameFromPivoted(filteredField, request) != null) {
                                 rowFilterModel.remove(filteredField);
                             }
                         }
@@ -3174,12 +3164,25 @@ public class QueryBuilder<E, E_ID, D> {
     /**
      * Extracts original column name from pivoted name <br>
      * For example: Piv1_Piv2_Piv3_originalCol will be originalCol
+     * <p>
+     * Matches the end of the name, so column names containing the separator work too.
+     * Prefers the request's value columns over other column definitions, and the longest match.
+     *
      * @param pivotedName                           pivoted column name
-     * @return                                      original name of the column
+     * @param request                               request
+     * @return                                      original name of the column, or {@code null} if none matches
      */
+    protected String originalColNameFromPivoted(@NonNull String pivotedName, @NonNull ServerSideGetRowsRequest request) {
+        return this.longestPivotedColumnMatch(pivotedName, request.getValueCols().stream().map(ColumnVO::getField))
+                .or(() -> this.longestPivotedColumnMatch(pivotedName, this.colDefs.keySet().stream()))
+                .orElse(null);
+    }
+
     @NonNull
-    protected String originalColNameFromPivoted(@NonNull String pivotedName) {
-        return pivotedName.substring(pivotedName.lastIndexOf(this.serverSidePivotResultFieldSeparator) + 1);
+    private Optional<String> longestPivotedColumnMatch(@NonNull String pivotedName, @NonNull Stream<String> columnNames) {
+        return columnNames
+                .filter(columnName -> pivotedName.endsWith(this.serverSidePivotResultFieldSeparator + columnName))
+                .max(Comparator.comparingInt(String::length));
     }
 
     /**
@@ -3252,7 +3255,7 @@ public class QueryBuilder<E, E_ID, D> {
                     // filters on a generated pivot column are filters on an aggregation, they do not
                     // restrict the rows the columns are generated from
                     for (String field : new ArrayList<>(rowFilterModel.keySet())) {
-                        if (!this.colDefs.containsKey(field) && this.colDefs.containsKey(this.originalColNameFromPivoted(field))) {
+                        if (!this.colDefs.containsKey(field) && this.originalColNameFromPivoted(field, request) != null) {
                             rowFilterModel.remove(field);
                         }
                     }
@@ -3281,7 +3284,7 @@ public class QueryBuilder<E, E_ID, D> {
                         if (value instanceof LocalDate) {
                             return ((LocalDate) value).format(DateTimeFormatter.ISO_LOCAL_DATE);
                         } else if (value instanceof LocalDateTime) {
-                            return ((LocalDateTime) value).format(DateTimeFormatter.ISO_LOCAL_DATE);
+                            return ((LocalDateTime) value).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
                         } else {
                             return String.valueOf(value);
                         }
@@ -3335,7 +3338,6 @@ public class QueryBuilder<E, E_ID, D> {
         private Integer pivotMaxGeneratedColumns;
         private boolean enableAdvancedFilter;
         private Map<String, Function<Map<String, Object>, ColumnAdvancedFilterModel<E, ?>>> registeredCustomAdvancedFilters;
-        private boolean paginateChildRows;
         private boolean groupAggFiltering;
         private boolean suppressAggFilteredOnly;
         private boolean isExternalFilterPresent;
@@ -3452,9 +3454,14 @@ public class QueryBuilder<E, E_ID, D> {
             return this;
         }
         
+        /**
+         * @param paginateChildRows ignored.
+         * @return this builder.
+         * @deprecated has no effect, {@link QueryBuilder#countRows(ServerSideGetRowsRequest)} always counts the level the request loads.
+         */
+        @Deprecated(since = "1.1.8", forRemoval = true)
         @NonNull
         public Builder<E, E_ID, D> paginateChildRows(boolean paginateChildRows) {
-            this.paginateChildRows = paginateChildRows;
             return this;
         }
 
