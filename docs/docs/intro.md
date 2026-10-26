@@ -27,7 +27,7 @@ This project is under active development. Breaking changes may occur between ver
 ```
 **Requirements 🛠️**
 - **Java**: Version **11** or higher.
-- **JPA**: Version **3.1.0**.
+- **JPA**: Jakarta Persistence **3.0** or higher (tested on 3.0, 3.1 and 3.2 with Hibernate and EclipseLink).
 - **JPA static metamodel**: an annotation processor that generates the `*_` metamodel classes (e.g. `hibernate-jpamodelgen`) — see [step 2](#complete-example) below.
 
 ## Using AG Grid JPA Adapter

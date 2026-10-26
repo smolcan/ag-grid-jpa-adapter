@@ -71,8 +71,8 @@ public final class TestPersistence {
     /**
      * Where NULL lands in an ORDER BY. H2, MariaDB, MySQL and SQL Server treat it as the smallest
      * value, so it leads ascending and trails descending; Postgres and Oracle treat it as the
-     * largest and do the opposite. JPA 3.1 has no way to ask for one or the other, so sorting tests
-     * that involve nulls have to expect whichever the database does.
+     * largest and do the opposite. JPA before 3.2 has no way to ask for one or the other, so
+     * sorting tests that involve nulls have to expect whichever the database does.
      */
     public static boolean nullsSortLow() {
         return activeDatabase() == TestDatabase.H2
@@ -184,17 +184,31 @@ public final class TestPersistence {
             } else if (database == TestDatabase.POSTGRES) {
                 properties.put("eclipselink.target-database", "org.eclipse.persistence.platform.database.PostgreSQLPlatform");
             } else if (database == TestDatabase.MARIADB) {
-                properties.put("eclipselink.target-database", "org.eclipse.persistence.platform.database.MariaDBPlatform");
+                properties.put("eclipselink.target-database", eclipseLinkPlatform("MariaDBPlatform", "MySQLPlatform"));
             } else if (database == TestDatabase.MYSQL) {
                 properties.put("eclipselink.target-database", "org.eclipse.persistence.platform.database.MySQLPlatform");
             } else if (database == TestDatabase.MSSQL) {
                 properties.put("eclipselink.target-database", "org.eclipse.persistence.platform.database.SQLServerPlatform");
             } else if (database == TestDatabase.ORACLE) {
-                properties.put("eclipselink.target-database", "org.eclipse.persistence.platform.database.Oracle23Platform");
+                properties.put("eclipselink.target-database", eclipseLinkPlatform("Oracle23Platform", "Oracle21Platform"));
             }
         }
 
         return Persistence.createEntityManagerFactory(PERSISTENCE_UNIT, properties);
+    }
+
+    /** First of the platforms the EclipseLink on the classpath ships; the 3.0 line predates MariaDB and Oracle 23. */
+    private static String eclipseLinkPlatform(String... newestFirst) {
+        for (String platform : newestFirst) {
+            String className = "org.eclipse.persistence.platform.database." + platform;
+            try {
+                Class.forName(className);
+                return className;
+            } catch (ClassNotFoundException e) {
+                // older EclipseLink line, fall back to the next one
+            }
+        }
+        throw new IllegalStateException("none of " + String.join(", ", newestFirst) + " is on the classpath");
     }
 
     /** One server per JVM, shut down by the Testcontainers reaper when the JVM exits. */

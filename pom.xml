@@ -40,10 +40,13 @@
 
   <properties>
     <lombok.version>1.18.46</lombok.version>
-    <!-- Hibernate 6.6.x is the last line implementing Jakarta Persistence 3.1 (Hibernate 7 targets 3.2) -->
-    <hibernate.version>6.6.54.Final</hibernate.version>
-    <!-- EclipseLink 4.0.x implements Jakarta Persistence 3.1 (4.1 targets 3.2) -->
-    <eclipselink.version>4.0.9</eclipselink.version>
+    <!-- the baseline the library compiles against; -Djpa=3.1 / -Djpa=3.2 swap it together with the providers -->
+    <jakarta.persistence.version>3.0.0</jakarta.persistence.version>
+    <!-- Hibernate 6.1.x is the last line implementing Jakarta Persistence 3.0 (6.2 targets 3.1) -->
+    <hibernate.version>6.1.7.Final</hibernate.version>
+    <!-- EclipseLink 3.0.x implements Jakarta Persistence 3.0 (4.0 targets 3.1) -->
+    <eclipselink.version>3.0.4</eclipselink.version>
+    <maven.compiler.release>11</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <!-- overwritten by jacoco prepare-agent; empty default keeps surefire's @{argLine} resolvable when jacoco is skipped -->
@@ -54,7 +57,7 @@
     <dependency>
       <groupId>jakarta.persistence</groupId>
       <artifactId>jakarta.persistence-api</artifactId>
-      <version>3.1.0</version>
+      <version>${jakarta.persistence.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
@@ -176,7 +179,6 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.9.0</version>
         <configuration>
-          <release>11</release>
           <annotationProcessorPaths>
             <path>
               <groupId>org.projectlombok</groupId>
@@ -187,7 +189,9 @@
             <path>
               <groupId>org.hibernate.orm</groupId>
               <artifactId>hibernate-jpamodelgen</artifactId>
-              <version>${hibernate.version}</version>
+              <!-- pinned apart from the test provider: the generated source works on every spec line,
+                   and from Hibernate 7 this artifact is only a relocation stub -->
+              <version>6.6.54.Final</version>
             </path>
           </annotationProcessorPaths>
         </configuration>
@@ -249,6 +253,45 @@
   </build>
 
   <profiles>
+    <!-- test-only: run the suite on newer spec lines. Own build directory so classes compiled
+         against one API never get reused against another. -->
+    <profile>
+      <id>jpa-3.1</id>
+      <activation>
+        <property>
+          <name>jpa</name>
+          <value>3.1</value>
+        </property>
+      </activation>
+      <properties>
+        <jakarta.persistence.version>3.1.0</jakarta.persistence.version>
+        <hibernate.version>6.6.54.Final</hibernate.version>
+        <eclipselink.version>4.0.9</eclipselink.version>
+      </properties>
+      <build>
+        <directory>${project.basedir}/target/jpa-3.1</directory>
+      </build>
+    </profile>
+    <profile>
+      <id>jpa-3.2</id>
+      <activation>
+        <property>
+          <name>jpa</name>
+          <value>3.2</value>
+        </property>
+      </activation>
+      <properties>
+        <jakarta.persistence.version>3.2.0</jakarta.persistence.version>
+        <hibernate.version>7.4.14.Final</hibernate.version>
+        <eclipselink.version>5.0.2</eclipselink.version>
+        <!-- the 3.2 API jar and both providers are Java 17 bytecode -->
+        <maven.compiler.release>17</maven.compiler.release>
+      </properties>
+      <build>
+        <directory>${project.basedir}/target/jpa-3.2</directory>
+      </build>
+    </profile>
+
     <profile>
       <id>release</id>
       <build>
