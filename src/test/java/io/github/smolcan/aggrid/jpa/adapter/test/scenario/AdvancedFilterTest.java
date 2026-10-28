@@ -20,6 +20,7 @@ import io.github.smolcan.aggrid.jpa.adapter.test.entity.Product_;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade;
 import io.github.smolcan.aggrid.jpa.adapter.test.entity.Trade_;
 import io.github.smolcan.aggrid.jpa.adapter.test.infrastructure.CountingDriver;
+import io.github.smolcan.aggrid.jpa.adapter.test.infrastructure.TestPersistence;
 import io.github.smolcan.aggrid.jpa.adapter.test.infrastructure.TradeTestData;
 import io.github.smolcan.aggrid.jpa.adapter.utils.Utils;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -487,8 +488,10 @@ class AdvancedFilterTest extends ScenarioTestBase {
         assertThat(setRows(set("dealType", "isNoneOf", "BUY", "SELL")))
                 .containsExactly(4L, 7L, 11L);
         // externalId is null on 10
-        assertThat(setRows(set("externalId", "isNoneOf", TradeTestData.externalId(1).toString())))
-                .containsExactly(2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L, 12L);
+        if (!TestPersistence.padsUuidColumns()) {
+            assertThat(setRows(set("externalId", "isNoneOf", TradeTestData.externalId(1).toString())))
+                    .containsExactly(2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L, 12L);
+        }
     }
 
     @Test

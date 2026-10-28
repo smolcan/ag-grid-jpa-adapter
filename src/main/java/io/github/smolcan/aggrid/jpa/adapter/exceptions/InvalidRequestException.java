@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -23,7 +24,7 @@ public class InvalidRequestException extends RuntimeException {
     }
 
     public InvalidRequestException(@NonNull String field, @NonNull String message) {
-        this(List.of(new ValidationError(field, message)));
+        this(Collections.singletonList(new ValidationError(field, message)));
     }
 
     public boolean hasErrorsForField(@NonNull String field) {

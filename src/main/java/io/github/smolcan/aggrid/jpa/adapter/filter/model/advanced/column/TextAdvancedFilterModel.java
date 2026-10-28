@@ -34,7 +34,7 @@ public class TextAdvancedFilterModel<E> extends ColumnAdvancedFilterModel<E, Str
 
         // check if provided custom text matcher
         if (this.filterParams.getTextMatcher() != null) {
-            var textMatcherParams = TextMatcherParams.builder()
+            TextMatcherParams textMatcherParams = TextMatcherParams.builder()
                     .filterOption(SimpleFilterModelType.valueOf(this.type.name()))
                     .value(valueExpression)
                     .filterText(filterExpression)

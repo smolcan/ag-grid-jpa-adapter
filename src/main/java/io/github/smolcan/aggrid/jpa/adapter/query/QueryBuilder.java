@@ -337,8 +337,8 @@ public class QueryBuilder<E, E_ID, D> {
         }
         this.validateRequest(request);
 
-        Iterator<Map<String, Object>> rows = new Iterator<>() {
-            private List<Map<String, Object>> chunk = List.of();
+        Iterator<Map<String, Object>> rows = new Iterator<Map<String, Object>>() {
+            private List<Map<String, Object>> chunk = Collections.emptyList();
             private int indexInChunk;
             private int offset;
             private boolean lastChunkRead;
@@ -466,7 +466,7 @@ public class QueryBuilder<E, E_ID, D> {
         // select value cols
         for (ColumnVO columnVO : request.getValueCols()) {
             Expression<?> path = this.colDefs.get(columnVO.getField()).getField().getExpression(cb, root);
-            var aggregateFunction = this.aggFuncs.get(columnVO.getAggFunc());
+            BiFunction<CriteriaBuilder, Expression<?>, Expression<?>> aggregateFunction = this.aggFuncs.get(columnVO.getAggFunc());
             Expression<?> aggregatedField = aggregateFunction.apply(cb, path);
             queryContext.getSelections().add(
                     SelectionMetadata
@@ -498,7 +498,7 @@ public class QueryBuilder<E, E_ID, D> {
         }
         Tuple data = this.entityManager.createQuery(query).getSingleResult();
         
-        return this.tupleToMap(List.of(data)).get(0);
+        return this.tupleToMap(Collections.singletonList(data)).get(0);
     }
 
     /**
@@ -538,7 +538,7 @@ public class QueryBuilder<E, E_ID, D> {
         if (params.getAlwaysAppliedDetailPredicate() != null) {
             predicates.add(params.getAlwaysAppliedDetailPredicate().apply(cb, root));
         }
-        query.where(predicates.toArray(Predicate[]::new));
+        query.where(predicates.toArray(new Predicate[0]));
 
         // result
         TypedQuery<Tuple> typedQuery = this.entityManager.createQuery(query);
@@ -686,7 +686,7 @@ public class QueryBuilder<E, E_ID, D> {
             groupingMetadata = this.groupByGrouping(queryContext, request);
         } else {
             // basic grid (does not have any grouping)
-            groupingMetadata = List.of();
+            groupingMetadata = Collections.emptyList();
         }
 
         queryContext.setGrouping(groupingMetadata);
@@ -729,15 +729,15 @@ public class QueryBuilder<E, E_ID, D> {
     protected void having(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         List<HavingMetadata> havingPredicates;
         if (this.treeData) {
-            havingPredicates = List.of();
+            havingPredicates = Collections.emptyList();
         } else if (this.masterDetail) {
-            havingPredicates = List.of();
+            havingPredicates = Collections.emptyList();
         } else if (request.isPivotMode() && !request.getPivotCols().isEmpty()) {
             havingPredicates = this.havingPivoting(queryContext, request);
         } else if (!request.getRowGroupCols().isEmpty()) {
             havingPredicates = this.havingGrouping(queryContext, request);
         } else {
-            havingPredicates = List.of();
+            havingPredicates = Collections.emptyList();
         }
         queryContext.setHaving(havingPredicates);
     }
@@ -802,7 +802,7 @@ public class QueryBuilder<E, E_ID, D> {
         if (this.masterDetailParams.getAlwaysAppliedDetailPredicate() != null) {
             predicates.add(this.masterDetailParams.getAlwaysAppliedDetailPredicate().apply(cb, detailRoot));
         }
-        query.where(predicates.toArray(Predicate[]::new));
+        query.where(predicates.toArray(new Predicate[0]));
 
         List<Tuple> detailTuples = this.entityManager.createQuery(query).getResultList();
         Map<E_ID, List<Map<String, Object>>> detailsGroupedByMaster = this.tupleToMap(detailTuples).stream()
@@ -1152,7 +1152,7 @@ public class QueryBuilder<E, E_ID, D> {
             for (ColumnVO columnVO : request.getValueCols()) {
                 ColDef<? super E, ?> valueColDef = this.colDefs.get(columnVO.getField());
                 Expression<?> path = valueColDef.getField().getExpression(cb, root);
-                var aggregateFunction = this.aggFuncs.get(columnVO.getAggFunc());
+                BiFunction<CriteriaBuilder, Expression<?>, Expression<?>> aggregateFunction = this.aggFuncs.get(columnVO.getAggFunc());
                 Expression<?> aggregatedField = aggregateFunction.apply(cb, path);
                 selections.add(
                         SelectionMetadata
@@ -1439,7 +1439,7 @@ public class QueryBuilder<E, E_ID, D> {
         }
         
         // a request built without a filter model is treated like the empty one the grid sends
-        Map<String, Object> filterModel = request.getFilterModel() != null ? request.getFilterModel() : Map.of();
+        Map<String, Object> filterModel = request.getFilterModel() != null ? request.getFilterModel() : Collections.emptyMap();
         boolean hasAnyFilteringOnAggregatedColumns = !this.enableAdvancedFilter &&
                 filterModel.keySet().stream().anyMatch(k -> request.getValueCols().stream().anyMatch(vc -> vc.getField().equals(k)));
         boolean hasAnyFilteringOnNonAggregatedColumns = this.enableAdvancedFilter ||
@@ -1598,7 +1598,7 @@ public class QueryBuilder<E, E_ID, D> {
             if (this.alwaysAppliedPredicate != null) {
                 expandedParentPredicates.add(this.alwaysAppliedPredicate.apply(cb, expandedParentRoot));
             }
-            expandedParentSubquery.where(expandedParentPredicates.toArray(Predicate[]::new));
+            expandedParentSubquery.where(expandedParentPredicates.toArray(new Predicate[0]));
 
             expandedParentSubquery.having(
                     request.getValueCols().stream()
@@ -1606,7 +1606,7 @@ public class QueryBuilder<E, E_ID, D> {
                             .map(vc -> {
                                 // create aggregation expression
                                 ColDef<? super E, ?> colDef = this.colDefs.get(vc.getField());
-                                var aggFunc = this.aggFuncs.get(vc.getAggFunc());
+                                BiFunction<CriteriaBuilder, Expression<?>, Expression<?>> aggFunc = this.aggFuncs.get(vc.getAggFunc());
                                 Expression<?> aggExpr = aggFunc.apply(cb, colDef.getField().getExpression(cb, expandedParentRoot));
 
                                 // having predicate
@@ -1622,11 +1622,11 @@ public class QueryBuilder<E, E_ID, D> {
         }
 
         List<Predicate> mainPredicates = new ArrayList<>(2);
-        mainPredicates.add(cb.or(parentMatchPredicates.toArray(Predicate[]::new)));
+        mainPredicates.add(cb.or(parentMatchPredicates.toArray(new Predicate[0])));
         if (this.alwaysAppliedPredicate != null) {
             mainPredicates.add(this.alwaysAppliedPredicate.apply(cb, mainRoot));
         }
-        mainQuery.where(mainPredicates.toArray(Predicate[]::new));
+        mainQuery.where(mainPredicates.toArray(new Predicate[0]));
         
         return !this.entityManager.createQuery(mainQuery).setMaxResults(1).getResultList().isEmpty();
     }
@@ -1673,7 +1673,7 @@ public class QueryBuilder<E, E_ID, D> {
             if (this.alwaysAppliedPredicate != null) {
                 unexpandedChildGroupPredicates.add(this.alwaysAppliedPredicate.apply(cb, unexpandedChildGroupRoot));
             }
-            unexpandedChildGroupSubquery.where(unexpandedChildGroupPredicates.toArray(Predicate[]::new));
+            unexpandedChildGroupSubquery.where(unexpandedChildGroupPredicates.toArray(new Predicate[0]));
 
             unexpandedChildGroupSubquery.having(
                     request.getValueCols().stream()
@@ -1734,7 +1734,7 @@ public class QueryBuilder<E, E_ID, D> {
         if (this.alwaysAppliedPredicate != null) {
             leafNodeExistsSubqueryPredicates.add(this.alwaysAppliedPredicate.apply(cb, leafNodeRoot));
         }
-        leafNodeExistsSubquery.where(leafNodeExistsSubqueryPredicates.toArray(Predicate[]::new));
+        leafNodeExistsSubquery.where(leafNodeExistsSubqueryPredicates.toArray(new Predicate[0]));
         
         return cb.exists(leafNodeExistsSubquery);
     }
@@ -1750,7 +1750,7 @@ public class QueryBuilder<E, E_ID, D> {
     protected List<HavingMetadata> havingGrouping(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         // no need to have 'having' clause in grouping for now
         // filtering on aggregated values is done within where clause by subqueries (need to check all levels of tree)
-        return List.of();
+        return Collections.emptyList();
     }
 
     /**
@@ -1766,7 +1766,7 @@ public class QueryBuilder<E, E_ID, D> {
         Map<String, Object> filterModel = request.getFilterModel();
         if (this.enableAdvancedFilter || filterModel == null || filterModel.isEmpty()) {
             // the advanced filter is always evaluated against the rows, in the where clause
-            return List.of();
+            return Collections.emptyList();
         }
 
         CriteriaBuilder cb = queryContext.getCriteriaBuilder();
@@ -1780,7 +1780,7 @@ public class QueryBuilder<E, E_ID, D> {
         // filters the user set directly on a generated pivot column, for example "Book 1_currentValue".
         // that column already is an aggregation, so the filter can only be compared in the having clause,
         // no matter how group aggregation filtering is configured
-        for (var entry : filterModel.entrySet()) {
+        for (Map.Entry<String, Object> entry : filterModel.entrySet()) {
             String field = entry.getKey();
             Map<String, Object> fieldFilterModel = (Map<String, Object>) entry.getValue();
             
@@ -1832,7 +1832,7 @@ public class QueryBuilder<E, E_ID, D> {
             if (!filteredValueCols.isEmpty() && !this.groupAggFilteringExpandedParentsMatch(queryContext, request)) {
                 for (ColumnVO valueCol : filteredValueCols) {
                     ColDef<? super E, ?> colDef = this.colDefs.get(valueCol.getField());
-                    var aggregateFunction = this.aggFuncs.get(valueCol.getAggFunc());
+                    BiFunction<CriteriaBuilder, Expression<?>, Expression<?>> aggregateFunction = this.aggFuncs.get(valueCol.getAggFunc());
                     Expression<?> aggregatedField = aggregateFunction.apply(cb, colDef.getField().getExpression(cb, root));
 
                     IFilter<?, ?, ?> filter = colDef.getFilter();
@@ -1909,7 +1909,7 @@ public class QueryBuilder<E, E_ID, D> {
                 predicates.add(filterPredicate);
             }
         }
-        countChildrenSubquery.where(cb.and(predicates.toArray(Predicate[]::new)));
+        countChildrenSubquery.where(cb.and(predicates.toArray(new Predicate[0])));
 
         return cb.<Long>selectCase()
                 .when(hasChildrenPredicate, countChildrenSubquery)    // count when non-leaf node
@@ -1956,7 +1956,7 @@ public class QueryBuilder<E, E_ID, D> {
                 predicates.add(this.alwaysAppliedPredicate.apply(cb, subRoot));
             }
             
-            subquery.where(cb.and(predicates.toArray(Predicate[]::new)));
+            subquery.where(cb.and(predicates.toArray(new Predicate[0])));
 
             isServerSideGroupSelection = cb.exists(subquery);
         }
@@ -1990,7 +1990,7 @@ public class QueryBuilder<E, E_ID, D> {
         Subquery<?> treeAggregationSubquery = query.subquery(Object.class);
         Root<E> treeAggregationRoot = treeAggregationSubquery.from(this.entityClass);
 
-        var aggregationFunction = this.aggFuncs.get(aggColumn.getAggFunc());
+        BiFunction<CriteriaBuilder, Expression<?>, Expression<?>> aggregationFunction = this.aggFuncs.get(aggColumn.getAggFunc());
         Expression<?> aggregationSelection = aggregationFunction.apply(cb, aggColumnColDef.getField().getExpression(cb, treeAggregationRoot));
         treeAggregationSubquery.select((Expression) aggregationSelection);
 
@@ -2027,7 +2027,7 @@ public class QueryBuilder<E, E_ID, D> {
                 predicates.add(filterPredicate);
             }
         }
-        treeAggregationSubquery.where(cb.and(predicates.toArray(Predicate[]::new)));
+        treeAggregationSubquery.where(cb.and(predicates.toArray(new Predicate[0])));
         
         return cb.selectCase()
                 .when(hasChildrenPredicate, treeAggregationSubquery)        // aggregation when non-leaf node
@@ -2099,7 +2099,7 @@ public class QueryBuilder<E, E_ID, D> {
                 .select(cb.literal(1))
                 .where(
                     parentPrimaryKeyPredicate, 
-                    cb.and(predicates.toArray(Predicate[]::new))
+                    cb.and(predicates.toArray(new Predicate[0]))
                 );
         
         return cb.exists(parentMatchSubquery);
@@ -2151,7 +2151,7 @@ public class QueryBuilder<E, E_ID, D> {
             predicates.add(filterPredicate);
         }
         
-        return cb.and(predicates.toArray(Predicate[]::new));
+        return cb.and(predicates.toArray(new Predicate[0]));
     }
 
 
@@ -2232,7 +2232,7 @@ public class QueryBuilder<E, E_ID, D> {
                 .select(cb.literal(1))
                 .where(
                         childrenPathPredicate,
-                        cb.and(predicates.toArray(Predicate[]::new))
+                        cb.and(predicates.toArray(new Predicate[0]))
                 );
 
         return cb.exists(childrenMatchSubquery);
@@ -2248,7 +2248,7 @@ public class QueryBuilder<E, E_ID, D> {
     @NonNull
     protected List<GroupingMetadata> groupByTreeData(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         // tree data does not have any grouping
-        return List.of();
+        return Collections.emptyList();
     }
 
 
@@ -2263,7 +2263,7 @@ public class QueryBuilder<E, E_ID, D> {
     protected List<GroupingMetadata> groupByMasterDetail(@NonNull QueryContext<E> queryContext, @NonNull ServerSideGetRowsRequest request) {
         if (request.getRowGroupCols().isEmpty()) {
             // no grouping
-            return List.of();
+            return Collections.emptyList();
         } else {
             return this.groupByGrouping(queryContext, request);
         }
@@ -2453,7 +2453,7 @@ public class QueryBuilder<E, E_ID, D> {
                                 .filter(s -> s.getAlias().equals(sortModelAgg.getColId()))
                                 .map(SelectionMetadata::getExpression)
                                 .findFirst()
-                                .orElseThrow();
+                                .orElseThrow(NoSuchElementException::new);
                         if ("absolute".equals(sortModelAgg.getType())) {
                             aggregationExpression = cb.abs((Expression) aggregationExpression);
                         }
@@ -2628,7 +2628,7 @@ public class QueryBuilder<E, E_ID, D> {
         }
         
         List<Predicate> predicates = new ArrayList<>(filterModel.size());
-        for (var entry : filterModel.entrySet()) {
+        for (Map.Entry<String, Object> entry : filterModel.entrySet()) {
             String columnName = entry.getKey();
             Map<String, Object> filterMap = (Map<String, Object>) entry.getValue();
 
@@ -2785,7 +2785,7 @@ public class QueryBuilder<E, E_ID, D> {
                         } else {
                             return BooleanAdvancedFilterModelType.valueOf(v);
                         }
-                    }).orElseThrow());
+                    }).orElseThrow(NoSuchElementException::new));
                     return booleanAdvancedFilterModel;
                 }
                 case "set": {
@@ -3117,7 +3117,7 @@ public class QueryBuilder<E, E_ID, D> {
                 }
             }
             if (!predicates.isEmpty()) {
-                query.where(predicates.toArray(Predicate[]::new));
+                query.where(predicates.toArray(new Predicate[0]));
             }
             
             query.orderBy(cb.asc(path));
@@ -3153,7 +3153,7 @@ public class QueryBuilder<E, E_ID, D> {
     @NonNull
     protected List<Set<Pair<String, Object>>> createPivotPairs(@NonNull Map<String, List<Object>> pivotValues) {
         List<Set<Pair<String, Object>>> pivotPairs = new ArrayList<>(pivotValues.size());
-        for (var entry : pivotValues.entrySet()) {
+        for (Map.Entry<String, List<Object>> entry : pivotValues.entrySet()) {
             String column = entry.getKey();
             List<Object> values = entry.getValue();
 
@@ -3181,9 +3181,11 @@ public class QueryBuilder<E, E_ID, D> {
      * @return                                      original name of the column, or {@code null} if none matches
      */
     protected String originalColNameFromPivoted(@NonNull String pivotedName, @NonNull ServerSideGetRowsRequest request) {
-        return this.longestPivotedColumnMatch(pivotedName, request.getValueCols().stream().map(ColumnVO::getField))
-                .or(() -> this.longestPivotedColumnMatch(pivotedName, this.colDefs.keySet().stream()))
-                .orElse(null);
+        String valueColMatch = this.longestPivotedColumnMatch(pivotedName, request.getValueCols().stream().map(ColumnVO::getField)).orElse(null);
+        if (valueColMatch != null) {
+            return valueColMatch;
+        }
+        return this.longestPivotedColumnMatch(pivotedName, this.colDefs.keySet().stream()).orElse(null);
     }
 
     @NonNull
@@ -3274,7 +3276,7 @@ public class QueryBuilder<E, E_ID, D> {
             }
         }
         if (!predicates.isEmpty()) {
-            query.where(predicates.toArray(Predicate[]::new));
+            query.where(predicates.toArray(new Predicate[0]));
         }
         
         return this.entityManager.createQuery(query).getSingleResult();
@@ -3322,7 +3324,7 @@ public class QueryBuilder<E, E_ID, D> {
                         Objects.requireNonNull(caseExpression);
 
                         // wrap case expression onto aggregation
-                        var aggregateFunction = this.aggFuncs.get(columnVO.getAggFunc());
+                        BiFunction<CriteriaBuilder, Expression<?>, Expression<?>> aggregateFunction = this.aggFuncs.get(columnVO.getAggFunc());
                         Expression<?> aggregatedField = aggregateFunction.apply(cb, caseExpression);
 
                         String columnName = alias + this.serverSidePivotResultFieldSeparator + columnVO.getField();
@@ -3465,9 +3467,9 @@ public class QueryBuilder<E, E_ID, D> {
         /**
          * @param paginateChildRows ignored.
          * @return this builder.
-         * @deprecated has no effect, {@link QueryBuilder#countRows(ServerSideGetRowsRequest)} always counts the level the request loads.
+         * @deprecated since 1.1.8, will be removed. Has no effect, {@link QueryBuilder#countRows(ServerSideGetRowsRequest)} always counts the level the request loads.
          */
-        @Deprecated(since = "1.1.8", forRemoval = true)
+        @Deprecated
         @NonNull
         public Builder<E, E_ID, D> paginateChildRows(boolean paginateChildRows) {
             return this;

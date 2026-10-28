@@ -9,6 +9,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.oracle.OracleContainer;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -36,6 +37,7 @@ public final class TestPersistence {
 
     private static final String PERSISTENCE_UNIT = "aggrid-adapter-test";
     private static final AtomicLong DB_SEQUENCE = new AtomicLong();
+    private static boolean environmentReported;
 
     public enum JpaProvider {
         HIBERNATE,
@@ -88,6 +90,32 @@ public final class TestPersistence {
      */
     public static boolean treatsEmptyStringAsNull() {
         return activeDatabase() == TestDatabase.ORACLE;
+    }
+
+    /**
+     * Whether UUID columns hold padded bytes. Hibernate 5 declares them {@code binary(255)}, which
+     * H2, MariaDB and MySQL pad to the full length, so no 16-byte UUID ever equals a stored one.
+     * Real schemas declare {@code binary(16)}; only the generated test schema has the problem.
+     */
+    public static boolean padsUuidColumns() {
+        return activeProvider() == JpaProvider.HIBERNATE
+                && hibernateVersion().startsWith("5.")
+                && (activeDatabase() == TestDatabase.H2
+                    || activeDatabase() == TestDatabase.MARIADB
+                    || activeDatabase() == TestDatabase.MYSQL);
+    }
+
+    private static String hibernateVersion() {
+        return staticString("org.hibernate.Version", "getVersionString");
+    }
+
+    /** Read reflectively: the providers on the classpath change with the JPA profile. */
+    private static String staticString(String className, String method) {
+        try {
+            return (String) Class.forName(className).getMethod(method).invoke(null);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(className + "." + method + " is not on the classpath", e);
+        }
     }
 
     public static EntityManagerFactory createEntityManagerFactory() {
@@ -194,7 +222,40 @@ public final class TestPersistence {
             }
         }
 
+        reportEnvironment(provider, properties);
         return Persistence.createEntityManagerFactory(PERSISTENCE_UNIT, properties);
+    }
+
+    /**
+     * Prints, once per JVM, the provider and database versions the run actually tests against
+     * (the container images float); {@code test-matrix.sh --json} reads the line from the log.
+     */
+    private static synchronized void reportEnvironment(JpaProvider provider, Map<String, Object> properties) {
+        if (environmentReported) {
+            return;
+        }
+        environmentReported = true;
+        String providerVersion = provider == JpaProvider.HIBERNATE
+                ? staticString("org.hibernate.Version", "getVersionString")
+                : staticString("org.eclipse.persistence.Version", "getVersion");
+        try {
+            // registers the driver, which the persistence unit would otherwise only do once it boots
+            Class.forName((String) properties.get("jakarta.persistence.jdbc.driver"));
+        } catch (ClassNotFoundException e) {
+            throw new IllegalStateException(e);
+        }
+        try (Connection connection = DriverManager.getConnection(
+                (String) properties.get("jakarta.persistence.jdbc.url"),
+                (String) properties.get("jakarta.persistence.jdbc.user"),
+                (String) properties.get("jakarta.persistence.jdbc.password"))) {
+            DatabaseMetaData metaData = connection.getMetaData();
+            System.out.println("MATRIX-ENV|" + provider + "|" + providerVersion
+                    + "|" + metaData.getDatabaseProductName()
+                    + "|" + metaData.getDatabaseMajorVersion() + "." + metaData.getDatabaseMinorVersion()
+                    + "|" + System.getProperty("java.version"));
+        } catch (SQLException e) {
+            throw new IllegalStateException("could not read the database version", e);
+        }
     }
 
     /** First of the platforms the EclipseLink on the classpath ships; the 3.0 line predates MariaDB and Oracle 23. */

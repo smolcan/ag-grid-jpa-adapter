@@ -43,10 +43,15 @@
     <!-- the baseline the library compiles against; -Djpa=3.1 / -Djpa=3.2 swap it together with the providers -->
     <jakarta.persistence.version>3.0.0</jakarta.persistence.version>
     <!-- Hibernate 6.1.x is the last line implementing Jakarta Persistence 3.0 (6.2 targets 3.1) -->
+    <hibernate.groupId>org.hibernate.orm</hibernate.groupId>
+    <hibernate.artifactId>hibernate-core</hibernate.artifactId>
     <hibernate.version>6.1.7.Final</hibernate.version>
     <!-- EclipseLink 3.0.x implements Jakarta Persistence 3.0 (4.0 targets 3.1) -->
     <eclipselink.version>3.0.4</eclipselink.version>
-    <maven.compiler.release>11</maven.compiler.release>
+    <!-- the library runs on Java 8, like the Jakarta Persistence 3.0 API it compiles against -->
+    <maven.compiler.release>8</maven.compiler.release>
+    <!-- the tests need Java 11: Hibernate 6 and EclipseLink 4 are Java 11 bytecode -->
+    <maven.compiler.testRelease>11</maven.compiler.testRelease>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <!-- overwritten by jacoco prepare-agent; empty default keeps surefire's @{argLine} resolvable when jacoco is skipped -->
@@ -80,8 +85,9 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.hibernate.orm</groupId>
-      <artifactId>hibernate-core</artifactId>
+      <!-- coordinates are properties: the Hibernate 5 line was published under other ones -->
+      <groupId>${hibernate.groupId}</groupId>
+      <artifactId>${hibernate.artifactId}</artifactId>
       <version>${hibernate.version}</version>
       <scope>test</scope>
     </dependency>
@@ -256,6 +262,39 @@
     <!-- test-only: run the suite on newer spec lines. Own build directory so classes compiled
          against one API never get reused against another. -->
     <profile>
+      <!-- the Hibernate line a Java 8 user can run: 5.6 republished for the jakarta namespace,
+           as Hibernate 6 needs Java 11 -->
+      <id>jpa-3.0-hibernate5</id>
+      <activation>
+        <property>
+          <name>jpa</name>
+          <value>3.0-hibernate5</value>
+        </property>
+      </activation>
+      <properties>
+        <hibernate.groupId>org.hibernate</hibernate.groupId>
+        <hibernate.artifactId>hibernate-core-jakarta</hibernate.artifactId>
+        <hibernate.version>5.6.15.Final</hibernate.version>
+      </properties>
+      <build>
+        <directory>${project.basedir}/target/jpa-3.0-hibernate5</directory>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <systemPropertyVariables>
+                <!-- by default Hibernate 5 inlines string literals in SELECT and GROUP BY but binds them in
+                     ORDER BY, so sorting by a grouped CASE over strings orders by an expression the
+                     database cannot match to the grouped one (Hibernate 6 refers to the select alias) -->
+                <hibernate.criteria.literal_handling_mode>INLINE</hibernate.criteria.literal_handling_mode>
+              </systemPropertyVariables>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
       <id>jpa-3.1</id>
       <activation>
         <property>
@@ -267,6 +306,8 @@
         <jakarta.persistence.version>3.1.0</jakarta.persistence.version>
         <hibernate.version>6.6.54.Final</hibernate.version>
         <eclipselink.version>4.0.9</eclipselink.version>
+        <!-- the 3.1 API jar is Java 11 bytecode -->
+        <maven.compiler.release>11</maven.compiler.release>
       </properties>
       <build>
         <directory>${project.basedir}/target/jpa-3.1</directory>
@@ -286,6 +327,7 @@
         <eclipselink.version>5.0.2</eclipselink.version>
         <!-- the 3.2 API jar and both providers are Java 17 bytecode -->
         <maven.compiler.release>17</maven.compiler.release>
+        <maven.compiler.testRelease>17</maven.compiler.testRelease>
       </properties>
       <build>
         <directory>${project.basedir}/target/jpa-3.2</directory>

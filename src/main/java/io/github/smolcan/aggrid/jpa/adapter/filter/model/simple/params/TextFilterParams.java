@@ -9,6 +9,8 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.experimental.Tolerate;
 
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.Set;
 import java.util.function.BiFunction;
 
@@ -68,12 +70,14 @@ public class TextFilterParams implements ISimpleFilterParams {
     
     public static class Builder {
         
-        private Set<SimpleFilterModelType> filterOptions = Set.of(SimpleFilterModelType.values());
+        private Set<SimpleFilterModelType> filterOptions = Collections.unmodifiableSet(EnumSet.allOf(SimpleFilterModelType.class));
 
         @Tolerate
         @NonNull
         public Builder filterOptions(@NonNull SimpleFilterModelType ...values) {
-            this.filterOptions = Set.of(values);
+            EnumSet<SimpleFilterModelType> filterOptions = EnumSet.noneOf(SimpleFilterModelType.class);
+            Collections.addAll(filterOptions, values);
+            this.filterOptions = Collections.unmodifiableSet(filterOptions);
             return this;
         }
     }
