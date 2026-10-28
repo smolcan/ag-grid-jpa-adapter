@@ -7,6 +7,7 @@
 #   ./test-matrix.sh --db H2,POSTGRES         # only these databases
 #   ./test-matrix.sh --provider HIBERNATE     # only this provider
 #   ./test-matrix.sh --jpa 3.0,3.2            # only these Jakarta Persistence versions
+#                                             # (3.0-hibernate5: the Java 8 Hibernate line)
 #   ./test-matrix.sh --goal verify            # another maven goal (default: test)
 #   ./test-matrix.sh -- -Dtest=TreeDataTest   # everything after -- goes to maven
 #
@@ -18,7 +19,7 @@ set -uo pipefail
 # the script lives at the project root, so run everything from there
 cd "$(dirname "$0")"
 
-JPA_VERSIONS=(3.0 3.1 3.2)
+JPA_VERSIONS=(3.0 3.0-hibernate5 3.1 3.2)
 PROVIDERS=(HIBERNATE ECLIPSELINK)
 DATABASES=(H2 POSTGRES MARIADB MYSQL MSSQL ORACLE)
 GOAL=test
@@ -53,11 +54,15 @@ failed=0
 
 for jpa in "${JPA_VERSIONS[@]}"; do
     for provider in "${PROVIDERS[@]}"; do
+        # that profile only swaps Hibernate, with EclipseLink it would repeat the 3.0 run
+        if [[ "$jpa" == "3.0-hibernate5" && "$provider" != "HIBERNATE" ]]; then
+            continue
+        fi
         for database in "${DATABASES[@]}"; do
             label="$jpa/$provider/$database"
             log="$LOG_DIR/$(echo "$jpa-$provider-$database" | tr '[:upper:]' '[:lower:]').log"
 
-            printf '%s>> %-28s%s' "$DIM" "$label" "$RESET"
+            printf '%s>> %-34s%s' "$DIM" "$label" "$RESET"
             started=$SECONDS
 
             # 3.0 matches no profile and runs the baseline
@@ -92,8 +97,8 @@ for jpa in "${JPA_VERSIONS[@]}"; do
     done
 
     echo
-    printf '%-8s %-28s %-52s %s\n' RESULT COMBINATION TESTS TIME
-    printf '%s\n' "$(printf '%.0s-' {1..96})"
+    printf '%-8s %-34s %-52s %s\n' RESULT COMBINATION TESTS TIME
+    printf '%s\n' "$(printf '%.0s-' {1..102})"
     for row in "${results[@]}"; do
         IFS='|' read -r outcome label summary elapsed <<< "$row"
         case "$outcome" in
@@ -101,7 +106,7 @@ for jpa in "${JPA_VERSIONS[@]}"; do
             FAIL)  colour=$RED ;;
             *)     colour=$YELLOW ;;
         esac
-        printf '%s%-8s%s %-28s %-52s %s\n' "$colour" "$outcome" "$RESET" "$label" "$summary" "$elapsed"
+        printf '%s%-8s%s %-34s %-52s %s\n' "$colour" "$outcome" "$RESET" "$label" "$summary" "$elapsed"
 done
 echo
 echo "logs: $LOG_DIR/"

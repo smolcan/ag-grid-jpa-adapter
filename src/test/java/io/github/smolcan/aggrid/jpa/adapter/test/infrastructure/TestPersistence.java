@@ -90,6 +90,28 @@ public final class TestPersistence {
         return activeDatabase() == TestDatabase.ORACLE;
     }
 
+    /**
+     * Whether UUID columns hold padded bytes. Hibernate 5 declares them {@code binary(255)}, which
+     * H2, MariaDB and MySQL pad to the full length, so no 16-byte UUID ever equals a stored one.
+     * Real schemas declare {@code binary(16)}; only the generated test schema has the problem.
+     */
+    public static boolean padsUuidColumns() {
+        return activeProvider() == JpaProvider.HIBERNATE
+                && hibernateVersion().startsWith("5.")
+                && (activeDatabase() == TestDatabase.H2
+                    || activeDatabase() == TestDatabase.MARIADB
+                    || activeDatabase() == TestDatabase.MYSQL);
+    }
+
+    /** Read reflectively: the Hibernate on the classpath changes with the JPA profile. */
+    private static String hibernateVersion() {
+        try {
+            return (String) Class.forName("org.hibernate.Version").getMethod("getVersionString").invoke(null);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("no Hibernate on the classpath", e);
+        }
+    }
+
     public static EntityManagerFactory createEntityManagerFactory() {
         JpaProvider provider = activeProvider();
         TestDatabase database = activeDatabase();

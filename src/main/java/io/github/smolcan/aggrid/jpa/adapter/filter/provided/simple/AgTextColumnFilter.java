@@ -43,7 +43,7 @@ public class AgTextColumnFilter extends SimpleFilter<String, TextFilterModel, Te
         
         // check if provided custom text matcher
         if (this.filterParams.getTextMatcher() != null) {
-            var textMatcherParams = TextMatcherParams.builder()
+            TextMatcherParams textMatcherParams = TextMatcherParams.builder()
                     .filterOption(filterModel.getType())
                     .value(valueExpression)
                     .filterText(filterExpression)
