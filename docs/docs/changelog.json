@@ -1,0 +1,143 @@
+[
+  {
+    "version": "1.2.2",
+    "date": "2026-10-29",
+    "changes": [
+      {"type": "Added", "commit": "f8cf4aa", "docs": "/compatibility", "description": "JPA 2.2 (`javax.persistence`) support. Every release also publishes the same library as a jar with the `javax` classifier, tested on Hibernate 5.6 and EclipseLink 2.7."}
+    ]
+  },
+  {
+    "version": "1.2.1",
+    "date": "2026-10-28",
+    "changes": [
+      {"type": "Changed", "commit": "8867d21", "docs": "/compatibility", "description": "Runs on Java 8, down from Java 11."},
+      {"type": "Changed", "commit": "1ba7b4e", "docs": "/compatibility", "description": "Compiled against Jakarta Persistence 3.0, down from 3.1. Works with Hibernate 5.6 (`hibernate-core-jakarta`), Hibernate 6 and 7, and EclipseLink 3.0 and newer."}
+    ]
+  },
+  {
+    "version": "1.2.0",
+    "date": "2026-10-22",
+    "changes": [
+      {"type": "Changed", "commit": "de3ff4e", "docs": "/filtering/column-filter/text-filter", "description": "Text, advanced text and quick filters add the `ESCAPE` clause to `LIKE` only when the filter text holds `%`, `_`, `!` or a backslash, as Oracle is slower with it."},
+      {"type": "Changed", "commit": "de3ff4e", "docs": "/tree-data", "description": "Tree data matches descendants with `LIKE` and `LOCATE` together, so the database can use an index on the data path column. Override `createTreeDataDescendantPredicate` if paths hold other characters special to `LIKE`, such as `[` on SQL Server or a backslash with EclipseLink."}
+    ]
+  },
+  {
+    "version": "1.1.8",
+    "date": "2026-10-22",
+    "changes": [
+      {"type": "Fixed", "commit": "6dc2186", "docs": "/filtering/column-filter/text-filter", "description": "`%` and `_` typed into the text, advanced text or quick filter acted as wildcards. They now match literally."},
+      {"type": "Fixed", "commit": "6dc2186", "docs": "/tree-data", "description": "`%` or `_` in a tree data path made unrelated nodes count as descendants in child counts, aggregation and filtering."},
+      {"type": "Fixed", "commit": "6dc2186", "docs": "/pivoting", "description": "A value column whose name contains the pivot separator (`current_value` with the default `_`) resolved to the wrong column, so sorting or filtering its pivot result columns failed."},
+      {"type": "Fixed", "commit": "6dc2186", "docs": "/pivoting", "description": "Pivoting on a `LocalDateTime` column merged values from the same day into one result column. Pivot keys are now the full date-time (`2024-01-10T09:00:00`), not the date."},
+      {"type": "Fixed", "commit": "6dc2186", "docs": "/row-grouping", "description": "Row grouping threw a `NullPointerException` for a request built without a filter model."},
+      {"type": "Changed", "commit": "6dc2186", "docs": "/pagination", "description": "`countRows` counts the level the request loads: the root groups, the child groups of an expanded group, or the rows of a fully expanded group. It used to count the root groups unless `paginateChildRows` was set."},
+      {"type": "Deprecated", "commit": "6dc2186", "description": "`paginateChildRows` has no effect and will be removed."}
+    ]
+  },
+  {
+    "version": "1.1.7",
+    "date": "2026-09-17",
+    "changes": [
+      {"type": "Added", "commit": "1686ea6", "docs": "/filtering/advanced-filter#custom-filter-options", "description": "Custom advanced filter options, registered with `registerCustomAdvancedFilter(type, factory)`."}
+    ]
+  },
+  {
+    "version": "1.1.6",
+    "date": "2026-09-16",
+    "changes": [
+      {"type": "Added", "commit": "5c441e1", "docs": "/filtering/advanced-filter", "description": "Advanced filter on set columns (`isAnyOf`, `isNoneOf`), values parsed by the column's `AgSetColumnFilter`."},
+      {"type": "Changed", "commit": "5c441e1", "description": "`AgSetColumnFilter.toPredicate` is public."}
+    ]
+  },
+  {
+    "version": "1.1.5",
+    "date": "2026-09-16",
+    "changes": [
+      {"type": "Added", "commit": "c1e97b3", "docs": "/filtering/column-filter/date-filter#built-in-named--relative-date-ranges", "description": "Advanced filter on date columns accepts the named and relative date ranges (`today`, `lastWeek`, `last30Days`, …)."}
+    ]
+  },
+  {
+    "version": "1.1.4",
+    "date": "2026-09-16",
+    "changes": [
+      {"type": "Added", "commit": "63daf5e", "docs": "/filtering/advanced-filter", "description": "Advanced filter `inRange` on number and date columns, honouring `inRangeInclusive` and `includeBlanksInRange`."}
+    ]
+  },
+  {
+    "version": "1.1.3",
+    "date": "2026-09-11",
+    "changes": [
+      {"type": "Added", "commit": "e8e67bc", "docs": "/export", "description": "`streamRows`: a lazy stream of every row the request matches, read in chunks of `streamChunkSize` (default 1000)."}
+    ]
+  },
+  {
+    "version": "1.1.2",
+    "date": "2026-09-06",
+    "changes": [
+      {"type": "Breaking", "commit": "1a7f221", "docs": "/filtering/column-filter/date-filter#date-filter-parameters", "description": "The zone of the zoned date filters moved from the factory to `DateFilterParams.zoneId`, default UTC: `forInstant(zone)` becomes `forInstant()` with `DateFilterParams.builder().zoneId(zone)`. Same for `forOffsetDateTime`, `forZonedDateTime`, `forUtilDate` and `forTimestamp`."},
+      {"type": "Breaking", "commit": "1a7f221", "docs": "/filtering/column-filter/date-filter#date-filter-parameters", "description": "Relative date options resolve \"now\" in `zoneId` instead of the JVM's default zone. Set `zoneId(ZoneId.systemDefault())` to keep the old behaviour."}
+    ]
+  },
+  {
+    "version": "1.1.1",
+    "date": "2026-09-04",
+    "changes": [
+      {"type": "Fixed", "commit": "f5d92ce", "docs": "/filtering/column-filter/date-filter", "description": "The date column filter accepts `dateFrom` and `dateTo` as `yyyy-MM-dd` and `yyyy-MM-dd'T'HH:mm:ss`, not only `yyyy-MM-dd HH:mm:ss`."}
+    ]
+  },
+  {
+    "version": "1.1.0",
+    "date": "2026-08-31",
+    "changes": [
+      {"type": "Added", "commit": "cd1117a", "docs": "/columns#inherited-columns", "description": "Columns from a `@MappedSuperclass`: `ColDef.builder` and `FieldPath.of` take a `SingularAttribute<? super E, T>`."},
+      {"type": "Breaking", "commit": "cd1117a", "docs": "/columns#computed-columns", "description": "`ColumnSource.getExpression`, `FieldPath.getPath` and the `ComputedField` expression function take `Root<? extends E>` instead of `Root<E>`. Custom `ColumnSource` implementations, and `ComputedField` lambdas that declare their parameter types, need the new signature."}
+    ]
+  },
+  {
+    "version": "1.0.5",
+    "date": "2026-08-30",
+    "changes": [
+      {"type": "Fixed", "commit": "361bf32", "docs": "/pivoting#filtering", "description": "Column, quick and external filters were ignored in pivot mode. They now restrict the rows, and filters on pivot result columns filter the aggregated values."}
+    ]
+  },
+  {
+    "version": "1.0.4",
+    "date": "2026-08-19",
+    "changes": [
+      {"type": "Added", "commit": "8ca4c54", "docs": "/master-detail#always-applied-detail-predicate", "description": "`alwaysAppliedDetailPredicate` on `MasterDetailParams`."}
+    ]
+  },
+  {
+    "version": "1.0.3",
+    "date": "2026-08-18",
+    "changes": [
+      {"type": "Added", "commit": "a7486d6", "docs": "/filtering/always-applied-predicate", "description": "`alwaysAppliedPredicate`: a predicate added to every query, set filter values and tree data child counts included."},
+      {"type": "Added", "commit": "65b89bd", "docs": "/columns#computed-columns", "description": "Computed columns: `ColDef.builder` takes a `ColumnSource`, either a `FieldPath` or a `ComputedField` built from any criteria expression."},
+      {"type": "Added", "commit": "28eb539", "docs": "/pagination#row-count-in-the-response", "description": "`includeRowCountInLoadSuccessParams` returns the row count with the rows."},
+      {"type": "Added", "commit": "bb1152f", "description": "`toBuilder()` on `ColDef`, the filter params, the request and the response classes."},
+      {"type": "Added", "commit": "51cb67b", "description": "`ServerSideGetRowsRequest.builder()` defaults its lists to empty ones."}
+    ]
+  },
+  {
+    "version": "1.0.2",
+    "date": "2026-08-14",
+    "changes": [
+      {"type": "Changed", "commit": "11ab703", "description": "Queries select with `cb.tuple(...)` instead of the deprecated `multiselect`."}
+    ]
+  },
+  {
+    "version": "1.0.1",
+    "date": "2026-08-10",
+    "changes": [
+      {"type": "Fixed", "commit": "7ba062b", "docs": "/filtering/column-filter/text-filter", "description": "The `blank` option of the text filter and the advanced text filter compares `LENGTH(value) = 0` instead of `value = ''`."}
+    ]
+  },
+  {
+    "version": "1.0.0",
+    "date": "2026-08-09",
+    "changes": [
+      {"type": "Added", "commit": "8a80a9e", "description": "First stable release, the same code as 0.0.54."}
+    ]
+  }
+]
