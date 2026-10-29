@@ -48,6 +48,8 @@
     <hibernate.version>6.1.7.Final</hibernate.version>
     <!-- EclipseLink 3.0.x implements Jakarta Persistence 3.0 (4.0 targets 3.1) -->
     <eclipselink.version>3.0.4</eclipselink.version>
+    <!-- Eclipse Transformer for the javax jar and the jpa-2.2 tests; 1.0.0 needs Maven to run on Java 17, 0.5.0 runs on 11 -->
+    <transformer.version>0.5.0</transformer.version>
     <!-- the library runs on Java 8, like the Jakarta Persistence 3.0 API it compiles against -->
     <maven.compiler.release>8</maven.compiler.release>
     <!-- the tests need Java 11: Hibernate 6 and EclipseLink 4 are Java 11 bytecode -->
@@ -288,7 +290,7 @@
           <plugin>
             <groupId>org.eclipse.transformer</groupId>
             <artifactId>transformer-maven-plugin</artifactId>
-            <version>1.0.0</version>
+            <version>${transformer.version}</version>
             <configuration>
               <rules>
                 <renames>
@@ -417,7 +419,7 @@
           <plugin>
             <groupId>org.eclipse.transformer</groupId>
             <artifactId>transformer-maven-plugin</artifactId>
-            <version>1.0.0</version>
+            <version>${transformer.version}</version>
             <executions>
               <execution>
                 <id>javax-jar</id>
