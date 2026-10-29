@@ -18,6 +18,10 @@ This project is under active development. Breaking changes may occur between ver
 
 <a href="https://central.sonatype.com/artifact/io.github.smolcan/ag-grid-jpa-adapter" target="_blank"><img src="https://img.shields.io/maven-central/v/io.github.smolcan/ag-grid-jpa-adapter?strategy=highestVersion&style=flat" alt="Version"/></a>
 
+### JPA 3.0+ (jakarta)
+
+For `jakarta.persistence`, as in Spring Boot 3+ and Jakarta EE 9+:
+
 ```xml
 <dependency>
     <groupId>io.github.smolcan</groupId>
@@ -25,9 +29,25 @@ This project is under active development. Breaking changes may occur between ver
     <version>${ag-grid-jpa-adapter.version}</version>
 </dependency>
 ```
+
+### JPA 2.2 (javax)
+
+For `javax.persistence`, as in Spring Boot 2 and Java EE 8. The same library, as the `javax` classifier:
+
+```xml
+<dependency>
+    <groupId>io.github.smolcan</groupId>
+    <artifactId>ag-grid-jpa-adapter</artifactId>
+    <version>${ag-grid-jpa-adapter.version}</version>
+    <classifier>javax</classifier>
+</dependency>
+```
+
+The metamodel generator in [step 2](#complete-example) has to be a javax one too, such as `org.hibernate:hibernate-jpamodelgen` 5.6.
+
 **Requirements 🛠️**
 - **Java**: Version **8** or higher.
-- **JPA**: Jakarta Persistence **3.0** or higher (tested on 3.0, 3.1 and 3.2 with Hibernate and EclipseLink, and on `hibernate-core-jakarta` 5.6, the Hibernate line for Java 8).
+- **JPA**: one of the lines above. See [Compatibility](./compatibility.md) for the tested providers and databases.
 - **JPA static metamodel**: an annotation processor that generates the `*_` metamodel classes (e.g. `hibernate-jpamodelgen`) — see [step 2](#complete-example) below.
 
 ## Using AG Grid JPA Adapter

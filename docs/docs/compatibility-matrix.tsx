@@ -49,7 +49,7 @@ const KNOWN_ISSUES: KnownIssue[] = [
         test: /^(AdvancedFilterTest\.set\w+|SetFilterTest\.booleanSetFilter)$/, message: /NullPointerException/,
     },
     {
-        label: 'D', anchor: 'eclipselink-3-uuid-comparison', provider: 'ECLIPSELINK', versions: ['3.0'], databases: ['MSSQL', 'ORACLE'],
+        label: 'D', anchor: 'eclipselink-3-uuid-comparison', provider: 'ECLIPSELINK', versions: ['2.7', '3.0'], databases: ['MSSQL', 'ORACLE'],
         test: /^(SetFilterTest\.uuidSetFilter|AdvancedFilterTest\.setParsesValuesWithTheColumnsSetFilter)$/,
     },
     {
@@ -64,8 +64,11 @@ const PROVIDERS: Record<string, string> = {HIBERNATE: 'Hibernate', ECLIPSELINK: 
 // the Java version each provider major version needs
 const JAVA_MINIMUM: Record<string, string> = {
     'HIBERNATE 5': '8', 'HIBERNATE 6': '11', 'HIBERNATE 7': '17',
-    'ECLIPSELINK 3': '8', 'ECLIPSELINK 4': '11', 'ECLIPSELINK 5': '17',
+    'ECLIPSELINK 2': '8', 'ECLIPSELINK 3': '8', 'ECLIPSELINK 4': '11', 'ECLIPSELINK 5': '17',
 };
+
+// the matrix labels Hibernate 5.6 on JPA 3.0 "3.0-hibernate5"
+const jpaVersion = (combination: Combination) => combination.jpa.split('-')[0];
 
 const DATABASES: { key: string; name: string }[] = [
     {key: 'H2', name: 'H2'},
@@ -183,16 +186,18 @@ function Cell({combination}: { combination?: Combination }) {
 export default function CompatibilityMatrix() {
     const combinations = matrix.combinations as Combination[];
 
-    // one row per provider version: each implements a single Jakarta Persistence version
+    // one row per provider version and JPA version: Hibernate 5.6 ships for both javax and jakarta
     const rows = new Map<string, Combination[]>();
     for (const combination of combinations) {
-        const key = `${combination.provider} ${combination.providerVersion}`;
+        const key = `${combination.provider} ${combination.providerVersion} ${jpaVersion(combination)}`;
         rows.set(key, [...(rows.get(key) ?? []), combination]);
     }
     const providers = Object.keys(PROVIDERS).filter(provider => combinations.some(c => c.provider === provider));
     const versionsOf = (provider: string) => [...rows.values()]
         .filter(row => row[0].provider === provider)
-        .sort((a, b) => a[0].providerVersion.localeCompare(b[0].providerVersion, undefined, {numeric: true}));
+        .sort((a, b) => a[0].providerVersion.localeCompare(b[0].providerVersion, undefined, {numeric: true})
+            || jpaVersion(a[0]).localeCompare(jpaVersion(b[0]), undefined, {numeric: true}));
+    const testedVersions = (provider: string) => [...new Set(versionsOf(provider).map(row => row[0].providerVersion))];
 
     const unexplained = combinations.flatMap(combination => combination.failed
         .filter(failure => !explain(combination, failure))
@@ -220,11 +225,13 @@ export default function CompatibilityMatrix() {
                     const first = row[0];
                     const java = JAVA_MINIMUM[`${provider} ${first.providerVersion.split('.')[0]}`];
                     return (
-                        <tr key={`${provider} ${first.providerVersion}`}>
+                        <tr key={`${provider} ${first.providerVersion} ${jpaVersion(first)}`}>
                             {index === 0 && <td rowSpan={all.length} style={styles.provider}>{PROVIDERS[provider]}</td>}
                             <td style={styles.version}>
                                 {majorMinor(first.providerVersion)}
-                                <span style={styles.details}>JPA {first.jpa.split('-')[0]}{java && ` · Java ${java}+`}</span>
+                                <span style={styles.details}>
+                                    JPA {jpaVersion(first)}{jpaVersion(first).startsWith('2') && ' (javax)'}{java && ` · Java ${java}+`}
+                                </span>
                             </td>
                             {DATABASES.map(database =>
                                 <Cell key={database.key} combination={row.find(c => c.database === database.key)}/>)}
@@ -236,7 +243,7 @@ export default function CompatibilityMatrix() {
             <p style={styles.caption}>
                 ✅ all tests pass · ⚠️ some fail, the letters link to the explanation · ❌ the suite could not run ·
                 hover a cell for the counts. Tested
-                versions: {providers.map(provider => `${PROVIDERS[provider]} ${versionsOf(provider).map(row => row[0].providerVersion).join(', ')}`).join('; ')}.
+                versions: {providers.map(provider => `${PROVIDERS[provider]} ${testedVersions(provider).join(', ')}`).join('; ')}.
                 Generated {matrix.generatedAt} from commit <code>{matrix.commit}</code>, on
                 Java {combinations[0]?.java}.
             </p>

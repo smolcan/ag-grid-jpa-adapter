@@ -176,7 +176,8 @@
         <configuration>
           <autoVersionSubmodules>true</autoVersionSubmodules>
           <useReleaseProfile>false</useReleaseProfile>
-          <releaseProfiles>release</releaseProfiles>
+          <!-- javax: every release also publishes the -javax.jar for JPA 2.2 -->
+          <releaseProfiles>release,javax</releaseProfiles>
         </configuration>
       </plugin>
       
@@ -259,6 +260,79 @@
   </build>
 
   <profiles>
+    <profile>
+      <!-- test-only: the suite on JPA 2.2 (javax.persistence), on the bytecode the -javax.jar ships.
+           Compiles as usual, then the Eclipse Transformer renames the classes and the test classes
+           to javax before the tests run -->
+      <id>jpa-2.2</id>
+      <activation>
+        <property>
+          <name>jpa</name>
+          <value>2.2</value>
+        </property>
+      </activation>
+      <properties>
+        <hibernate.groupId>org.hibernate</hibernate.groupId>
+        <hibernate.artifactId>hibernate-core</hibernate.artifactId>
+        <hibernate.version>5.6.15.Final</hibernate.version>
+        <eclipselink.version>2.7.15</eclipselink.version>
+      </properties>
+      <build>
+        <directory>${project.basedir}/target/jpa-2.2</directory>
+        <testResources>
+          <testResource>
+            <directory>${project.basedir}/src/javax/test-resources</directory>
+          </testResource>
+        </testResources>
+        <plugins>
+          <plugin>
+            <groupId>org.eclipse.transformer</groupId>
+            <artifactId>transformer-maven-plugin</artifactId>
+            <version>1.0.0</version>
+            <configuration>
+              <rules>
+                <renames>
+                  <rename>${project.basedir}/src/javax/renames.properties</rename>
+                </renames>
+              </rules>
+            </configuration>
+            <executions>
+              <!-- both after test-compile: the test sources compile against the jakarta classes -->
+              <execution>
+                <id>javax-classes</id>
+                <phase>process-test-classes</phase>
+                <goals>
+                  <goal>transform</goal>
+                </goals>
+                <configuration>
+                  <transformDirectory>${project.build.outputDirectory}</transformDirectory>
+                </configuration>
+              </execution>
+              <execution>
+                <id>javax-test-classes</id>
+                <phase>process-test-classes</phase>
+                <goals>
+                  <goal>transform</goal>
+                </goals>
+                <configuration>
+                  <transformDirectory>${project.build.testOutputDirectory}</transformDirectory>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <systemPropertyVariables>
+                <!-- the same Hibernate 5.6 as in jpa-3.0-hibernate5, see the comment there -->
+                <hibernate.criteria.literal_handling_mode>INLINE</hibernate.criteria.literal_handling_mode>
+              </systemPropertyVariables>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
     <!-- test-only: run the suite on newer spec lines. Own build directory so classes compiled
          against one API never get reused against another. -->
     <profile>
@@ -331,6 +405,41 @@
       </properties>
       <build>
         <directory>${project.basedir}/target/jpa-3.2</directory>
+      </build>
+    </profile>
+
+    <profile>
+      <!-- the same jar for JPA 2.2 (javax.persistence), attached with the "javax" classifier:
+           ./mvnw package -Pjavax -->
+      <id>javax</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.eclipse.transformer</groupId>
+            <artifactId>transformer-maven-plugin</artifactId>
+            <version>1.0.0</version>
+            <executions>
+              <execution>
+                <id>javax-jar</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+                <configuration>
+                  <artifact>
+                    <groupId>${project.groupId}</groupId>
+                    <artifactId>${project.artifactId}</artifactId>
+                  </artifact>
+                  <classifier>javax</classifier>
+                  <rules>
+                    <renames>
+                      <rename>${project.basedir}/src/javax/renames.properties</rename>
+                    </renames>
+                  </rules>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
       </build>
     </profile>
 

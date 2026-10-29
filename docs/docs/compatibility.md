@@ -13,6 +13,17 @@ import CompatibilityMatrix from './compatibility-matrix';
 Releases between the tested ones that implement the same Jakarta Persistence version are expected to work, but are
 not tested.
 
+The JPA 2.2 rows test the `javax` jar, the same library for `javax.persistence`:
+
+```xml
+<dependency>
+    <groupId>io.github.smolcan</groupId>
+    <artifactId>ag-grid-jpa-adapter</artifactId>
+    <version>${ag-grid-jpa-adapter.version}</version>
+    <classifier>javax</classifier>
+</dependency>
+```
+
 ## Known issues
 
 All of them are in EclipseLink and come from how it maps or binds values, not from the queries the adapter builds.
@@ -43,8 +54,8 @@ Columns of `OffsetDateTime`, `ZonedDateTime` and `Instant`:
   `oracle.sql.TIMESTAMPTZ`), so every query selecting such a column fails. The test's `java.util.Date`, `Timestamp`
   and `java.sql.Date` cases fail with it, because they share a grid with those columns.
 - SQL Server: EclipseLink fails to read and compare `DATETIMEOFFSET` values.
-- `Instant` became a standard JPA type in 3.2. EclipseLink 3.0 and 4.0 store it as a serialized BLOB, which neither
-  database can compare.
+- `Instant` became a standard JPA type in 3.2. EclipseLink 2.7, 3.0 and 4.0 store it as a serialized BLOB, which
+  neither database can compare.
 
 `LocalDate` and `LocalDateTime` columns work on every combination.
 
@@ -53,10 +64,11 @@ Columns of `OffsetDateTime`, `ZonedDateTime` and `Instant`:
 EclipseLink 4.0's `UUIDConverter` throws a `NullPointerException` when it reads a `NULL` UUID, so every query
 returning such a row fails. EclipseLink 3.0 and 5.0 are not affected.
 
-### D. EclipseLink 3.0: comparing UUIDs on Oracle and SQL Server {#eclipselink-3-uuid-comparison}
+### D. EclipseLink 2.7 and 3.0: comparing UUIDs on Oracle and SQL Server {#eclipselink-3-uuid-comparison}
 
-`UUID` became a standard JPA type in 3.1. EclipseLink 3.0 stores it as a serialized BLOB, which neither database can
-compare, so filtering a UUID column fails. An `AttributeConverter` that stores the UUID as a string avoids it.
+`UUID` became a standard JPA type in 3.1. EclipseLink 2.7 and 3.0 store it as a serialized BLOB, which neither
+database can compare, so filtering a UUID column fails. An `AttributeConverter` that stores the UUID as a string
+avoids it.
 
 ### E. EclipseLink 5.0 on SQL Server: the suite does not start {#eclipselink-5-sql-server-uuid}
 

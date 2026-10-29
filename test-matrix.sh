@@ -7,7 +7,8 @@
 #   ./test-matrix.sh --db H2,POSTGRES         # only these databases
 #   ./test-matrix.sh --provider HIBERNATE     # only this provider
 #   ./test-matrix.sh --jpa 3.0,3.2            # only these Jakarta Persistence versions
-#                                             # (3.0-hibernate5: the Java 8 Hibernate line)
+#                                             # (2.2: javax.persistence, as in the -javax.jar;
+#                                             #  3.0-hibernate5: the Java 8 Hibernate line)
 #   ./test-matrix.sh --goal verify            # another maven goal (default: test)
 #   ./test-matrix.sh --json docs/docs/compatibility-matrix.json
 #                                             # also write the results for the docs page
@@ -21,7 +22,7 @@ set -uo pipefail
 # the script lives at the project root, so run everything from there
 cd "$(dirname "$0")"
 
-JPA_VERSIONS=(3.0 3.0-hibernate5 3.1 3.2)
+JPA_VERSIONS=(2.2 3.0 3.0-hibernate5 3.1 3.2)
 PROVIDERS=(HIBERNATE ECLIPSELINK)
 DATABASES=(H2 POSTGRES MARIADB MYSQL MSSQL ORACLE)
 GOAL=test
