@@ -56,7 +56,7 @@ class CalendarRelativeDateFilterTest extends ScenarioTestBase {
 
     @BeforeAll
     static void seedCalendarTrades() {
-        EntityManager em = entityManagerFactory.createEntityManager();
+        EntityManager em = createEntityManager();
         em.getTransaction().begin();
         em.persist(calendarTrade(TODAY_ROW, TODAY));
         // exactly one week away lands in the neighbouring week whatever weekday today is

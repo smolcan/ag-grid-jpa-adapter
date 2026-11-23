@@ -54,17 +54,17 @@ const KNOWN_ISSUES: KnownIssue[] = [
     },
     {
         // the test data cannot be inserted, so every test class fails while it sets up
-        label: 'E', anchor: 'eclipselink-5-sql-server-uuid', provider: 'ECLIPSELINK', versions: ['5.0'], databases: ['MSSQL'],
+        label: 'E', anchor: 'eclipselink-5-sql-server-uuid', provider: 'ECLIPSELINK', versions: ['5.0', '6.0'], databases: ['MSSQL'],
         test: /^\w+Test$/,
     },
 ];
 
 const PROVIDERS: Record<string, string> = {HIBERNATE: 'Hibernate', ECLIPSELINK: 'EclipseLink'};
 
-// the Java version each provider major version needs
+// the Java version each provider major version needs (Hibernate 8 is Java 17 bytecode, but JPA 4.0 requires Java 21)
 const JAVA_MINIMUM: Record<string, string> = {
-    'HIBERNATE 5': '8', 'HIBERNATE 6': '11', 'HIBERNATE 7': '17',
-    'ECLIPSELINK 2': '8', 'ECLIPSELINK 3': '8', 'ECLIPSELINK 4': '11', 'ECLIPSELINK 5': '17',
+    'HIBERNATE 5': '8', 'HIBERNATE 6': '11', 'HIBERNATE 7': '17', 'HIBERNATE 8': '21',
+    'ECLIPSELINK 2': '8', 'ECLIPSELINK 3': '8', 'ECLIPSELINK 4': '11', 'ECLIPSELINK 5': '17', 'ECLIPSELINK 6': '21',
 };
 
 // the matrix labels Hibernate 5.6 on JPA 3.0 "3.0-hibernate5"

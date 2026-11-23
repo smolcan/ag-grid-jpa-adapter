@@ -42,7 +42,7 @@ class MappedSuperclassTest extends ScenarioTestBase {
 
     @BeforeAll
     static void seedInvoices() {
-        EntityManager em = entityManagerFactory.createEntityManager();
+        EntityManager em = createEntityManager();
         em.getTransaction().begin();
         Product gold = em.find(Product.class, 1L);
         Product silver = em.find(Product.class, 2L);

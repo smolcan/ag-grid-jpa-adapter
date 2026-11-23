@@ -34,7 +34,7 @@ class RelativeDateFilterTest extends ScenarioTestBase {
 
     @BeforeAll
     static void seedRelativeTrades() {
-        EntityManager em = entityManagerFactory.createEntityManager();
+        EntityManager em = createEntityManager();
         em.getTransaction().begin();
         em.persist(relativeTrade(101L, TODAY));
         em.persist(relativeTrade(102L, TODAY.minusDays(1)));

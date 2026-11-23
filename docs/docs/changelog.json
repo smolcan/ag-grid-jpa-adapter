@@ -1,5 +1,12 @@
 [
   {
+    "version": "1.2.3",
+    "date": "2026-11-23",
+    "changes": [
+      {"type": "Added", "commit": "TODO", "docs": "/compatibility", "description": "Jakarta Persistence 4.0 support. The same jar, still compiled against 3.0 for Java 8, runs on JPA 4.0 providers. Tested on Hibernate 8.0 and EclipseLink 6.0 with the 4.0.0-M8 milestone, as JPA 4.0 is not final yet."}
+    ]
+  },
+  {
     "version": "1.2.2",
     "date": "2026-10-29",
     "changes": [

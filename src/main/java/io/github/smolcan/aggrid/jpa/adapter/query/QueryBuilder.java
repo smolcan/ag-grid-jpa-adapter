@@ -41,10 +41,13 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.and;
 import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.cartesianProduct;
+import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.createQuery;
 import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.escapeLike;
 import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.like;
 import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.needsLikeEscape;
+import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.or;
 
 /**
  * A robust JPA adapter designed to seamlessly integrate AG Grid's Server-Side Row Model (SSRM)
@@ -278,8 +281,8 @@ public class QueryBuilder<E, E_ID, D> {
             subquery.select((Expression) countingGroupColDef.getField().getExpression(cb, subqueryRoot));
             // where
             if (!subqueryContext.getWherePredicates().isEmpty()) {
-                Predicate[] predicates = subqueryContext.getWherePredicates().stream().map(WherePredicateMetadata::getPredicate).toArray(Predicate[]::new);
-                subquery.where(predicates);
+                List<Predicate> predicates = subqueryContext.getWherePredicates().stream().map(WherePredicateMetadata::getPredicate).collect(Collectors.toList());
+                subquery.where(and(cb, predicates));
             }
             // group by
             if (!subqueryContext.getGrouping().isEmpty()) {
@@ -287,15 +290,15 @@ public class QueryBuilder<E, E_ID, D> {
             }
             // having
             if (!subqueryContext.getHaving().isEmpty()) {
-                Predicate[] having = subqueryContext.getHaving().stream().map(HavingMetadata::getPredicate).toArray(Predicate[]::new);
-                subquery.having(having);
+                List<Predicate> having = subqueryContext.getHaving().stream().map(HavingMetadata::getPredicate).collect(Collectors.toList());
+                subquery.having(and(cb, having));
             }
             
             // in parent query, count distinct values of column group that are returned in subquery
             query.select(cb.countDistinct(countingGroupColDef.getField().getExpression(cb, root)));
             query.where(cb.in(countingGroupColDef.getField().getExpression(cb, root)).value((Subquery) subquery));
             
-            return this.entityManager.createQuery(query).getSingleResult();
+            return createQuery(this.entityManager, query).getSingleResult();
         } else {
             // no groups, count rows
             this.select(queryContext, request);
@@ -303,11 +306,11 @@ public class QueryBuilder<E, E_ID, D> {
             
             query.select(cb.count(root));
             if (!queryContext.getWherePredicates().isEmpty()) {
-                Predicate[] predicates = queryContext.getWherePredicates().stream().map(WherePredicateMetadata::getPredicate).toArray(Predicate[]::new);
-                query.where(predicates);
+                List<Predicate> predicates = queryContext.getWherePredicates().stream().map(WherePredicateMetadata::getPredicate).collect(Collectors.toList());
+                query.where(and(cb, predicates));
             }
             
-            return this.entityManager.createQuery(query).getSingleResult();
+            return createQuery(this.entityManager, query).getSingleResult();
         }
     }
     
@@ -493,10 +496,10 @@ public class QueryBuilder<E, E_ID, D> {
         // apply
         query.select(cb.tuple(queryContext.getSelections().stream().map(s -> s.getExpression().alias(s.getAlias())).toArray(Selection<?>[]::new)));
         if (!queryContext.getWherePredicates().isEmpty()) {
-            Predicate[] predicates = queryContext.getWherePredicates().stream().map(WherePredicateMetadata::getPredicate).toArray(Predicate[]::new);
-            query.where(predicates);
+            List<Predicate> predicates = queryContext.getWherePredicates().stream().map(WherePredicateMetadata::getPredicate).collect(Collectors.toList());
+            query.where(and(cb, predicates));
         }
-        Tuple data = this.entityManager.createQuery(query).getSingleResult();
+        Tuple data = createQuery(this.entityManager, query).getSingleResult();
         
         return this.tupleToMap(Collections.singletonList(data)).get(0);
     }
@@ -538,10 +541,10 @@ public class QueryBuilder<E, E_ID, D> {
         if (params.getAlwaysAppliedDetailPredicate() != null) {
             predicates.add(params.getAlwaysAppliedDetailPredicate().apply(cb, root));
         }
-        query.where(predicates.toArray(new Predicate[0]));
+        query.where(and(cb, predicates));
 
         // result
-        TypedQuery<Tuple> typedQuery = this.entityManager.createQuery(query);
+        TypedQuery<Tuple> typedQuery = createQuery(this.entityManager, query);
         List<Tuple> data = typedQuery.getResultList();
         return this.tupleToMap(data);
     }
@@ -578,7 +581,7 @@ public class QueryBuilder<E, E_ID, D> {
         // order by asc
         query.orderBy(cb.asc(path));
         
-        return this.entityManager.createQuery(query).getResultList();
+        return createQuery(this.entityManager, query).getResultList();
     }
     
     @NonNull
@@ -802,9 +805,9 @@ public class QueryBuilder<E, E_ID, D> {
         if (this.masterDetailParams.getAlwaysAppliedDetailPredicate() != null) {
             predicates.add(this.masterDetailParams.getAlwaysAppliedDetailPredicate().apply(cb, detailRoot));
         }
-        query.where(predicates.toArray(new Predicate[0]));
+        query.where(and(cb, predicates));
 
-        List<Tuple> detailTuples = this.entityManager.createQuery(query).getResultList();
+        List<Tuple> detailTuples = createQuery(this.entityManager, query).getResultList();
         Map<E_ID, List<Map<String, Object>>> detailsGroupedByMaster = this.tupleToMap(detailTuples).stream()
                 .collect(Collectors.groupingBy(v -> (E_ID) v.get(masterPrimaryFieldAlias)));
         
@@ -921,12 +924,12 @@ public class QueryBuilder<E, E_ID, D> {
             }
 
             // A word matches the row if the string value of any of the columns contains the word (OR)
-            Predicate wordPredicate = cb.or(rowPredicatesForWord.toArray(new Predicate[0]));
+            Predicate wordPredicate = or(cb, rowPredicatesForWord);
             wordsPredicates.add(wordPredicate);
         }
         
         // All words must match the row for it to be included (AND)
-        return cb.and(wordsPredicates.toArray(new Predicate[0]));
+        return and(cb, wordsPredicates);
     }
 
     /**
@@ -944,8 +947,8 @@ public class QueryBuilder<E, E_ID, D> {
         query.select(cb.tuple(queryContext.getSelections().stream().map(s -> s.getExpression().alias(s.getAlias())).toArray(Selection<?>[]::new)));
         // where
         if (!queryContext.getWherePredicates().isEmpty()) {
-            Predicate[] predicates = queryContext.getWherePredicates().stream().map(WherePredicateMetadata::getPredicate).toArray(Predicate[]::new);
-            query.where(predicates);
+            List<Predicate> predicates = queryContext.getWherePredicates().stream().map(WherePredicateMetadata::getPredicate).collect(Collectors.toList());
+            query.where(and(cb, predicates));
         }
         // group by
         if (!queryContext.getGrouping().isEmpty()) {
@@ -953,15 +956,15 @@ public class QueryBuilder<E, E_ID, D> {
         }
         // having
         if (!queryContext.getHaving().isEmpty()) {
-            Predicate[] having = queryContext.getHaving().stream().map(HavingMetadata::getPredicate).toArray(Predicate[]::new);
-            query.having(having);
+            List<Predicate> having = queryContext.getHaving().stream().map(HavingMetadata::getPredicate).collect(Collectors.toList());
+            query.having(and(cb, having));
         }
         // order by
         if (!queryContext.getOrders().isEmpty()) {
             query.orderBy(queryContext.getOrders().stream().map(OrderMetadata::getOrder).collect(Collectors.toList()));
         }
 
-        TypedQuery<Tuple> typedQuery = this.entityManager.createQuery(query);
+        TypedQuery<Tuple> typedQuery = createQuery(this.entityManager, query);
         typedQuery.setFirstResult(queryContext.getFirstResult());
         typedQuery.setMaxResults(queryContext.getMaxResults());
         
@@ -1268,7 +1271,7 @@ public class QueryBuilder<E, E_ID, D> {
             // 3. check if any children pass the filter
             Predicate childrenPredicate = this.createTreeDataChildrenMatchPredicate(queryContext, request);
 
-            Predicate treeDataFilteringPredicate = cb.or(parentPredicate, ownDataPredicate, childrenPredicate);
+            Predicate treeDataFilteringPredicate = or(cb, Arrays.asList(parentPredicate, ownDataPredicate, childrenPredicate));
             wherePredicateMetadata.add(
                     WherePredicateMetadata
                             .builder()
@@ -1598,10 +1601,9 @@ public class QueryBuilder<E, E_ID, D> {
             if (this.alwaysAppliedPredicate != null) {
                 expandedParentPredicates.add(this.alwaysAppliedPredicate.apply(cb, expandedParentRoot));
             }
-            expandedParentSubquery.where(expandedParentPredicates.toArray(new Predicate[0]));
+            expandedParentSubquery.where(and(cb, expandedParentPredicates));
 
-            expandedParentSubquery.having(
-                    request.getValueCols().stream()
+            List<Predicate> expandedParentHaving = request.getValueCols().stream()
                             .filter(vc -> request.getFilterModel().containsKey(vc.getField()))
                             .map(vc -> {
                                 // create aggregation expression
@@ -1615,20 +1617,22 @@ public class QueryBuilder<E, E_ID, D> {
                                 IFilter<?, ?, ?> filter = colDef.getFilter();
                                 return filter.toPredicate(cb, (Expression) aggExpr, filterModel);
                             })
-                            .toArray(Predicate[]::new)
-            );
+                            .collect(Collectors.toList());
+            if (!expandedParentHaving.isEmpty()) {
+                expandedParentSubquery.having(and(cb, expandedParentHaving));
+            }
 
             parentMatchPredicates.add(cb.exists(expandedParentSubquery));
         }
 
         List<Predicate> mainPredicates = new ArrayList<>(2);
-        mainPredicates.add(cb.or(parentMatchPredicates.toArray(new Predicate[0])));
+        mainPredicates.add(or(cb, parentMatchPredicates));
         if (this.alwaysAppliedPredicate != null) {
             mainPredicates.add(this.alwaysAppliedPredicate.apply(cb, mainRoot));
         }
-        mainQuery.where(mainPredicates.toArray(new Predicate[0]));
+        mainQuery.where(and(cb, mainPredicates));
         
-        return !this.entityManager.createQuery(mainQuery).setMaxResults(1).getResultList().isEmpty();
+        return !createQuery(this.entityManager, mainQuery).setMaxResults(1).getResultList().isEmpty();
     }
 
     /**
@@ -1673,10 +1677,9 @@ public class QueryBuilder<E, E_ID, D> {
             if (this.alwaysAppliedPredicate != null) {
                 unexpandedChildGroupPredicates.add(this.alwaysAppliedPredicate.apply(cb, unexpandedChildGroupRoot));
             }
-            unexpandedChildGroupSubquery.where(unexpandedChildGroupPredicates.toArray(new Predicate[0]));
+            unexpandedChildGroupSubquery.where(and(cb, unexpandedChildGroupPredicates));
 
-            unexpandedChildGroupSubquery.having(
-                    request.getValueCols().stream()
+            List<Predicate> unexpandedChildGroupHaving = request.getValueCols().stream()
                             .filter(vc -> request.getFilterModel().containsKey(vc.getField()))
                             .map(vc -> {
                                 ColDef<? super E, ?> colDef = this.colDefs.get(vc.getField());
@@ -1687,13 +1690,15 @@ public class QueryBuilder<E, E_ID, D> {
                                 IFilter<?, ?, ?> filter = colDef.getFilter();
                                 return filter.toPredicate(cb, (Expression) aggExpr, (Map<String, Object>) request.getFilterModel().get(vc.getField()));
                             })
-                            .toArray(Predicate[]::new)
-            );
+                            .collect(Collectors.toList());
+            if (!unexpandedChildGroupHaving.isEmpty()) {
+                unexpandedChildGroupSubquery.having(and(cb, unexpandedChildGroupHaving));
+            }
 
             unexpandedChildGroupsPredicates.add(cb.exists(unexpandedChildGroupSubquery));
         }
 
-        return cb.or(unexpandedChildGroupsPredicates.toArray(new Predicate[0]));
+        return or(cb, unexpandedChildGroupsPredicates);
     }
 
     /**
@@ -1734,7 +1739,9 @@ public class QueryBuilder<E, E_ID, D> {
         if (this.alwaysAppliedPredicate != null) {
             leafNodeExistsSubqueryPredicates.add(this.alwaysAppliedPredicate.apply(cb, leafNodeRoot));
         }
-        leafNodeExistsSubquery.where(leafNodeExistsSubqueryPredicates.toArray(new Predicate[0]));
+        if (!leafNodeExistsSubqueryPredicates.isEmpty()) {
+            leafNodeExistsSubquery.where(and(cb, leafNodeExistsSubqueryPredicates));
+        }
         
         return cb.exists(leafNodeExistsSubquery);
     }
@@ -1909,7 +1916,7 @@ public class QueryBuilder<E, E_ID, D> {
                 predicates.add(filterPredicate);
             }
         }
-        countChildrenSubquery.where(cb.and(predicates.toArray(new Predicate[0])));
+        countChildrenSubquery.where(and(cb, predicates));
 
         return cb.<Long>selectCase()
                 .when(hasChildrenPredicate, countChildrenSubquery)    // count when non-leaf node
@@ -1956,7 +1963,7 @@ public class QueryBuilder<E, E_ID, D> {
                 predicates.add(this.alwaysAppliedPredicate.apply(cb, subRoot));
             }
             
-            subquery.where(cb.and(predicates.toArray(new Predicate[0])));
+            subquery.where(and(cb, predicates));
 
             isServerSideGroupSelection = cb.exists(subquery);
         }
@@ -2027,7 +2034,7 @@ public class QueryBuilder<E, E_ID, D> {
                 predicates.add(filterPredicate);
             }
         }
-        treeAggregationSubquery.where(cb.and(predicates.toArray(new Predicate[0])));
+        treeAggregationSubquery.where(and(cb, predicates));
         
         return cb.selectCase()
                 .when(hasChildrenPredicate, treeAggregationSubquery)        // aggregation when non-leaf node
@@ -2055,14 +2062,14 @@ public class QueryBuilder<E, E_ID, D> {
         Root<E> parentRoot = parentMatchSubquery.from(this.entityClass);
         
         // generate parent id predicate: id = 1 or id = 2....
-        Predicate parentPrimaryKeyPredicate = cb.or(
+        Predicate parentPrimaryKeyPredicate = or(cb,
                 request.getGroupKeys().stream()
                         .map(k -> {
                             Path<E_ID> parentPath = parentRoot.get(this.primaryField);
                             E_ID key = this.treeDataStringToParentIdTypeConverter.apply(k);
                             return cb.equal(parentPath, key);
                         })
-                        .toArray(Predicate[]::new)
+                        .collect(Collectors.toList())
         );
         
         // generate filter predicates
@@ -2097,10 +2104,7 @@ public class QueryBuilder<E, E_ID, D> {
         
         parentMatchSubquery
                 .select(cb.literal(1))
-                .where(
-                    parentPrimaryKeyPredicate, 
-                    cb.and(predicates.toArray(new Predicate[0]))
-                );
+                .where(cb.and(parentPrimaryKeyPredicate, and(cb, predicates)));
         
         return cb.exists(parentMatchSubquery);
     }
@@ -2151,7 +2155,7 @@ public class QueryBuilder<E, E_ID, D> {
             predicates.add(filterPredicate);
         }
         
-        return cb.and(predicates.toArray(new Predicate[0]));
+        return and(cb, predicates);
     }
 
 
@@ -2230,10 +2234,7 @@ public class QueryBuilder<E, E_ID, D> {
 
         childrenMatchSubquery
                 .select(cb.literal(1))
-                .where(
-                        childrenPathPredicate,
-                        cb.and(predicates.toArray(new Predicate[0]))
-                );
+                .where(cb.and(childrenPathPredicate, and(cb, predicates)));
 
         return cb.exists(childrenMatchSubquery);
     }
@@ -2645,7 +2646,7 @@ public class QueryBuilder<E, E_ID, D> {
             predicates.add(predicate);
         }
 
-        return cb.and(predicates.toArray(new Predicate[0]));
+        return and(cb, predicates);
     }
 
     /**
@@ -3117,13 +3118,13 @@ public class QueryBuilder<E, E_ID, D> {
                 }
             }
             if (!predicates.isEmpty()) {
-                query.where(predicates.toArray(new Predicate[0]));
+                query.where(and(cb, predicates));
             }
             
             query.orderBy(cb.asc(path));
 
             // result
-            List<Object> result = this.entityManager.createQuery(query).getResultList();
+            List<Object> result = createQuery(this.entityManager, query).getResultList();
             pivotValues.put(field, result);
         }
 
@@ -3276,10 +3277,10 @@ public class QueryBuilder<E, E_ID, D> {
             }
         }
         if (!predicates.isEmpty()) {
-            query.where(predicates.toArray(new Predicate[0]));
+            query.where(and(cb, predicates));
         }
         
-        return this.entityManager.createQuery(query).getSingleResult();
+        return createQuery(this.entityManager, query).getSingleResult();
     }
 
     @NonNull

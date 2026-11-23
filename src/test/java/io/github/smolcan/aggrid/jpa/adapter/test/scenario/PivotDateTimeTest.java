@@ -27,7 +27,7 @@ class PivotDateTimeTest extends ScenarioTestBase {
 
     @BeforeAll
     static void seedSecondTradeOnTheSameDay() {
-        EntityManager em = entityManagerFactory.createEntityManager();
+        EntityManager em = createEntityManager();
         em.getTransaction().begin();
         em.persist(new Trade(13L, "Alpha", "B-1", 113, new BigDecimal("1.00"), null, LocalDate.of(2024, 1, 10),
                 LocalDateTime.of(2024, 1, 10, 15, 30, 0), null, true, DealType.BUY, null));

@@ -61,7 +61,7 @@ class CustomFilterTest extends ScenarioTestBase {
         protected @NonNull Predicate toPredicate(@NonNull CriteriaBuilder cb, @NonNull Expression<T> expression, CustomNumberFilterModel model) {
             String value = model.getValue();
             if (value == null || value.equalsIgnoreCase("All")) {
-                return cb.and();
+                return cb.conjunction();
             }
 
             Expression<Integer> integerExpression = expression.as(Integer.class);

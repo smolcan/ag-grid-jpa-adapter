@@ -38,7 +38,7 @@ class DateFactoryFilterTest extends ScenarioTestBase {
 
     @BeforeAll
     static void seedDateSamples() {
-        EntityManager em = entityManagerFactory.createEntityManager();
+        EntityManager em = createEntityManager();
         em.getTransaction().begin();
         for (long i = 1; i <= 4; i++) {
             LocalDateTime dateTime = BASE.plusDays(i - 1);

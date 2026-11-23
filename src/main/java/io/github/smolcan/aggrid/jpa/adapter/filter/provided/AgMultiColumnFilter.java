@@ -6,6 +6,8 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.model.simple.params.MultiFilt
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
+
+import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.and;
 import lombok.NonNull;
 
 import java.util.*;
@@ -56,6 +58,6 @@ public class AgMultiColumnFilter<T> extends IProvidedFilter<T, MultiFilterModel,
             }
         }
         
-        return cb.and(predicates.toArray(new Predicate[0]));
+        return and(cb, predicates);
     }
 }

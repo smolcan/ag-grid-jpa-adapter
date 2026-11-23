@@ -8,6 +8,9 @@ import io.github.smolcan.aggrid.jpa.adapter.filter.provided.IProvidedFilter;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
+
+import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.and;
+import static io.github.smolcan.aggrid.jpa.adapter.utils.Utils.or;
 import lombok.NonNull;
 
 import java.util.List;
@@ -68,9 +71,9 @@ public abstract class SimpleFilter<T, FM extends SimpleFilterModel, FP extends I
     private Predicate toCombinedPredicate(@NonNull CriteriaBuilder cb, @NonNull Expression<T> expression, @NonNull CombinedSimpleModel<FM> combinedSimpleModel) {
         List<Predicate> predicates = combinedSimpleModel.getConditions().stream().map(c -> this.toPredicate(cb, expression, c)).collect(Collectors.toList());
         if (combinedSimpleModel.getOperator() == JoinOperator.AND) {
-            return cb.and(predicates.toArray(new Predicate[0]));
+            return and(cb, predicates);
         } else if (combinedSimpleModel.getOperator() == JoinOperator.OR) {
-            return cb.or(predicates.toArray(new Predicate[0]));
+            return or(cb, predicates);
         } else {
             throw new IllegalStateException();
         }

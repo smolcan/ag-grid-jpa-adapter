@@ -70,10 +70,11 @@ returning such a row fails. EclipseLink 3.0 and 5.0 are not affected.
 database can compare, so filtering a UUID column fails. An `AttributeConverter` that stores the UUID as a string
 avoids it.
 
-### E. EclipseLink 5.0 on SQL Server: the suite does not start {#eclipselink-5-sql-server-uuid}
+### E. EclipseLink 5.0 and 6.0 on SQL Server: the suite does not start {#eclipselink-5-sql-server-uuid}
 
-Inserting the test data fails: EclipseLink 5.0 binds UUIDs as strings into the binary column it generates for them,
-and SQL Server rejects the implicit conversion. Until the test schema works around it, this combination is untested.
+Inserting the test data fails: EclipseLink 5.0 and 6.0 bind UUIDs as strings into the binary column they generate for
+them, and SQL Server rejects the implicit conversion. Until the test schema works around it, these combinations are
+untested.
 
 ### Skipped: row count when grouping by a nullable column {#null-group-row-count}
 

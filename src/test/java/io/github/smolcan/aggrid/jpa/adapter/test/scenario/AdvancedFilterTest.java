@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -163,6 +164,27 @@ class AdvancedFilterTest extends ScenarioTestBase {
         ));
         // (alpha or beta) and currentValue > 100 -> 2 (250.50), 5 (500), 6 (320.10)
         assertThat(tradeIds(result)).containsExactly(2L, 5L, 6L);
+    }
+
+    @Test
+    void emptyJoins() {
+        // like cb.and() and cb.or() with no arguments: AND over no conditions is true, OR over none is false
+        assertThat(tradeIds(rows(join("AND")))).hasSize(12);
+        assertThat(tradeIds(rows(join("OR")))).isEmpty();
+    }
+
+    @Test
+    void joinWithThousandsOfConditions() {
+        // conditions are combined as a balanced tree: chained one after another, Hibernate's SQL translation
+        // overflows the stack at a few thousand. Conditions without a value keep the statement free of
+        // parameters, which SQL Server caps at 2,100
+        Map<String, Object> allNotBlank = join("AND");
+        allNotBlank.put("conditions", Collections.nCopies(10_000, column("number", "previousValue", "notBlank", null)));
+        assertThat(tradeIds(rows(allNotBlank))).containsExactly(1L, 3L, 4L, 5L, 7L, 8L, 9L, 10L, 11L);
+
+        Map<String, Object> anyBlank = join("OR");
+        anyBlank.put("conditions", Collections.nCopies(10_000, column("number", "previousValue", "blank", null)));
+        assertThat(tradeIds(rows(anyBlank))).containsExactly(2L, 6L, 12L);
     }
 
     @Test

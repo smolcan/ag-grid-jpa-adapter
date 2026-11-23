@@ -48,8 +48,9 @@
     <hibernate.version>6.1.7.Final</hibernate.version>
     <!-- EclipseLink 3.0.x implements Jakarta Persistence 3.0 (4.0 targets 3.1) -->
     <eclipselink.version>3.0.4</eclipselink.version>
-    <!-- Eclipse Transformer for the javax jar and the jpa-2.2 tests; 1.0.0 needs Maven to run on Java 17, 0.5.0 runs on 11 -->
-    <transformer.version>0.5.0</transformer.version>
+    <!-- Eclipse Transformer for the javax jar and the jpa-2.2 tests. 1.0.0 needs Maven to run on Java 17+; 0.5.0 ran on 11,
+         but on JDK 21+ it fails on classes with javac's nameless MethodParameters entries and silently leaves them jakarta -->
+    <transformer.version>1.0.0</transformer.version>
     <!-- the library runs on Java 8, like the Jakarta Persistence 3.0 API it compiles against -->
     <maven.compiler.release>8</maven.compiler.release>
     <!-- the tests need Java 11: Hibernate 6 and EclipseLink 4 are Java 11 bytecode -->
@@ -242,8 +243,10 @@
         <artifactId>maven-enforcer-plugin</artifactId>
         <configuration>
           <rules>
+            <!-- the build JDK, not the library's: the jar stays Java 8 bytecode (maven.compiler.release),
+                 Transformer 1.0.0 needs Java 17 -->
             <requireJavaVersion>
-              <version>[11,)</version>
+              <version>[17,)</version>
             </requireJavaVersion>
           </rules>
         </configuration>
@@ -287,6 +290,23 @@
           </testResource>
         </testResources>
         <plugins>
+          <plugin>
+            <!-- the transform below rewrites the compiled classes in place, so they cannot be reused: after a change
+                 to the tests only, the compiler would keep the javax classes and compile the tests against them.
+                 Wipes target/jpa-2.2 (this profile's build directory) before every build -->
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-clean-plugin</artifactId>
+            <version>3.2.0</version>
+            <executions>
+              <execution>
+                <id>clean-transformed-classes</id>
+                <phase>initialize</phase>
+                <goals>
+                  <goal>clean</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
           <plugin>
             <groupId>org.eclipse.transformer</groupId>
             <artifactId>transformer-maven-plugin</artifactId>
@@ -407,6 +427,46 @@
       </properties>
       <build>
         <directory>${project.basedir}/target/jpa-3.2</directory>
+      </build>
+    </profile>
+
+    <profile>
+      <!-- test-only: the shipped bytecode (compiled against 3.0 for Java 8) on a JPA 4 provider. Compiles as usual,
+           then surefire swaps the 3.0 API jar for the 4.0 one, so a call that no longer links fails here.
+           JPA 4.0 requires Java 21 -->
+      <id>jpa-4.0</id>
+      <activation>
+        <property>
+          <name>jpa</name>
+          <value>4.0</value>
+        </property>
+      </activation>
+      <properties>
+        <jakarta.persistence.4.version>4.0.0-M8</jakarta.persistence.4.version>
+        <hibernate.version>8.0.0.CR1</hibernate.version>
+        <eclipselink.version>6.0.0-M1</eclipselink.version>
+        <maven.compiler.testRelease>21</maven.compiler.testRelease>
+      </properties>
+      <build>
+        <directory>${project.basedir}/target/jpa-4.0</directory>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <classpathDependencyExcludes>
+                <classpathDependencyExclude>jakarta.persistence:jakarta.persistence-api</classpathDependencyExclude>
+              </classpathDependencyExcludes>
+              <additionalClasspathDependencies>
+                <additionalClasspathDependency>
+                  <groupId>jakarta.persistence</groupId>
+                  <artifactId>jakarta.persistence-api</artifactId>
+                  <version>${jakarta.persistence.4.version}</version>
+                </additionalClasspathDependency>
+              </additionalClasspathDependencies>
+            </configuration>
+          </plugin>
+        </plugins>
       </build>
     </profile>
 

@@ -25,6 +25,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,12 +42,20 @@ public abstract class ScenarioTestBase {
     @BeforeAll
     static void startPersistenceAndSeed() {
         entityManagerFactory = TestPersistence.createEntityManagerFactory();
-        EntityManager em = entityManagerFactory.createEntityManager();
+        EntityManager em = createEntityManager();
         em.getTransaction().begin();
         TradeTestData.seed(em);
         EmployeeTestData.seed(em);
         em.getTransaction().commit();
         em.close();
+    }
+
+    /**
+     * JPA 4 turned {@code createEntityManager()} into {@code createEntityManager(CreationOption...)}, so the no-argument
+     * call compiled against 3.0 does not link there (the -Djpa=4.0 run). The {@code Map} overload exists in every version.
+     */
+    protected static EntityManager createEntityManager() {
+        return entityManagerFactory.createEntityManager(Collections.emptyMap());
     }
 
     @AfterAll
@@ -58,7 +67,7 @@ public abstract class ScenarioTestBase {
 
     @BeforeEach
     void openEntityManager() {
-        entityManager = entityManagerFactory.createEntityManager();
+        entityManager = createEntityManager();
     }
 
     @AfterEach

@@ -30,7 +30,7 @@ class TreeDataPathWildcardTest extends ScenarioTestBase {
 
     @BeforeAll
     static void seedWildcardPaths() {
-        EntityManager em = entityManagerFactory.createEntityManager();
+        EntityManager em = createEntityManager();
         em.getTransaction().begin();
 
         Employee underscore = new Employee(101L, "Underscore", new BigDecimal("10.00"), null, "a_b");
